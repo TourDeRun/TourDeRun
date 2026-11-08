@@ -181,7 +181,7 @@ private fun RaceCard(uiState: HomeUiState, onClick: () -> Unit) {
     val colors = TdrTheme.colors
     val ourM = uiState.team.distanceM
     TdrCard(onClick = onClick) {
-        CardHeader(stringResource(R.string.home_race_title), stringResource(R.string.home_race_all))
+        CardHeader(stringResource(R.string.home_race_title), trailing = stringResource(R.string.home_race_all))
         Row(horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
             RaceCell(
                 label = stringResource(R.string.home_race_ahead, uiState.ahead?.name ?: stringResource(R.string.home_race_none)),
@@ -275,7 +275,7 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
             .joinToString(", "),
     )
     TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        CardHeader(stringResource(R.string.home_members_title), stringResource(R.string.home_members_total, Format.km(teamDistanceM)))
+        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, Format.km(teamDistanceM)))
         Row(
             Modifier
                 .fillMaxWidth()

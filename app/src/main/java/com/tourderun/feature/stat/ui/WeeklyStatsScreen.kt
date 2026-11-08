@@ -113,7 +113,7 @@ fun WeeklyStatsScreen(
         }
 
         TdrCard {
-            CardHeader(stringResource(R.string.weekly_compare), stringResource(R.string.unit_km))
+            CardHeader(stringResource(R.string.weekly_compare), trailing = stringResource(R.string.unit_km))
             val max = maxOf(uiState.distanceM, uiState.lastWeekDistanceM, 1L).toFloat()
             CompareBar(
                 label = stringResource(R.string.weekly_last_week),

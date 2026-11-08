@@ -164,7 +164,7 @@ fun TdrStatCard(
 
 /** 카드 머리: 왼쪽 제목, 오른쪽 보조 글자. */
 @Composable
-fun CardHeader(title: String, trailing: String? = null, modifier: Modifier = Modifier) {
+fun CardHeader(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = TdrTheme.typography.subtitle, modifier = Modifier.weight(1f))
         if (trailing != null) {

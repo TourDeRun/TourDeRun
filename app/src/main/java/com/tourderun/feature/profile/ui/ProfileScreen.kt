@@ -150,7 +150,7 @@ fun ProfileScreen(
 
         // 내 기록
         TdrCard(onClick = onRecordsClick, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardHeader(stringResource(R.string.records_title), stringResource(R.string.profile_view_all))
+            CardHeader(stringResource(R.string.records_title), trailing = stringResource(R.string.profile_view_all))
             uiState.latestRun?.let { run ->
                 RunRow(run, onClick = { onRunClick(run) }, inCard = false)
             }
