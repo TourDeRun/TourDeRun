@@ -1,0 +1,21 @@
+# 비밀값 — 절대 커밋하지 않는다
+local.properties
+app/google-services.json
+*.jks
+*.keystore
+
+# 빌드
+/build
+/app/build
+/domain/build
+.gradle/
+.kotlin/
+captures/
+.externalNativeBuild
+.cxx
+
+# IDE (코드 스타일만 공유)
+.idea/*
+!.idea/codeStyles/
+*.iml
+.DS_Store
