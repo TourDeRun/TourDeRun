@@ -158,27 +158,27 @@ private fun ClearButton(text: String, onClick: () -> Unit, container: Color, con
 @Composable
 private fun RegionCardMini(card: EarnedCardUi) {
     val shape = RoundedCornerShape(20.dp)
-    // 카드는 브랜드 배경 위 흰 종이라 라이트 색을 고정으로 쓴다
+    val colors = TdrTheme.colors
     Column(
         Modifier
             .rotate(-3f)
             .width(168.dp)
             .shadow(16.dp, shape)
             .clip(shape)
-            .background(Color.White),
+            .background(colors.bgSurface),
     ) {
         Box(
-            Modifier.fillMaxWidth().height(120.dp).background(Color(0xFFE8F1FB)),
+            Modifier.fillMaxWidth().height(120.dp).background(colors.bgMap),
             contentAlignment = Alignment.Center,
         ) {
-            Text(stringResource(R.string.card_photo_placeholder), style = TdrTheme.typography.caption, color = Color(0xFF5F6672))
+            Text(stringResource(R.string.card_photo_placeholder), style = TdrTheme.typography.caption, color = colors.inkMuted)
         }
         Column(Modifier.padding(TdrSpacing.s3), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(card.cityName, style = TdrTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), color = Color(0xFF171717))
+            Text(card.cityName, style = TdrTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), color = colors.ink)
             Text(
                 stringResource(R.string.clear_card_sub, card.cityNameEn, card.index, card.total),
                 style = TdrTheme.typography.micro,
-                color = Color(0xFF5F6672),
+                color = colors.inkMuted,
             )
         }
     }
