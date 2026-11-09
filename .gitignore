@@ -19,3 +19,5 @@ captures/
 !.idea/codeStyles/
 *.iml
 .DS_Store
+
+CLAUDE.local.md
