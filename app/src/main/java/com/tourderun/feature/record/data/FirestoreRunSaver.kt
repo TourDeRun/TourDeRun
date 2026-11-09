@@ -18,11 +18,16 @@ class FirestoreRunSaver @Inject constructor(
 
     override fun newRunId(): String = firestore.collection(Collections.RUNS).document().id
 
-    override fun save(result: RunResult, uid: String, teamId: String?, title: String): Result<Unit> =
-        try {
+    override fun save(result: RunResult, uid: String, teamId: String?, title: String): Result<Unit> {
+        val distanceM = result.distanceM.roundToLong()
+        // 페이스를 계산할 수 없는 거리 0은 저장하지 않는다(100m 미만은 원래 저장 대상이 아님, M-05).
+        if (distanceM <= 0) {
+            return Result.failure(IllegalArgumentException("거리가 0m인 러닝은 저장하지 않는다"))
+        }
+        return try {
             val batch = firestore.batch()
             val runRef = firestore.collection(Collections.RUNS).document(result.runId)
-            batch.set(runRef, runDocument(result, uid, teamId, title))
+            batch.set(runRef, runDocument(result, distanceM, uid, teamId, title))
             // TODO(REC-01): #10에서 teams·members·teamStats·users 증가 쓰기를 같은 배치에 추가한다.
 
             // 오프라인이면 기기에 대기했다가 온라인이 되면 올라간다. 기다리지 않는다.
@@ -32,10 +37,16 @@ class FirestoreRunSaver @Inject constructor(
             Log.w(TAG, "runs 배치 만들기 실패", e)
             Result.failure(e)
         }
+    }
 
-    private fun runDocument(result: RunResult, uid: String, teamId: String?, title: String): Map<String, Any?> {
-        val distanceM = result.distanceM.roundToLong()
-        return mapOf(
+    private fun runDocument(
+        result: RunResult,
+        distanceM: Long,
+        uid: String,
+        teamId: String?,
+        title: String,
+    ): Map<String, Any?> =
+        mapOf(
             RunFields.UID to uid,
             RunFields.TEAM_ID to teamId,
             RunFields.STARTED_AT to timestampOf(result.startedAtMs),
@@ -49,16 +60,15 @@ class FirestoreRunSaver @Inject constructor(
             RunFields.MEMO to null,
             RunFields.PATH to thinEvenly(result.acceptedPoints).map { GeoPoint(it.lat, it.lng) },
         )
-    }
 
     private fun timestampOf(epochMs: Long) = Timestamp(Date(epochMs))
 
     /**
-     * 평균 페이스(초/km). 거리가 0이면 null.
+     * 평균 페이스(초/km). [distanceM]은 0보다 커야 한다([save]에서 거른다).
      * TODO(REC-01): 최한솔의 :domain/run 페이스 함수가 생기면 그것으로 바꾼다.
      */
-    private fun paceSecPerKm(movingSec: Long, distanceM: Long): Long? =
-        if (distanceM > 0) (movingSec * 1_000.0 / distanceM).roundToLong() else null
+    private fun paceSecPerKm(movingSec: Long, distanceM: Long): Long =
+        (movingSec * 1_000.0 / distanceM).roundToLong()
 
     private companion object {
         const val TAG = "TDR/record"

@@ -5,6 +5,7 @@
     <string name="debug_save_run_button">가짜 러닝 저장 (runs)</string>
     <string name="debug_save_run_idle">버튼을 누르면 가짜 RunResult로 runs 문서를 저장해요.</string>
     <string name="debug_save_run_no_firebase">google-services.json이 없어 Firebase가 초기화되지 않았어요. 파일을 app/에 넣고 다시 빌드하세요.</string>
+    <string name="debug_save_run_not_signed_in">먼저 로그인하세요(개발용 규칙도 로그인이 필요함)</string>
     <string name="debug_save_run_started">커밋을 시작했어요: runs/%1$s (오프라인이면 온라인 복귀 후 올라가요)</string>
     <string name="debug_save_run_failed">배치를 만들지 못했어요: %1$s</string>
 </resources>
