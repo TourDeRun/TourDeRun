@@ -22,8 +22,21 @@ interface StatsRepository {
      *
      * @return 오프라인이면(count 집계는 서버가 필요) 또는 우리 팀이 이번 주 0km면 null → 화면에서 숨긴다
      */
-    suspend fun topPercent(teamId: String, nowMs: Long): Int?
+    suspend fun topPercent(teamId: String, nowMs: Long): TopPercent?
 }
+
+/**
+ * 이번 주 상위 % 결과. 화면 문구 "전체 [totalTeams]팀 중 상위 [percent]% · 더 달린 팀 [moreCount]개"에 쓴다.
+ *
+ * @property percent 1~100. `ceil((moreCount + 1) / totalTeams × 100)`
+ * @property moreCount 이번 주 우리 팀보다 더 달린 팀 수
+ * @property totalTeams 시즌 1 팀 전부(이번 주 0km 팀 포함)
+ */
+data class TopPercent(
+    val percent: Int,
+    val moreCount: Long,
+    val totalTeams: Long,
+)
 
 /**
  * 팀 주간 통계. 거리는 정수 m.

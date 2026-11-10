@@ -33,7 +33,24 @@ interface RaceRepository {
 }
 
 /**
+ * 순위 줄·경쟁 카드·로드뷰 마커에 쓰는 다른 팀 정보. 순위 계산 입력은 [standing]이고, 나머지는 표시용이다.
+ *
+ * @property icon 팀 대표 아이콘 번호 0~7(M-06, `teams.icon`)
+ * @property color 팀 색 번호 0~7(M-06, `teams.color`)
+ * @property memberCount 팀원 수 1~4(`teams.memberCount`)
+ */
+data class RaceTeam(
+    val standing: TeamStanding,
+    val icon: Int,
+    val color: Int,
+    val memberCount: Int,
+)
+
+/**
  * 내 팀이 있는 스테이지의 경쟁 상황.
+ *
+ * 다른 팀에 공개되는 정보는 이름·대표 이미지·인원·거리뿐이다(기능 명세 JRN-04).
+ * 그래서 [RaceTeam]에는 팀원 닉네임·러닝 기록 같은 정보를 넣지 않는다.
  *
  * @property stageIndex 0부터(화면에는 +1)
  * @property stageTeams 같은 스테이지 팀 전부, 순위순(내 팀 포함)
@@ -43,8 +60,26 @@ interface RaceRepository {
  */
 data class RaceSummary(
     val stageIndex: Int,
-    val stageTeams: List<TeamStanding>,
+    val stageTeams: List<RaceTeam>,
     val ranking: StageRanking?,
-    val aheadOtherStage: TeamStanding?,
-    val behindOtherStage: TeamStanding?,
-)
+    val aheadOtherStage: RaceTeam?,
+    val behindOtherStage: RaceTeam?,
+) {
+    private val aheadInStage: RaceTeam?
+        get() = ranking?.ahead?.let { a -> stageTeams.firstOrNull { it.standing.teamId == a.teamId } }
+
+    private val behindInStage: RaceTeam?
+        get() = ranking?.behind?.let { b -> stageTeams.firstOrNull { it.standing.teamId == b.teamId } }
+
+    /** 바로 앞 팀. 스테이지 안에 없으면 [aheadOtherStage]. 둘 다 없으면(전체 1위) null */
+    val ahead: RaceTeam? get() = aheadInStage ?: aheadOtherStage
+
+    /** [ahead]가 다른 스테이지 팀이면 true(화면에서 "스테이지 N" 표시) */
+    val aheadIsOtherStage: Boolean get() = aheadInStage == null && aheadOtherStage != null
+
+    /** 바로 뒤 팀. 스테이지 안에 없으면 [behindOtherStage]. 둘 다 없으면(전체 꼴찌) null */
+    val behind: RaceTeam? get() = behindInStage ?: behindOtherStage
+
+    /** [behind]가 다른 스테이지 팀이면 true */
+    val behindIsOtherStage: Boolean get() = behindInStage == null && behindOtherStage != null
+}
