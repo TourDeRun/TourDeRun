@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.flowOf
  * - 빈 주: `FakeStatsRepository(weekly = WeeklyStats.EMPTY)` → 상위 %도 null
  * - 오프라인: `FakeStatsRepository(DEFAULT_WEEKLY, topPercent = null, fromCache = true)`
  *
- * TODO(STAT-01): 기간 계산(weekId)은 PR #15 머지 후 Firestore 구현(#12)에서 쓴다. 가짜 구현은 teamId·nowMs를 보지 않는다.
+ * 가짜 구현은 teamId·nowMs를 보지 않는다(기간 계산은 [FirestoreStatsRepository]).
  */
 @Singleton
 class FakeStatsRepository(
