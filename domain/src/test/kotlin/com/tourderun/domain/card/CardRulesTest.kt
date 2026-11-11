@@ -38,8 +38,16 @@ class CardRulesTest {
         assertEquals(listOf("busan"), cards(seen = 6, current = 7))
     }
 
-    @Test fun `처음 팀에 소속되면 서울 카드`() {
+    @Test fun `팀 만들기(seenArrivals 0, 도착 수 0) → 서울 카드만`() {
         assertEquals(listOf("seoul"), cards(seen = 0, current = 0, firstJoin = true))
+    }
+
+    @Test fun `도착 수 3인 팀에 처음 참여(seenArrivals 3) → 서울 카드만`() {
+        assertEquals(listOf("seoul"), cards(seen = 3, current = 3, firstJoin = true))
+    }
+
+    @Test fun `도착 수 3인 팀에 참여한 뒤 세종 도착 → 세종 카드만, 가입 전 도시는 대상 아님`() {
+        assertEquals(listOf("sejong"), cards(seen = 3, current = 4, owned = setOf("seoul")))
     }
 
     @Test fun `처음 소속이 아니면 서울 카드 없음`() {
