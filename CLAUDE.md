@@ -8,12 +8,12 @@
 ## 명령
 
 ```
-./gradlew :domain:test                       # 핵심 로직 단위 테스트 (PR 전에 반드시)
-./gradlew :app:assembleDebug :app:lintDebug  # CI app-build와 같은 검사
-./gradlew signingReport                      # 디버그 SHA-1 확인
+./gradlew :domain:test                                             # 핵심 로직 단위 테스트 (PR 전에 반드시)
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug # CI app-build와 같은 검사 (:app 단위 테스트 포함)
+./gradlew signingReport                                            # 디버그 SHA-1 확인
 ```
 
-- CI(`.github/workflows/ci.yml`)는 `domain-test`, `app-build` 두 작업. 둘 다 통과해야 `main`에 합칠 수 있다.
+- CI(`.github/workflows/ci.yml`)는 `domain-test`(`:domain:test`), `app-build`(`:app:testDebugUnitTest` → `assembleDebug` → `lintDebug`) 두 작업. 둘 다 통과해야 `main`에 합칠 수 있다. 작업 이름은 `main` 보호 규칙의 필수 체크 이름이라 바꾸지 않는다.
 - `google-services.json`이 없으면 Firebase 플러그인이 꺼진 채로 빌드된다. 이 상태에서 Firebase를 호출하는 코드가 실행되면 앱이 꺼지므로, 파일 없이 Firebase 코드를 시작 경로에 연결하지 않는다.
 
 ## 구조

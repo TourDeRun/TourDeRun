@@ -37,4 +37,4 @@ jobs:
         if: env.GOOGLE_SERVICES_JSON != ''
         run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
       # 지도 키는 local.defaults.properties의 DUMMY로 빌드된다
-      - run: ./gradlew :app:assembleDebug :app:lintDebug
+      - run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
