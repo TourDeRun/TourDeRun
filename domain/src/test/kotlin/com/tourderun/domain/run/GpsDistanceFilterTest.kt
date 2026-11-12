@@ -69,6 +69,37 @@ class GpsDistanceFilterTest {
         assertEquals(5.0, filter.totalM, 0.000_001)
     }
 
+    @Test fun `시속 40km 구간은 누적 거리에 더하지 않음`() {
+        val filter = GpsDistanceFilter()
+        filter.accept(point(0.0, 0))
+        assertTrue(filter.accept(point(10.0, 4_000)) is FilterDecision.Accepted)
+
+        // 1초 동안 약 11.11m를 이동하면 시속 40km다.
+        val fortyKmhStepM = 40_000.0 / 3_600.0
+        assertEquals(FilterDecision.TooFast, filter.accept(point(10.0 + fortyKmhStepM, 5_000)))
+        assertEquals(10.0, filter.totalM, 0.000_001)
+    }
+
+    @Test fun `6분 페이스로 1초마다 온 점은 이동 거리를 합산`() {
+        val filter = GpsDistanceFilter()
+        assertEquals(FilterDecision.FirstPoint, filter.accept(point(0.0, 0)))
+        val metersPerSecond = 1_000.0 / 360.0
+        var acceptedCount = 0
+        var jitterCount = 0
+
+        for (second in 1..10) {
+            when (filter.accept(point(metersPerSecond * second, second * 1_000L))) {
+                is FilterDecision.Accepted -> acceptedCount++
+                FilterDecision.Jitter -> jitterCount++
+                else -> throw AssertionError("정상 속도 위치가 예상과 다르게 처리됨")
+            }
+        }
+
+        assertEquals(5, acceptedCount)
+        assertEquals(5, jitterCount)
+        assertEquals(metersPerSecond * 10, filter.totalM, 0.000_001)
+    }
+
     @Test fun `재개하면 누적 거리를 유지하고 이동한 공백 구간은 제외`() {
         val filter = GpsDistanceFilter()
         filter.accept(point(0.0, 0))
