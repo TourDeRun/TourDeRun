@@ -44,6 +44,9 @@ import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.stageProgressUi
+import com.tourderun.core.ui.model.toNextCityText
+import com.tourderun.domain.route.routeFor
 
 /** 이번 러닝으로 앞 팀을 추월했을 때. */
 data class OvertakeUi(
@@ -176,7 +179,7 @@ private fun TeamDistanceCard(uiState: RunResultUiState) {
             buildAnnotatedString {
                 append(stringResource(R.string.result_stage_line, stage.stageNumber, stage.fromCity, stage.toCity))
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append(stringResource(R.string.to_next_city, stage.toCity, Format.km(stage.toNextM)))
+                    append(stage.toNextCityText())
                 }
             },
             style = type.label.copy(fontWeight = FontWeight.Normal),
@@ -196,7 +199,7 @@ private fun RunResultScreenPreview() {
                 movingSec = 1_122,
                 paceSecPerKm = 346,
                 teamBeforeM = 66_800,
-                stageAfter = StageProgressUi(3, 7, "오산", "천안", 48, 85, 70_040),
+                stageAfter = stageProgressUi(70_040, routeFor(1)),
                 overtake = OvertakeUi("주황이들", 2, 1, 2_400, 840),
             ),
             onConfirm = {},

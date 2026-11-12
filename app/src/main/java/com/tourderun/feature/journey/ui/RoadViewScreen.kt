@@ -58,6 +58,7 @@ import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.RivalTeamUi
 import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.toNextCityText
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
@@ -132,7 +133,7 @@ fun RoadViewScreen(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.road_next_city), style = type.caption, color = colors.inkMuted)
                     Text(
-                        stringResource(R.string.to_next_city, stage.toCity, Format.km(stage.toNextM)),
+                        stage.toNextCityText(),
                         style = type.subtitle.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold),
                     )
                 }

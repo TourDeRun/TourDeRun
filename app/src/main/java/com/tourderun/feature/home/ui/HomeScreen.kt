@@ -49,6 +49,7 @@ import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.RivalTeamUi
 import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.toNextCityText
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
@@ -162,13 +163,13 @@ private fun StageCard(stage: StageProgressUi, rank: Int, totalTeams: Int) {
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.home_stage_done, Format.km(stage.doneInStageM), stage.lengthKm),
+                stringResource(R.string.home_stage_done, Format.kmDown(stage.doneInStageM), stage.lengthKm),
                 style = type.caption,
                 color = colors.inkOnBrandMuted,
                 modifier = Modifier.weight(1f),
             )
             Text(
-                stringResource(R.string.to_next_city, stage.toCity, Format.km(stage.toNextM)),
+                stage.toNextCityText(),
                 style = type.bodySm.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
                 color = colors.inkOnBrand,
             )

@@ -17,6 +17,7 @@
     <string name="stage_of">스테이지 %1$d / %2$d</string>
     <string name="rank_value">%1$d위</string>
     <string name="to_next_city">%1$s까지 %2$skm</string>
+    <string name="stage_finished">%1$s 도착 · 완주</string>
     <string name="stage_progress_desc">스테이지 진행률</string>
     <string name="stat_distance">거리</string>
     <string name="stat_time">시간</string>
