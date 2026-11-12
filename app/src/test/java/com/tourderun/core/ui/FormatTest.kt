@@ -20,6 +20,16 @@ class FormatTest {
         assertEquals("36.96", Format.kmDown(36_960, decimals = 2))
     }
 
+    @Test fun `teamKm은 팀 누적 거리를 소수 한 자리 내림`() {
+        assertEquals("84.9", Format.teamKm(84_960))
+        assertEquals("85.0", Format.teamKm(85_000))
+        assertEquals("18.9", Format.teamKm(18_999))
+        assertEquals("0.0", Format.teamKm(0))
+        assertEquals("350.0", Format.teamKm(350_000))
+        assertEquals("350.0", Format.teamKm(350_099))
+        assertEquals("360.0", Format.teamKm(360_049))
+    }
+
     @Test fun `km은 지금처럼 반올림`() {
         assertEquals("85.0", Format.km(84_960))
         assertEquals("66.8", Format.km(66_800))

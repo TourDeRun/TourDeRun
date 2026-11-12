@@ -116,7 +116,7 @@ private fun TeamHeaderCard(team: TeamUi, onClick: () -> Unit) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(team.name, style = type.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    stringResource(R.string.home_team_summary, team.season, team.memberCount, Format.km(team.distanceM)),
+                    stringResource(R.string.home_team_summary, team.season, team.memberCount, Format.teamKm(team.distanceM)),
                     style = type.caption,
                     color = TdrTheme.colors.inkMuted,
                 )
@@ -276,7 +276,7 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
             .joinToString(", "),
     )
     TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, Format.km(teamDistanceM)))
+        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, Format.teamKm(teamDistanceM)))
         Row(
             Modifier
                 .fillMaxWidth()

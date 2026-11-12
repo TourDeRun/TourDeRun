@@ -21,6 +21,13 @@ object Format {
      */
     fun kmUp(meters: Long, decimals: Int = 1): String = kmRounded(meters, decimals, RoundingMode.CEILING)
 
+    /**
+     * 팀 누적 거리(소수 한 자리, 내림). 84_960 → "84.9", 85_000 → "85.0".
+     * 도착 거리(85km)에 닿기 전에 "85.0"이 보이면 "천안까지 0.1km"와 어긋나서 내림으로 쓴다.
+     * 개인 러닝 거리(RUN-03)는 [km]을 그대로 쓴다.
+     */
+    fun teamKm(meters: Long): String = kmDown(meters, decimals = 1)
+
     private fun kmRounded(meters: Long, decimals: Int, mode: RoundingMode): String =
         BigDecimal.valueOf(meters, 3).setScale(decimals, mode).toPlainString()
 

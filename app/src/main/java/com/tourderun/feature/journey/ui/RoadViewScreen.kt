@@ -234,7 +234,7 @@ private fun StageMapSketch(uiState: RoadViewUiState, modifier: Modifier) {
             MapMarker(at(stage.progressOf(rival.distanceM)), 38.dp) {
                 TeamImage(rival.appearance, size = 38.dp, circle = true)
                 MarkerLabel(
-                    stringResource(R.string.road_team_marker, rival.name, Format.km(rival.distanceM)),
+                    stringResource(R.string.road_team_marker, rival.name, Format.teamKm(rival.distanceM)),
                     colors.bgSurface,
                     rival.appearance.color.textColor,
                     TdrShapes.full,
@@ -265,7 +265,7 @@ private fun StageMapSketch(uiState: RoadViewUiState, modifier: Modifier) {
                     color = colors.inkOnBrand,
                 )
                 Text(
-                    stringResource(R.string.km_value, Format.km(uiState.team.distanceM)),
+                    stringResource(R.string.km_value, Format.teamKm(uiState.team.distanceM)),
                     style = TdrTheme.typography.micro.copy(fontWeight = FontWeight.Medium),
                     color = colors.inkOnBrand,
                 )

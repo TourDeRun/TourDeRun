@@ -156,13 +156,13 @@ private fun TeamDistanceCard(uiState: RunResultUiState) {
         Text(stringResource(R.string.result_team_distance), style = type.caption, color = colors.inkOnBrandMuted)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
-                stringResource(R.string.km_value, Format.km(uiState.teamBeforeM)),
+                stringResource(R.string.km_value, Format.teamKm(uiState.teamBeforeM)),
                 style = type.title.copy(lineHeight = 24.sp),
                 color = colors.inkOnBrandMuted,
             )
             Icon(TdrIcons.ArrowRight, contentDescription = null, tint = colors.inkOnBrand, modifier = Modifier.size(20.dp))
             Text(
-                stringResource(R.string.km_value, Format.km(stage.teamDistanceM)),
+                stringResource(R.string.km_value, Format.teamKm(stage.teamDistanceM)),
                 style = type.statLg.copy(fontSize = 30.sp, lineHeight = 36.sp),
                 color = colors.inkOnBrand,
             )

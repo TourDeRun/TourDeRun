@@ -163,7 +163,7 @@ private fun RunningContent(
             Text(
                 stringResource(
                     R.string.run_team_info,
-                    Format.km(stage.teamDistanceM),
+                    Format.teamKm(stage.teamDistanceM),
                     stage.stageNumber,
                     stage.fromCity,
                     stage.toCity,
