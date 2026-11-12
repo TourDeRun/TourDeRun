@@ -77,8 +77,8 @@ fun StageRankContent(
             if (uiState is StageRankUiState.Content && uiState.isOffline) {
                 Pill(
                     stringResource(R.string.rank_offline),
-                    background = colors.bgSubtle,
-                    contentColor = colors.inkMuted,
+                    background = colors.inkMuted,
+                    contentColor = colors.inkOnBrand,
                 )
             }
         }
