@@ -2,9 +2,6 @@ package com.tourderun.core.data.local
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -29,50 +26,20 @@ data class StoredRunSession(
 interface ActiveRunStore {
     val session: Flow<StoredRunSession?>
     suspend fun save(session: StoredRunSession)
+
+    /** 서버 저장 후 정리할 때는 서버 반영 성공을 확인한 뒤 호출한다. */
     suspend fun clearIfRunIdMatches(runId: String)
 }
 
 @Singleton
 class RunSessionStore @Inject constructor(@ApplicationContext private val context: Context) : ActiveRunStore {
-    private object Keys {
-        val id = stringPreferencesKey("run_id")
-        val status = stringPreferencesKey("status")
-        val started = longPreferencesKey("started_at_ms")
-        val pausedTotal = longPreferencesKey("paused_total_ms")
-        val pausedAt = longPreferencesKey("paused_at_ms")
-        val heartbeat = longPreferencesKey("last_heartbeat_ms")
-        val segment = intPreferencesKey("segment")
-    }
-
-    override val session: Flow<StoredRunSession?> = context.runSessionDataStore.data.map { prefs ->
-        val id = prefs[Keys.id] ?: return@map null
-        val started = prefs[Keys.started] ?: return@map null
-        val status = prefs[Keys.status]?.let { value -> StoredRunStatus.entries.firstOrNull { it.name == value } }
-            ?: return@map null
-        StoredRunSession(
-            runId = id,
-            status = status,
-            startedAtMs = started,
-            pausedTotalMs = prefs[Keys.pausedTotal] ?: 0,
-            pausedAtMs = prefs[Keys.pausedAt],
-            lastHeartbeatMs = prefs[Keys.heartbeat] ?: started,
-            segment = prefs[Keys.segment] ?: 0,
-        )
-    }
+    override val session: Flow<StoredRunSession?> = context.runSessionDataStore.data.map { it.readRunSession() }
 
     override suspend fun save(session: StoredRunSession) {
-        context.runSessionDataStore.edit { prefs ->
-            prefs[Keys.id] = session.runId
-            prefs[Keys.status] = session.status.name
-            prefs[Keys.started] = session.startedAtMs
-            prefs[Keys.pausedTotal] = session.pausedTotalMs
-            if (session.pausedAtMs == null) prefs.remove(Keys.pausedAt) else prefs[Keys.pausedAt] = session.pausedAtMs
-            prefs[Keys.heartbeat] = session.lastHeartbeatMs
-            prefs[Keys.segment] = session.segment
-        }
+        context.runSessionDataStore.edit { it.writeRunSession(session) }
     }
 
     override suspend fun clearIfRunIdMatches(runId: String) {
-        context.runSessionDataStore.edit { prefs -> if (prefs[Keys.id] == runId) prefs.clear() }
+        context.runSessionDataStore.edit { it.clearRunSessionIfMatching(runId) }
     }
 }
