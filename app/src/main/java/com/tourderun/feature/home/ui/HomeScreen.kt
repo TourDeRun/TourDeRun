@@ -263,20 +263,38 @@ private fun WeeklyCard(weekly: WeeklySummaryUi, onClick: () -> Unit) {
     }
 }
 
+/**
+ * 팀원 기여 카드에 쓰는 거리 문자열(km, 단위 없음).
+ *
+ * 합계와 팀원 기여 거리 모두 `Format.teamKm`(소수 한 자리 내림)이다. 기준이 다르면
+ * 1인 팀 84,960m에서 합계 84.9, 기여 85.0처럼 팀원이 팀보다 많이 달린 것으로 보인다.
+ *
+ * @property totalKm 팀 합계
+ * @property memberKm 팀원 기여 거리. `members`와 같은 순서
+ */
+internal data class MembersChartKm(val totalKm: String, val memberKm: List<String>)
+
+internal fun membersChartKm(members: List<MemberUi>, teamDistanceM: Long): MembersChartKm =
+    MembersChartKm(
+        totalKm = Format.teamKm(teamDistanceM),
+        memberKm = members.map { Format.teamKm(it.contributionM) },
+    )
+
 /** 팀원 누적 기록 세로 막대 + 아바타. 가장 많이 달린 사람 막대가 140dp. */
 @Composable
 private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onClick: () -> Unit) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val maxM = members.maxOfOrNull { it.contributionM }?.coerceAtLeast(1L) ?: 1L
+    val km = membersChartKm(members, teamDistanceM)
     val chartDesc = stringResource(
         R.string.home_members_chart_desc,
         // map은 inline이라 안에서 stringResource를 부를 수 있다 (joinToString 람다는 안 된다)
-        members.map { stringResource(R.string.home_members_chart_item, it.nickname, Format.km(it.contributionM)) }
+        members.mapIndexed { i, m -> stringResource(R.string.home_members_chart_item, m.nickname, km.memberKm[i]) }
             .joinToString(", "),
     )
     TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, Format.teamKm(teamDistanceM)))
+        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, km.totalKm))
         Row(
             Modifier
                 .fillMaxWidth()
@@ -285,14 +303,14 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
             horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2),
             verticalAlignment = Alignment.Bottom,
         ) {
-            members.forEach { m ->
+            members.forEachIndexed { i, m ->
                 val pct = if (teamDistanceM > 0) (m.contributionM * 100f / teamDistanceM).roundToInt() else 0
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     if (m.isMvp) {
                         Icon(TdrIcons.Crown, contentDescription = null, tint = colors.mvp, modifier = Modifier.padding(bottom = 2.dp).size(18.dp))
                     }
                     Text(
-                        Format.km(m.contributionM) + stringResource(R.string.unit_km),
+                        km.memberKm[i] + stringResource(R.string.unit_km),
                         style = type.label.copy(fontWeight = FontWeight.ExtraBold),
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
