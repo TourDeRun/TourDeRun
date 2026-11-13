@@ -76,6 +76,7 @@ class FirestoreRaceRepository @Inject constructor(
         range.endExclusiveM?.let { query = query.whereLessThan(TeamFields.DISTANCE_M, it) }
         return query
             .orderBy(TeamFields.DISTANCE_M, Query.Direction.DESCENDING)
+            // teams 문서는 생성 때부터 reachedAt이 있어야 한다. 이 orderBy는 필드가 없는 문서를 결과에서 뺀다.
             .orderBy(TeamFields.REACHED_AT, Query.Direction.ASCENDING)
             .snapshotFlow(TAG)
             .map { snapshot ->
