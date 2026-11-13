@@ -23,9 +23,9 @@ import com.tourderun.R
 import com.tourderun.domain.model.GpsPoint
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.defaultRunTitle
+import com.tourderun.domain.stats.SEOUL
 import com.tourderun.feature.record.data.RunSaver
 import dagger.hilt.android.AndroidEntryPoint
-import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -102,8 +102,7 @@ class DebugSaveRunActivity : ComponentActivity() {
             distanceM = 5_000.4,
             acceptedPoints = points,
         )
-        // TODO(REC-01): PR #15 머지 후 stats.SEOUL로 바꾼다.
-        val title = defaultRunTitle(startedAtMs, ZoneId.of("Asia/Seoul"))
+        val title = defaultRunTitle(startedAtMs, SEOUL)
         return saver.save(result, uid = uid, teamId = null, title = title).map { result.runId }
     }
 
