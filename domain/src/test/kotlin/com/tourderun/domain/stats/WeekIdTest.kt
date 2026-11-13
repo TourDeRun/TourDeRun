@@ -39,4 +39,20 @@ class WeekIdTest {
     @Test fun `주차는 두 자리로 채움`() {
         assertEquals("2027-W02", weekId(seoulMs(2027, 1, 11)))
     }
+
+    @Test fun `2027-01-04 월요일 0시의 지난주는 2026-W53`() {
+        assertEquals("2026-W53", lastWeekId(seoulMs(2027, 1, 4)))
+    }
+
+    @Test fun `2027-01-01의 지난주는 2026-W52`() {
+        assertEquals("2026-W52", lastWeekId(seoulMs(2027, 1, 1, 12)))
+    }
+
+    @Test fun `2026-11-16 월요일 0시의 지난주는 W46`() {
+        assertEquals("2026-W46", lastWeekId(seoulMs(2026, 11, 16)))
+    }
+
+    @Test fun `2026-11-15 일요일 23시 59분 59초의 지난주는 W45`() {
+        assertEquals("2026-W45", lastWeekId(seoulMs(2026, 11, 15, 23, 59, 59)))
+    }
 }

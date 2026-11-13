@@ -20,3 +20,14 @@ fun weekId(atMs: Long, zone: ZoneId = SEOUL): String {
     val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
     return String.format(Locale.ROOT, "%d-W%02d", year, week)
 }
+
+/**
+ * 지난주 기간 ID (STAT-01). [nowMs]가 속한 주의 바로 앞 주. 연도 경계도 ISO 주차 연도를 따른다
+ * (2027-01-04 월요일 → 2026-W53).
+ *
+ * @param nowMs 현재 시각(epoch ms). 함수 안에서 읽지 않는다.
+ */
+fun lastWeekId(nowMs: Long, zone: ZoneId = SEOUL): String {
+    val weekAgo = Instant.ofEpochMilli(nowMs).atZone(zone).minusWeeks(1)
+    return weekId(weekAgo.toInstant().toEpochMilli(), zone)
+}

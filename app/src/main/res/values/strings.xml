@@ -1,3 +1,277 @@
 <resources>
     <string name="app_name">Tour De Run</string>
+
+    <!-- 공통 -->
+    <string name="action_back">뒤로</string>
+    <string name="action_close">닫기</string>
+    <string name="action_confirm">확인</string>
+    <string name="action_cancel">취소</string>
+    <string name="action_save">저장</string>
+    <string name="action_delete">삭제</string>
+    <string name="action_edit">수정</string>
+    <string name="unit_km">km</string>
+    <string name="unit_km_spaced">" km"</string>
+    <string name="unit_times_spaced">" 회"</string>
+    <string name="km_value">%1$skm</string>
+    <string name="route_format">%1$s → %2$s</string>
+    <string name="stage_of">스테이지 %1$d / %2$d</string>
+    <string name="rank_value">%1$d위</string>
+    <string name="to_next_city">%1$s까지 %2$skm</string>
+    <string name="stage_progress_desc">스테이지 진행률</string>
+    <string name="stat_distance">거리</string>
+    <string name="stat_time">시간</string>
+    <string name="stat_avg_pace">평균 페이스</string>
+    <string name="pace_per_km">%1$s /km</string>
+    <string name="role_leader">팀장</string>
+    <string name="role_member">팀원</string>
+    <string name="mvp_badge">이번 주 MVP</string>
+    <string name="month_label">%1$d월</string>
+
+    <!-- 하단 탭 -->
+    <string name="tab_home">홈</string>
+    <string name="tab_road">로드뷰</string>
+    <string name="tab_run">러닝</string>
+    <string name="tab_profile">프로필</string>
+
+    <!-- 팀 색·아이콘 -->
+    <string name="team_color_blue">파랑</string>
+    <string name="team_color_navy">남색</string>
+    <string name="team_color_teal">청록</string>
+    <string name="team_color_green">초록</string>
+    <string name="team_color_purple">보라</string>
+    <string name="team_color_orange">주황</string>
+    <string name="team_color_pink">분홍</string>
+    <string name="team_color_gray">회색</string>
+    <string name="team_icon_runner">뛰뛰</string>
+    <string name="team_icon_bolt">번개</string>
+    <string name="team_icon_mountain">산</string>
+    <string name="team_icon_star">별</string>
+    <string name="team_icon_flame">불꽃</string>
+    <string name="team_icon_wave">파도</string>
+    <string name="team_icon_heart">하트</string>
+    <string name="team_icon_flag">깃발</string>
+    <string name="team_image_desc">%1$s 대표 이미지</string>
+
+    <!-- 초대 코드 컴포넌트 -->
+    <string name="invite_code_label">초대 코드</string>
+    <string name="invite_code_desc">초대 코드 %1$s</string>
+    <string name="invite_code_copy">코드 복사</string>
+    <string name="invite_code_share">공유하기</string>
+
+    <!-- S01 로그인 -->
+    <string name="login_app_icon_desc">Tour De Run 앱 아이콘</string>
+    <string name="login_tagline">같이 달린 거리로\n전국을 여행해요</string>
+    <string name="login_google">Google로 시작하기</string>
+    <string name="login_hint">처음이라면 약관 동의 후 닉네임만 정하면 돼요</string>
+
+    <!-- S01-1 약관 동의 -->
+    <string name="terms_step">1 / 2</string>
+    <string name="terms_title">Tour De Run을 시작하기 전에\n꼭 필요한 동의만 받을게요</string>
+    <string name="terms_subtitle">달린 경로는 나만 보고, 다른 팀에는 팀 이름·대표 이미지·인원·거리만 보여요.</string>
+    <string name="terms_all">전체 동의</string>
+    <string name="terms_required">[필수]</string>
+    <string name="terms_service">서비스 이용약관</string>
+    <string name="terms_privacy">개인정보 수집·이용 동의</string>
+    <string name="terms_location">위치정보 이용 동의</string>
+    <string name="terms_view">보기</string>
+    <string name="terms_view_desc">%1$s 보기</string>
+    <string name="terms_summary_title">개인정보 수집·이용 요약</string>
+    <string name="terms_summary_items_label">수집 항목</string>
+    <string name="terms_summary_items">구글 계정 식별자, 닉네임, 러닝 기록(거리·시간·페이스), 달린 경로 위치</string>
+    <string name="terms_summary_purpose_label">이용 목적</string>
+    <string name="terms_summary_purpose">로그인, 러닝 측정·기록, 팀 거리와 스테이지 순위 계산</string>
+    <string name="terms_summary_location_label">위치 정보</string>
+    <string name="terms_summary_location">러닝 중에만 앱 사용 중 권한으로 받아요. 백그라운드 위치는 쓰지 않아요</string>
+    <string name="terms_summary_retention_label">보관 기간</string>
+    <string name="terms_summary_retention">회원 탈퇴 시 바로 삭제해요</string>
+    <string name="terms_continue">동의하고 계속하기</string>
+    <string name="terms_need_all">필수 항목에 모두 동의해 주세요</string>
+
+    <!-- S02 닉네임 -->
+    <string name="nickname_step">2 / 2</string>
+    <string name="nickname_title">뭐라고 불러 드릴까요?</string>
+    <string name="nickname_subtitle">닉네임은 같은 팀원에게만 보여요</string>
+    <string name="nickname_label">닉네임</string>
+    <string name="nickname_placeholder">2~10자</string>
+    <string name="nickname_helper">2~10자, 한글·영문·숫자만 쓸 수 있어요 (공백 불가)</string>
+    <string name="nickname_start">시작하기</string>
+
+    <!-- S03 팀 시작 -->
+    <string name="team_start_title">함께 달릴 팀이 필요해요</string>
+    <string name="team_start_subtitle">새 팀을 만들거나\n받은 초대 코드로 참가해요</string>
+    <string name="team_start_create">새 팀 만들기</string>
+    <string name="team_start_join">팀 참가하기</string>
+
+    <!-- S04 팀 만들기 -->
+    <string name="create_team_title">새 팀 만들기</string>
+    <string name="create_team_subtitle">이름과 대표 이미지를 정하면 초대 코드가 생겨요</string>
+    <string name="team_name_label">팀 이름</string>
+    <string name="create_team_name_placeholder">뛰뛰크루</string>
+    <string name="team_icon_label">대표 아이콘</string>
+    <string name="team_color_label">팀 색상</string>
+    <string name="create_team_helper">팀 이름 2~12자 · 이름과 이미지는 팀장이 나중에 바꿀 수 있어요</string>
+    <string name="create_team_submit">팀 만들기</string>
+
+    <!-- S05 초대 코드 입력 -->
+    <string name="join_title">초대 코드로 참가</string>
+    <string name="join_subtitle">팀장에게 받은 6자리 코드를 입력해요</string>
+    <string name="join_code_label">초대 코드 6자리</string>
+    <string name="join_preview_info">팀원 %1$d / %2$d명 · 스테이지 %3$d · %4$s → %5$s</string>
+    <string name="join_notice">참여 전에 달린 기록은 팀 거리에 더해지지 않아요 · 인터넷 연결이 필요해요</string>
+    <string name="join_submit">참가하기</string>
+
+    <!-- S06 초대 코드 공유 -->
+    <string name="invite_created">팀이 만들어졌어요!</string>
+    <string name="invite_season">시즌 %1$d · %2$s → %3$s %4$dkm에 도전해요</string>
+    <string name="invite_members">팀원 %1$d / %2$d · 코드는 팀원에게만 보여요</string>
+    <string name="invite_members_desc">%2$d자리 중 %1$d자리 참여</string>
+    <string name="invite_depart">출발하기</string>
+
+    <!-- S07 홈 -->
+    <string name="home_team_summary">시즌 %1$d · 팀원 %2$d명 · 팀 거리 %3$skm</string>
+    <string name="home_teams_prefix">%1$d팀 중 </string>
+    <string name="home_stage_done">%1$s / %2$dkm</string>
+    <string name="home_race_title">스테이지 경쟁</string>
+    <string name="home_race_all">순위 전체 ›</string>
+    <string name="home_race_ahead">앞 팀 · %1$s</string>
+    <string name="home_race_us">우리 팀</string>
+    <string name="home_race_behind">뒤 팀 · %1$s</string>
+    <string name="home_race_none">없음</string>
+    <string name="home_weekly_title">이번 주 %1$skm · 러닝 %2$d회</string>
+    <string name="home_weekly_sub">지난주보다 %1$skm · 전체 %2$d팀 중 상위 %3$d%%</string>
+    <string name="home_members_title">팀원 누적 기록</string>
+    <string name="home_members_total">팀 거리 %1$skm</string>
+    <string name="home_members_chart_desc">팀원별 누적 거리 막대 그래프: %1$s</string>
+    <string name="home_members_chart_item">%1$s %2$skm</string>
+    <string name="home_mvp_hint">왕관 = 이번 주 MVP</string>
+
+    <!-- S08 로드뷰 -->
+    <string name="road_header">스테이지 %1$d / %2$d · %3$d팀 중 %4$d위</string>
+    <string name="road_view_all">전체 보기</string>
+    <string name="road_city_next">%1$s · %2$dkm</string>
+    <string name="road_city_arrived">%1$s · %2$dkm 도착</string>
+    <string name="road_team_marker">%1$s · %2$skm</string>
+    <string name="road_our_team">%1$s · 우리 팀</string>
+    <string name="road_next_city">다음 도시</string>
+    <string name="road_legend_done">지나온 길</string>
+    <string name="road_legend_left">남은 길</string>
+
+    <!-- S09 러닝 -->
+    <string name="run_status">러닝 중</string>
+    <string name="run_status_paused">일시정지</string>
+    <string name="run_gps_ok">GPS 정상</string>
+    <string name="run_gps_weak">GPS 약함</string>
+    <string name="run_km_label">킬로미터</string>
+    <string name="run_current_pace">현재 페이스</string>
+    <string name="run_team_adding">팀 이동 거리에 더해지는 중</string>
+    <string name="run_to_next">%1$s까지 %2$skm 남았어요</string>
+    <string name="run_team_info">팀 거리 %1$skm · 스테이지 %2$d %3$s → %4$s의 %5$d%%</string>
+    <string name="run_minimap">경로 미니 지도</string>
+    <string name="run_stop">러닝 종료 (길게 누르기)</string>
+    <string name="run_pause">일시정지</string>
+    <string name="run_resume">다시 시작</string>
+    <string name="run_stop_hint">종료는\n길게 눌러요</string>
+
+    <!-- S10 러닝 결과 -->
+    <string name="result_title">수고했어요! 팀이 %1$skm 더 갔어요</string>
+    <string name="result_team_distance">팀 거리</string>
+    <string name="result_stage_line">스테이지 %1$d · %2$s → %3$s · </string>
+    <string name="result_stage_progress_desc">스테이지 %1$d 진행률</string>
+    <string name="result_overtake_title">%1$s 팀을 추월했어요! %2$d위 → %3$d위</string>
+    <string name="result_overtake_sub">앞 팀과 %1$skm 차이였는데, 이제 %2$skm 앞서요</string>
+
+    <!-- JRN-05 스테이지 클리어 -->
+    <string name="clear_badge">스테이지 %1$d 클리어</string>
+    <string name="clear_mascot_desc">신난 뛰뛰</string>
+    <string name="clear_title">%1$s 도착!</string>
+    <string name="clear_next">스테이지 %1$d 시작 · 다음은 %2$s (%3$dkm)</string>
+    <string name="clear_finished">서울 → 부산 완주! 시즌 1을 마쳤어요</string>
+    <string name="clear_card_sub">%1$s · 지역 카드 %2$d / %3$d</string>
+    <string name="clear_card_got">지역 카드를 얻었어요</string>
+    <string name="clear_view_card">카드 보기</string>
+    <string name="card_photo_placeholder">대표 사진</string>
+
+    <!-- S11 내 기록 -->
+    <string name="records_title">내 기록</string>
+    <string name="records_summary">총 %1$d회 · %2$skm · 최신순</string>
+    <string name="records_empty">아직 기록이 없어요. 첫 러닝을 시작해 보세요</string>
+
+    <!-- S12 기록 상세 -->
+    <string name="record_map_desc">달린 경로 지도</string>
+    <string name="record_title_label">제목</string>
+    <string name="record_memo_label">메모 (0~200자)</string>
+    <string name="record_locked">거리와 시간은 바꿀 수 없어요</string>
+    <string name="record_delete_title">삭제하면 되돌릴 수 없어요</string>
+    <string name="record_delete_body">팀 거리는 줄지 않아요</string>
+
+    <!-- S13 프로필 -->
+    <string name="profile_character_desc">기본 캐릭터 뛰뛰</string>
+    <string name="profile_edit_nickname">닉네임 수정</string>
+    <string name="profile_team_role">%1$s · %2$s ›</string>
+    <string name="profile_total_distance">내 누적 거리</string>
+    <string name="profile_run_count">러닝 횟수</string>
+    <string name="profile_view_all">전체 보기 ›</string>
+    <string name="profile_collection">지역 도감 %1$d / %2$d</string>
+    <string name="profile_collection_next">다음 카드 %1$s</string>
+    <string name="profile_collection_done">모든 카드를 모았어요</string>
+    <string name="profile_account">계정</string>
+    <string name="profile_logout">로그아웃</string>
+    <string name="profile_withdraw">회원 탈퇴</string>
+    <string name="profile_account_notice">회원 탈퇴는 구글 재인증 후 진행돼요. 러닝 측정 중에는 로그아웃·탈퇴를 할 수 없어요.</string>
+
+    <!-- S14 팀 -->
+    <string name="team_title">팀</string>
+    <string name="team_members_count">팀원 %1$d / %2$d · 시즌 %3$d</string>
+    <string name="team_distance">팀 거리 %1$skm</string>
+    <string name="team_members_title">팀원 · 기여 거리 순</string>
+    <string name="team_member_sub">%1$skm · %2$d%%</string>
+    <string name="team_kick">내보내기</string>
+    <string name="team_kick_desc">%1$s 내보내기</string>
+    <string name="team_invite_label">초대 코드 · 팀원에게만 보여요</string>
+    <string name="team_leave">팀 나가기</string>
+    <string name="team_leave_notice">팀장이 나가면 가장 먼저 가입한 팀원이 팀장이 돼요 · 나간 팀원의 거리는 팀에 남아요</string>
+
+    <!-- S14 팀 정보 수정 -->
+    <string name="team_edit_title">팀 정보 수정</string>
+    <string name="team_edit_preview_desc">선택한 팀 이미지 미리보기</string>
+    <string name="team_edit_notice">팀장만 바꿀 수 있어요. 사진 업로드 없이 아이콘 8개 × 색 8개 중에서 골라요.</string>
+
+    <!-- S15 스테이지 순위 -->
+    <string name="rank_title">스테이지 순위</string>
+    <string name="rank_header_range">스테이지 %1$d · %2$dkm ~ %3$dkm</string>
+    <string name="rank_header_title">%1$s → %2$s · %3$d팀 중 %4$d위</string>
+    <string name="rank_leader">선두</string>
+    <string name="rank_gap">앞 팀과 −%1$skm</string>
+    <string name="rank_members">%1$d명 · %2$s</string>
+    <string name="rank_our_team">%1$s (우리 팀)</string>
+    <string name="rank_notice">같은 거리면 먼저 도달한 팀이 앞이에요. 다른 팀은 이름·이미지·인원·거리만 보여요.</string>
+
+    <!-- S16 주간 통계 -->
+    <string name="weekly_title">주간 통계</string>
+    <string name="weekly_of_teams">전체 %1$d팀 중</string>
+    <string name="weekly_top">상위 %1$d%%</string>
+    <string name="weekly_teams_ahead">이번 주 우리보다 많이 달린 팀 %1$d개</string>
+    <string name="weekly_team_distance">이번 주 팀 거리</string>
+    <string name="weekly_run_count">러닝 횟수</string>
+    <string name="weekly_vs_last_km">지난주보다 %1$skm</string>
+    <string name="weekly_last_runs">지난주 %1$d회</string>
+    <string name="weekly_compare">지난주와 비교</string>
+    <string name="weekly_last_week">지난주</string>
+    <string name="weekly_this_week">이번 주</string>
+    <string name="weekly_notice">주는 월요일 0시에 시작해요(한국 시간). 자정을 넘긴 러닝은 시작한 날 기준이에요.</string>
+
+    <!-- S17 지역 도감 -->
+    <string name="collection_title">지역 도감</string>
+    <string name="collection_count">%1$d / %2$d장 모았어요</string>
+    <string name="collection_got">%1$s 획득</string>
+    <string name="collection_next">팀이 %1$skm 더 달리면 획득</string>
+    <string name="collection_locked">스테이지 %1$d 도착 · %2$dkm</string>
+    <string name="collection_locked_desc">잠김</string>
+
+    <!-- S18 지역 카드 상세 -->
+    <string name="card_stage_badge">스테이지 %1$d 도착 · %2$s에서 %3$dkm</string>
+    <string name="card_start_badge">출발 도시</string>
+    <string name="card_photo_credit">사진 출처: %1$s</string>
+    <string name="card_landmarks">랜드마크</string>
+    <string name="card_acquired">%1$s 획득 · %2$s와 함께</string>
 </resources>
