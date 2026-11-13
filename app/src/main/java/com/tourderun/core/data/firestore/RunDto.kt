@@ -79,11 +79,11 @@ fun RunDto.toRunRecord(): RunRecord = RunRecord(
 
 /**
  * 검사를 통과한 제목·메모 → `update()`에 넘길 필드. 보안 규칙이 다른 필드 변경을 막으므로 이 두 필드만 쓴다.
- * 빈 메모는 null로 쓴다(필드를 지우지 않는다).
+ * 빈 메모는 빈 문자열 `""`로 쓴다(null·필드 삭제가 아니라 항상 문자열). 읽을 때 [runDtoOf]가 다시 null로 바꾼다.
  */
-fun titleMemoFields(valid: RunTextCheck.Valid): Map<String, Any?> = mapOf(
+fun titleMemoFields(valid: RunTextCheck.Valid): Map<String, String> = mapOf(
     RunFields.TITLE to valid.title,
-    RunFields.MEMO to valid.memo,
+    RunFields.MEMO to valid.memo.orEmpty(),
 )
 
 /** `path`(List<GeoPoint>) → 좌표 목록. 순서를 지킨다. */

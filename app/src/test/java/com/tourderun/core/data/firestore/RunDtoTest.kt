@@ -110,9 +110,15 @@ class RunDtoTest {
         assertEquals(2, runDtoOf("r1", doc(), includePath = true).path.size)
     }
 
-    @Test fun `제목·메모 수정 필드 → title과 memo 두 개만, 빈 메모는 null`() {
+    @Test fun `제목·메모 수정 필드 → title과 memo 두 개만, 빈 메모는 빈 문자열`() {
         val fields = titleMemoFields(RunTextCheck.Valid(title = "아침 러닝", memo = null))
 
-        assertEquals(mapOf(RunFields.TITLE to "아침 러닝", RunFields.MEMO to null), fields)
+        assertEquals(mapOf(RunFields.TITLE to "아침 러닝", RunFields.MEMO to ""), fields)
+    }
+
+    @Test fun `빈 메모를 쓰고 다시 읽으면 null`() {
+        val written = titleMemoFields(RunTextCheck.Valid(title = "아침 러닝", memo = null))
+
+        assertNull(runDtoOf("r1", doc() + written).memo)
     }
 }
