@@ -245,6 +245,9 @@
     <string name="rank_members">%1$d명 · %2$s</string>
     <string name="rank_our_team">%1$s (우리 팀)</string>
     <string name="rank_notice">같은 거리면 먼저 도달한 팀이 앞이에요. 다른 팀은 이름·이미지·인원·거리만 보여요.</string>
+    <string name="rank_offline">오프라인</string>
+    <string name="rank_alone">이 스테이지에는 아직 우리 팀뿐이에요.</string>
+    <string name="rank_no_team">팀에 들어가면 같은 스테이지 팀 순위를 볼 수 있어요.</string>
 
     <!-- S16 주간 통계 -->
     <string name="weekly_title">주간 통계</string>
