@@ -102,6 +102,7 @@ enum class RaceScenario(
 
 /**
  * 가짜 팀. 이름·색·인원·거리는 PR #2 `PreviewSamples`와 같다. reachedAtMs는 순서만 의미 있는 고정값이다.
+ * 아이콘은 화면에서 종류가 구분되게 팀마다 다르게 둔다(우리 팀 0, 주황이들 2, 보라돌이 4, 새벽러너스 5, 한솔이네 7).
  *
  * 색 번호(M-06)는 PR #2 `TeamColor` 순서: 0 blue, 1 navy, 2 teal, 3 green, 4 purple, 5 orange, 6 pink, 7 gray.
  * 아이콘 번호는 `TeamIcon` 순서: 0 runner, 1 bolt, 2 mountain, 3 star, 4 flame, 5 wave, 6 heart, 7 flag.
@@ -111,6 +112,9 @@ private object Teams {
 
     private const val ICON_RUNNER = 0
     private const val ICON_BOLT = 1
+    private const val ICON_MOUNTAIN = 2
+    private const val ICON_FLAME = 4
+    private const val ICON_WAVE = 5
     private const val ICON_FLAG = 7
     private const val COLOR_BLUE = 0
     private const val COLOR_TEAL = 2
@@ -120,10 +124,10 @@ private object Teams {
     private const val COLOR_PINK = 6
     private const val COLOR_GRAY = 7
 
-    val orange = team("fake-orange", "주황이들", 69_200, 1_000, ICON_RUNNER, COLOR_ORANGE, members = 3)
-    val purple = team("fake-purple", "보라돌이", 65_700, 2_000, ICON_RUNNER, COLOR_PURPLE, members = 2)
-    val green = team("fake-green", "새벽러너스", 58_300, 3_000, ICON_RUNNER, COLOR_GREEN, members = 4)
-    val teal = team("fake-teal", "한솔이네", 50_900, 4_000, ICON_RUNNER, COLOR_TEAL, members = 1)
+    val orange = team("fake-orange", "주황이들", 69_200, 1_000, ICON_MOUNTAIN, COLOR_ORANGE, members = 3)
+    val purple = team("fake-purple", "보라돌이", 65_700, 2_000, ICON_FLAME, COLOR_PURPLE, members = 2)
+    val green = team("fake-green", "새벽러너스", 58_300, 3_000, ICON_WAVE, COLOR_GREEN, members = 4)
+    val teal = team("fake-teal", "한솔이네", 50_900, 4_000, ICON_FLAG, COLOR_TEAL, members = 1)
 
     /** 스테이지 4(천안 → 세종, 85~125km). 스테이지 3 바로 앞의 가장 가까운 팀. */
     val nextStage = team("fake-next-stage", "세종가는길", 88_400, 5_000, ICON_BOLT, COLOR_PINK, members = 3)
