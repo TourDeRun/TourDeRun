@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.tourderun.core.data.Cached
 import com.tourderun.core.data.race.RaceRepository
 import com.tourderun.core.data.race.RaceSummary
+import com.tourderun.core.data.team.MyTeamSource
 import com.tourderun.domain.journey.locate
 import com.tourderun.domain.model.Route
 import com.tourderun.domain.route.routeFor
-import com.tourderun.feature.race.data.MyTeamSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
