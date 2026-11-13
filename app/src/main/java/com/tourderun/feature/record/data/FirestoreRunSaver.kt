@@ -8,6 +8,7 @@ import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.RunFields
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.thinEvenly
+import com.tourderun.domain.stats.weekId
 import java.util.Date
 import javax.inject.Inject
 import kotlin.math.roundToLong
@@ -54,8 +55,8 @@ class FirestoreRunSaver @Inject constructor(
             RunFields.MOVING_SEC to result.movingSec,
             RunFields.DISTANCE_M to distanceM,
             RunFields.PACE_SEC_PER_KM to paceSecPerKm(result.movingSec, distanceM),
-            // TODO(REC-01): PR #15(weekId) 머지 후 weekId(result.startedAtMs)로 바꾼다. 그 전에는 null.
-            RunFields.PERIOD_ID to null,
+            // 주간 통계와 같은 기준: 러닝 시작 시각의 한국 시간 ISO 주차(STAT-03)
+            RunFields.PERIOD_ID to weekId(result.startedAtMs),
             RunFields.TITLE to title,
             RunFields.MEMO to null,
             RunFields.PATH to thinEvenly(result.acceptedPoints).map { GeoPoint(it.lat, it.lng) },
