@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 디버그 빌드 전용. 런처에 나오지 않고, adb로만 연다:
-     adb shell am start -n com.tourderun/.debug.DebugSaveRunActivity -->
+     adb shell am start -n com.tourderun/.debug.DebugSaveRunActivity
+     adb shell am start -n com.tourderun/.debug.DebugStageRankActivity -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
             android:name=".debug.DebugSaveRunActivity"
             android:exported="true"
             android:label="@string/debug_save_run_title" />
+        <activity
+            android:name=".debug.DebugStageRankActivity"
+            android:exported="true"
+            android:label="@string/debug_stage_rank_title" />
     </application>
 </manifest>

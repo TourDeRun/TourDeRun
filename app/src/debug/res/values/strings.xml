@@ -8,4 +8,8 @@
     <string name="debug_save_run_not_signed_in">먼저 로그인하세요(개발용 규칙도 로그인이 필요함)</string>
     <string name="debug_save_run_started">커밋을 시작했어요: runs/%1$s (오프라인이면 온라인 복귀 후 올라가요)</string>
     <string name="debug_save_run_failed">배치를 만들지 못했어요: %1$s</string>
+    <string name="debug_stage_rank_title">[디버그] S15 스테이지 순위</string>
+    <string name="debug_stage_rank_default">기본</string>
+    <string name="debug_stage_rank_alone">혼자</string>
+    <string name="debug_stage_rank_offline">오프라인</string>
 </resources>
