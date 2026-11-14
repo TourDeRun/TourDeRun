@@ -4,8 +4,9 @@ import com.tourderun.core.data.record.FakeRunRepository
 import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
-import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.core.ui.preview.PreviewSamples
+import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.collection.ui.CardDetailUiState
 import com.tourderun.feature.collection.ui.CollectionUiState
 import com.tourderun.feature.collection.ui.LandmarkUi
@@ -29,7 +30,7 @@ import com.tourderun.feature.team.ui.TeamUiState
  * 화면 주인이 ViewModel을 붙이면 그 화면의 항목을 지운다. 전부 지워지면 이 파일도 지운다.
  */
 internal object TempUiStates {
-    private val stageAfterRun = StageProgressUi(3, 7, "오산", "천안", 48, 85, 70_040)
+    private val stageAfterRun = stageProgressUi(70_040, routeFor(1))
 
     // TODO(JRN-03): HomeViewModel(#48)로 바꾼다.
     val home = HomeUiState(
