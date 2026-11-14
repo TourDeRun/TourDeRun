@@ -148,6 +148,7 @@
     <!-- S08 로드뷰 -->
     <string name="road_header">스테이지 %1$d / %2$d · %3$d팀 중 %4$d위</string>
     <string name="road_view_all">전체 보기</string>
+    <string name="road_view_stage">스테이지 보기</string>
     <string name="road_city_next">%1$s · %2$dkm</string>
     <string name="road_city_arrived">%1$s · %2$dkm 도착</string>
     <string name="road_team_marker">%1$s · %2$skm</string>
