@@ -191,7 +191,7 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
     // newLatLngBounds는 지도 크기가 정해진 뒤에만 쓸 수 있어서 onMapLoaded를 기다린다.
     LaunchedEffect(loaded, focus, topCardPx, bottomCardPx) {
         if (loaded) {
-            val edge = with(density) { TdrSpacing.s8.roundToPx() }
+            val edge = with(density) { FocusEdge.roundToPx() }
             camera.animate(CameraUpdateFactory.newLatLngBounds(latLngBoundsOf(focus), edge))
         }
     }
@@ -225,15 +225,20 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
                 city.name,
                 city.cumulativeKm,
             )
+            // 전체 보기에서는 지나온 도시들이 서로 붙어 라벨이 겹치므로, 지나온 도시는 체크 표시만 남긴다.
+            val showLabel = !showAll || city.kind != CityPinKind.ARRIVED
             MarkerComposable(
                 city.kind,
                 label,
+                showLabel,
                 state = remember(city.position) { MarkerState(city.position.toLatLng()) },
                 anchor = PinCenter,
             ) {
                 CenteredPin(labelHeight = 28.dp, icon = { CityIcon(city.kind) }) {
-                    when (city.kind) {
-                        CityPinKind.NEXT -> MarkerLabel(label, colors.brandStrong, colors.inkOnBrand, TdrShapes.sm)
+                    when {
+                        !showLabel -> Unit
+                        city.kind == CityPinKind.NEXT ->
+                            MarkerLabel(label, colors.brandStrong, colors.inkOnBrand, TdrShapes.sm)
                         else -> MarkerLabel(label, colors.bgSurface, colors.inkMuted, TdrShapes.sm)
                     }
                 }
@@ -265,14 +270,16 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
             anchor = PinCenter,
             title = uiState.team.name,
             snippet = ourKm,
+            // 말풍선이 그림 맨 위(빈 칸)가 아니라 아이콘 바로 위에서 뜨게 한다.
+            infoWindowAnchor = Offset(0.5f, OUR_LABEL_HEIGHT / (OUR_LABEL_HEIGHT * 2 + OUR_ICON_SIZE)),
             zIndex = 2f,
         ) {
             CenteredPin(
-                labelHeight = 50.dp,
+                labelHeight = OUR_LABEL_HEIGHT.dp,
                 icon = {
                     TeamImage(
                         uiState.team.appearance,
-                        size = 58.dp,
+                        size = OUR_ICON_SIZE.dp,
                         circle = true,
                         face = MascotFace.Open,
                         modifier = Modifier.border(4.dp, colors.bgSurface, CircleShape),
@@ -358,7 +365,12 @@ private val RoadMapUiSettings = MapUiSettings(
 )
 
 private val PinCenter = Offset(0.5f, 0.5f)
+
+/** 범위를 맞출 때 가장자리에 두는 여백. 끝 도시의 표시와 라벨(좌표에서 아래·옆으로 뻗는다)이 잘리지 않을 만큼. */
+private val FocusEdge = 72.dp
 private const val DEFAULT_ZOOM = 10f
+private const val OUR_ICON_SIZE = 58f
+private const val OUR_LABEL_HEIGHT = 50f
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
