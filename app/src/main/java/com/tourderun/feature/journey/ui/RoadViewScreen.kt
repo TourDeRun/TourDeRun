@@ -69,6 +69,7 @@ import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.StageProgressUi
 import com.tourderun.core.ui.model.TeamUi
+import com.tourderun.core.ui.model.toNextCityText
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
 import com.tourderun.domain.route.routeFor
@@ -152,7 +153,7 @@ fun RoadViewScreen(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.road_next_city), style = type.caption, color = colors.inkMuted)
                     Text(
-                        stringResource(R.string.to_next_city, stage.toCity, Format.km(stage.toNextM)),
+                        stage.toNextCityText(),
                         style = type.subtitle.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold),
                     )
                 }
@@ -251,7 +252,7 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
                 state = remember(rival.position) { MarkerState(rival.position.toLatLng()) },
                 anchor = PinCenter,
                 title = rival.team.name,
-                snippet = stringResource(R.string.km_value, Format.km(rival.team.distanceM)),
+                snippet = stringResource(R.string.km_value, Format.teamKm(rival.team.distanceM)),
                 zIndex = 1f,
             ) {
                 TeamImage(
@@ -263,7 +264,7 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
             }
         }
 
-        val ourKm = stringResource(R.string.km_value, Format.km(uiState.team.distanceM))
+        val ourKm = stringResource(R.string.km_value, Format.teamKm(uiState.team.distanceM))
         MarkerComposable(
             uiState.team,
             state = remember(map.ourPosition) { MarkerState(map.ourPosition.toLatLng()) },
