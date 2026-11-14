@@ -136,9 +136,7 @@ fun AppNavHost(
             }
 
             composable<StageRankRoute> { StageRankScreen(onBack = back) }
-            composable<WeeklyStatsRoute> {
-                WeeklyStatsScreen(uiState = TempUiStates.weeklyStats, onBack = back)
-            }
+            composable<WeeklyStatsRoute> { WeeklyStatsScreen(onBack = back) }
 
             composable<CollectionRoute> {
                 CollectionScreen(

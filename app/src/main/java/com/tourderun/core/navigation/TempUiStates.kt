@@ -20,7 +20,6 @@ import com.tourderun.feature.record.ui.toRowUi
 import com.tourderun.feature.run.ui.OvertakeUi
 import com.tourderun.feature.run.ui.RunResultUiState
 import com.tourderun.feature.run.ui.RunningUiState
-import com.tourderun.feature.stat.ui.WeeklyStatsUiState
 import com.tourderun.feature.team.ui.TeamEditUiState
 import com.tourderun.feature.team.ui.TeamUiState
 
@@ -91,9 +90,6 @@ internal object TempUiStates {
 
     // TODO(TEAM-05): 팀 수정 ViewModel로 바꾼다.
     val teamEdit = TeamEditUiState(PreviewSamples.team.name, TeamColor.BLUE, TeamIcon.RUNNER)
-
-    // TODO(STAT-01): PR #39의 WeeklyStatsViewModel이 들어오면 지운다.
-    val weeklyStats = WeeklyStatsUiState("2026-W45 · 11월 2일(월) ~ 8일(일)", 38, 11, 3, 42_500, 36_400, 9, 7)
 
     // TODO(EXT-01): 도감 ViewModel로 바꾼다.
     val collection = CollectionUiState(
