@@ -139,8 +139,14 @@
     <string name="home_race_us">우리 팀</string>
     <string name="home_race_behind">뒤 팀 · %1$s</string>
     <string name="home_race_none">없음</string>
+    <string name="home_race_ahead_other">다음 스테이지 · %1$s</string>
+    <string name="home_race_behind_other">이전 스테이지 · %1$s</string>
+    <string name="home_race_empty">아직 경쟁하는 팀이 없어요</string>
+    <string name="home_offline">오프라인</string>
     <string name="home_weekly_title">이번 주 %1$skm · 러닝 %2$d회</string>
-    <string name="home_weekly_sub">지난주보다 %1$skm · 전체 %2$d팀 중 상위 %3$d%%</string>
+    <string name="home_weekly_diff">지난주보다 %1$skm</string>
+    <string name="home_weekly_top">전체 %1$d팀 중 상위 %2$d%%</string>
+    <string name="home_weekly_first">이번 주 첫 러닝을 시작해 보세요</string>
     <string name="home_members_title">팀원 누적 기록</string>
     <string name="home_members_total">팀 거리 %1$skm</string>
     <string name="home_members_chart_desc">팀원별 누적 거리 막대 그래프: %1$s</string>
@@ -153,7 +159,6 @@
     <string name="road_view_stage">스테이지 보기</string>
     <string name="road_city_next">%1$s · %2$dkm</string>
     <string name="road_city_arrived">%1$s · %2$dkm 도착</string>
-    <string name="road_team_marker">%1$s · %2$skm</string>
     <string name="road_our_team">%1$s · 우리 팀</string>
     <string name="road_next_city">다음 도시</string>
     <string name="road_legend_done">지나온 길</string>
