@@ -10,6 +10,6 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class MyTeamModule {
-    // TODO(RACE-03): TeamRepository가 생기면 이 바인딩을 지우고 StageRankViewModel·RunSaver 호출부가 TeamRepository를 받는다.
+    // TODO(RACE-03): TeamRepository가 생기면 이 바인딩을 지우고 StageRankViewModel·WeeklyStatsViewModel·RunSaver 호출부가 TeamRepository를 받는다.
     @Binds abstract fun bindMyTeamSource(impl: FixedMyTeamSource): MyTeamSource
 }

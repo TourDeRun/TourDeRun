@@ -129,8 +129,7 @@ private fun WeeklyBody(uiState: WeeklyStatsUiState.Content) {
     Row(horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
         TdrStatCard(
             label = stringResource(R.string.weekly_team_distance),
-            // TODO(STAT-01): #34가 머지되면 팀 거리 전용 Format.teamKm(소수 한 자리 내림)으로 바꾼다.
-            value = Format.km(uiState.distanceM),
+            value = uiState.distanceKm,
             unit = stringResource(R.string.unit_km),
             caption = when (val change = uiState.change) {
                 is WeeklyChangeUi.Diff -> stringResource(R.string.weekly_vs_last_km, Format.signedKm(change.diffM))
@@ -153,14 +152,14 @@ private fun WeeklyBody(uiState: WeeklyStatsUiState.Content) {
         val max = maxOf(uiState.distanceM, uiState.lastWeekDistanceM, 1L).toFloat()
         CompareBar(
             label = stringResource(R.string.weekly_last_week),
-            value = Format.km(uiState.lastWeekDistanceM),
+            value = uiState.lastWeekDistanceKm,
             fraction = uiState.lastWeekDistanceM / max,
             color = colors.brandLight,
             emphasize = false,
         )
         CompareBar(
             label = stringResource(R.string.weekly_this_week),
-            value = Format.km(uiState.distanceM),
+            value = uiState.distanceKm,
             fraction = uiState.distanceM / max,
             color = colors.brand,
             emphasize = true,
