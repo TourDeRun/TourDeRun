@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -89,7 +90,10 @@ fun TdrTabBar(
                             label,
                             style = TdrTheme.typography.label,
                             color = if (on) colors.brand else colors.inkMuted,
-                            modifier = Modifier.offset(y = (-6).dp),
+                            // 버튼(52dp)이 칸 높이(64dp)를 거의 다 써서, 남은 높이에 맞추면 글자 아래가 잘린다.
+                            modifier = Modifier
+                                .wrapContentHeight(align = Alignment.Top, unbounded = true)
+                                .offset(y = (-6).dp),
                         )
                     } else {
                         Icon(
