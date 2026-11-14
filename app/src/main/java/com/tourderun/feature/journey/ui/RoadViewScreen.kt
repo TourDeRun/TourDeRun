@@ -58,6 +58,7 @@ import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.RivalTeamUi
 import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.toNextCityText
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
@@ -132,7 +133,7 @@ fun RoadViewScreen(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.road_next_city), style = type.caption, color = colors.inkMuted)
                     Text(
-                        stringResource(R.string.to_next_city, stage.toCity, Format.km(stage.toNextM)),
+                        stage.toNextCityText(),
                         style = type.subtitle.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold),
                     )
                 }
@@ -233,7 +234,7 @@ private fun StageMapSketch(uiState: RoadViewUiState, modifier: Modifier) {
             MapMarker(at(stage.progressOf(rival.distanceM)), 38.dp) {
                 TeamImage(rival.appearance, size = 38.dp, circle = true)
                 MarkerLabel(
-                    stringResource(R.string.road_team_marker, rival.name, Format.km(rival.distanceM)),
+                    stringResource(R.string.road_team_marker, rival.name, Format.teamKm(rival.distanceM)),
                     colors.bgSurface,
                     rival.appearance.color.textColor,
                     TdrShapes.full,
@@ -264,7 +265,7 @@ private fun StageMapSketch(uiState: RoadViewUiState, modifier: Modifier) {
                     color = colors.inkOnBrand,
                 )
                 Text(
-                    stringResource(R.string.km_value, Format.km(uiState.team.distanceM)),
+                    stringResource(R.string.km_value, Format.teamKm(uiState.team.distanceM)),
                     style = TdrTheme.typography.micro.copy(fontWeight = FontWeight.Medium),
                     color = colors.inkOnBrand,
                 )

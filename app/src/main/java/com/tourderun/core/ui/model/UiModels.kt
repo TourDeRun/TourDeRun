@@ -41,12 +41,20 @@ data class MemberUi(
 )
 
 /**
- * 지금 달리는 스테이지와 팀 위치.
+ * 지금 달리는 스테이지와 팀 위치 (JRN-02).
  *
- * @property stageNumber 1부터 (TeamPosition.stageIndex + 1)
+ * 직접 만들지 말고 [stageProgressUi]로 만든다. 진행률·남은 거리는 `locate()` 결과를 그대로 담고,
+ * 화면에서 다시 계산하지 않는다(스테이지 경계 "시작 이상, 끝 미만"이 화면마다 달라지지 않게).
+ *
+ * @property stageNumber 1부터 (TeamPosition.stageIndex + 1). 완주면 마지막 스테이지
  * @property startKm 스테이지 시작 누적 거리(출발 도시 기준)
  * @property endKm 스테이지 끝 누적 거리
- * @property teamDistanceM 팀 누적 거리
+ * @property teamDistanceM 팀 누적 거리. 완주 후에도 계속 늘어난다
+ * @property doneInStageM 스테이지 안에서 달린 거리. 완주면 스테이지 길이
+ * @property toNextM 다음 도시까지 남은 거리. 완주면 0. 표시는 `Format.kmUp`(올림)
+ * @property progress 스테이지 진행률 0~1. 완주면 1
+ * @property arrivals 도착한 도시 수 0~[stageCount] (출발 도시 제외)
+ * @property finished 마지막 도시 도착(완주). 위치는 마지막 도시에 멈춘다
  */
 @Immutable
 data class StageProgressUi(
@@ -57,13 +65,15 @@ data class StageProgressUi(
     val startKm: Int,
     val endKm: Int,
     val teamDistanceM: Long,
+    val doneInStageM: Long,
+    val toNextM: Long,
+    val progress: Float,
+    val arrivals: Int,
+    val finished: Boolean,
 ) {
     val lengthKm: Int get() = endKm - startKm
-    val doneInStageM: Long get() = (teamDistanceM - startKm * 1_000L).coerceIn(0L, lengthKm * 1_000L)
-    val toNextM: Long get() = (endKm * 1_000L - teamDistanceM).coerceAtLeast(0L)
-    val progress: Float get() = if (lengthKm == 0) 1f else doneInStageM / (lengthKm * 1_000f)
 
-    /** 같은 스테이지에서 [distanceM] 위치의 진행률. */
+    /** 같은 스테이지에서 [distanceM] 위치의 진행률(다른 팀 마커, 러닝 전 위치). 스테이지 밖이면 0 또는 1. */
     fun progressOf(distanceM: Long): Float =
         if (lengthKm == 0) 1f else ((distanceM - startKm * 1_000L) / (lengthKm * 1_000f)).coerceIn(0f, 1f)
 }
