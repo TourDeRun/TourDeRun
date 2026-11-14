@@ -119,6 +119,7 @@
     <string name="join_preview_info">팀원 %1$d / %2$d명 · 스테이지 %3$d · %4$s → %5$s</string>
     <string name="join_notice">참여 전에 달린 기록은 팀 거리에 더해지지 않아요 · 인터넷 연결이 필요해요</string>
     <string name="join_submit">참가하기</string>
+    <string name="join_error_not_found">코드를 다시 확인해 주세요</string>
 
     <!-- S06 초대 코드 공유 -->
     <string name="invite_created">팀이 만들어졌어요!</string>

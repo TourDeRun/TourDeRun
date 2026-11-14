@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -40,7 +42,7 @@ import com.tourderun.feature.team.ui.TeamScreen
  * ViewModel이 없는 화면은 [TempUiStates]의 고정 상태로 띄운다. 화면 주인은 ViewModel을 붙일 때
  * 해당 `composable { }` 안의 상태와 빈 콜백(`{}`)을 자기 것으로 바꾼다.
  *
- * TODO(AUTH-01): 로그인·닉네임·팀 시작 분기(#52)가 생기면 시작 화면을 그 결과로 정한다.
+ * 시작 화면은 [EntryStage]로 정한다. 지금은 로그인·팀 상태가 목([MockSession])이라 기기에만 저장된다.
  */
 @Composable
 fun AppNavHost(
@@ -50,13 +52,20 @@ fun AppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTab = backStackEntry?.destination?.tab()
     val back: () -> Unit = { navController.popBackStack() }
+    // TODO(AUTH-01): SessionRepository·TeamRepository가 생기면 목 대신 그 값으로 EntryStage를 계산한다.
+    val context = LocalContext.current
+    val session = remember { MockSession(context.applicationContext) }
+    // 시작 화면은 앱을 열 때 한 번만 정한다. 그 뒤 이동은 각 화면이 resetTo()로 한다.
+    val startRoute = remember { session.stage.startRoute() }
 
     Column(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas)) {
         NavHost(
             navController = navController,
-            startDestination = HomeRoute,
+            startDestination = startRoute,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
+            entryGraph(navController, session)
+
             composable<HomeRoute> {
                 HomeScreen(
                     uiState = TempUiStates.home,
@@ -69,16 +78,25 @@ fun AppNavHost(
                 RoadViewScreen(uiState = TempUiStates.roadView)
             }
             composable<ProfileRoute> {
-                // TODO(AUTH-03): 닉네임 수정, TODO(AUTH-04): 로그아웃, TODO(AUTH-05): 탈퇴
+                // TODO(AUTH-03): 닉네임 수정. 로그아웃·탈퇴는 목이라 확인 없이 바로 되고 화면 이동만 한다.
                 ProfileScreen(
-                    uiState = TempUiStates.profile,
+                    uiState = TempUiStates.profile.copy(
+                        nickname = session.nickname ?: TempUiStates.profile.nickname,
+                        teamName = session.team?.name,
+                    ),
                     onEditNickname = {},
                     onTeamClick = { navController.navigate(TeamRoute) },
                     onRecordsClick = { navController.navigate(RecordsRoute) },
                     onRunClick = { navController.navigate(RecordDetailRoute(it.runId)) },
                     onCollectionClick = { navController.navigate(CollectionRoute) },
-                    onLogout = {},
-                    onWithdraw = {},
+                    onLogout = {
+                        session.signOut()
+                        navController.resetTo(LoginRoute)
+                    },
+                    onWithdraw = {
+                        session.withdraw()
+                        navController.resetTo(LoginRoute)
+                    },
                 )
             }
 
@@ -112,14 +130,17 @@ fun AppNavHost(
             }
 
             composable<TeamRoute> {
-                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기, TODO(TEAM-07): 탈퇴
+                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기. 팀 나가기는 목이라 화면 이동만 한다.
                 TeamScreen(
                     uiState = TempUiStates.team,
                     onBack = back,
                     onEdit = { navController.navigate(TeamEditRoute) },
                     onKick = {},
                     onShareInvite = {},
-                    onLeave = {},
+                    onLeave = {
+                        session.leaveTeam()
+                        navController.resetTo(TeamStartRoute)
+                    },
                 )
             }
             composable<TeamEditRoute> {

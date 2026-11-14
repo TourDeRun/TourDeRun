@@ -7,7 +7,22 @@ import kotlinx.serialization.Serializable
  * 경로 이름은 저장된 백스택을 되살릴 때 쓰이므로, 인자를 바꾸면 그 화면으로 가는 호출부도 같이 고친다.
  */
 
-/** S07 홈 (탭, 시작 화면). */
+/** S01 로그인. */
+@Serializable data object LoginRoute
+
+/** S01-1 약관 동의 (처음 온 사용자만). */
+@Serializable data object TermsRoute
+
+/** S02 닉네임 설정. */
+@Serializable data object NicknameRoute
+
+/** S03 팀 시작. S04 팀 만들기·S05 초대 코드 입력은 이 화면 위 모달이다. */
+@Serializable data object TeamStartRoute
+
+/** S06 초대 코드 공유 (팀을 막 만든 팀장). */
+@Serializable data object InviteCodeRoute
+
+/** S07 홈 (탭, 팀이 있을 때의 시작 화면). */
 @Serializable data object HomeRoute
 
 /** S08 로드뷰 (탭). */
