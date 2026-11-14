@@ -16,6 +16,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tourderun.core.designsystem.component.TdrButton
+import com.tourderun.core.designsystem.component.TdrIcons
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -48,15 +52,35 @@ data class RecordsUiState(
     val runs: List<RunRowUi>,
     val canLoadMore: Boolean = false,
     val isLoadingMore: Boolean = false,
-)
+    /** 첫 목록을 받기 전. 빈 상태 문구를 잠깐 보였다 지우지 않으려고 둔다. */
+    val isLoading: Boolean = false,
+) {
+    companion object {
+        val Loading = RecordsUiState(totalRuns = 0, totalDistanceM = 0, runs = emptyList(), isLoading = true)
+    }
+}
 
-/** S11 내 기록 (프로필에서 들어온다). 끝까지 스크롤하면 [onLoadMore]를 부른다. */
+/** S11 내 기록 (프로필에서 들어온다). */
 @Composable
 fun RecordsScreen(
+    onBack: () -> Unit,
+    onRunClick: (RunRowUi) -> Unit,
+    onStartRun: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: RecordsViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    RecordsContent(uiState, onBack, onRunClick, viewModel::loadMore, onStartRun, modifier)
+}
+
+/** S11 화면 내용. 상태 없음(Preview 대상). 끝까지 스크롤하면 [onLoadMore]를 부른다. */
+@Composable
+fun RecordsContent(
     uiState: RecordsUiState,
     onBack: () -> Unit,
     onRunClick: (RunRowUi) -> Unit,
     onLoadMore: () -> Unit,
+    onStartRun: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
@@ -96,15 +120,26 @@ fun RecordsScreen(
                     modifier = Modifier.padding(horizontal = 2.dp),
                 )
             }
-            if (uiState.runs.isEmpty()) {
+            if (uiState.runs.isEmpty() && !uiState.isLoading) {
                 item {
-                    Text(
-                        stringResource(R.string.records_empty),
-                        style = TdrTheme.typography.body,
-                        color = colors.inkMuted,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                    )
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
+                        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s5),
+                    ) {
+                        Text(
+                            stringResource(R.string.records_empty),
+                            style = TdrTheme.typography.body,
+                            color = colors.inkMuted,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        TdrButton(
+                            stringResource(R.string.records_empty_action),
+                            onClick = onStartRun,
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = TdrIcons.Runner,
+                        )
+                    }
                 }
             }
             items(uiState.runs, key = { it.runId }) { run ->
@@ -154,6 +189,14 @@ fun RunRow(run: RunRowUi, onClick: () -> Unit, modifier: Modifier = Modifier, in
 @Composable
 private fun RecordsScreenPreview() {
     TdrTheme {
-        RecordsScreen(RecordsUiState(21, 86_400, PreviewSamples.runs, canLoadMore = true), {}, {}, {})
+        RecordsContent(RecordsUiState(21, 86_400, PreviewSamples.runs, canLoadMore = true), {}, {}, {}, {})
+    }
+}
+
+@Preview(name = "기록 없음", widthDp = 390, heightDp = 844)
+@Composable
+private fun RecordsScreenEmptyPreview() {
+    TdrTheme {
+        RecordsContent(RecordsUiState(0, 0, emptyList()), {}, {}, {}, {})
     }
 }

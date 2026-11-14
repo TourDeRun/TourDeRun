@@ -196,6 +196,7 @@
     <string name="records_title">내 기록</string>
     <string name="records_summary">총 %1$d회 · %2$skm · 최신순</string>
     <string name="records_empty">아직 기록이 없어요. 첫 러닝을 시작해 보세요</string>
+    <string name="records_empty_action">러닝 시작하기</string>
 
     <!-- S12 기록 상세 -->
     <string name="record_map_desc">달린 경로 지도</string>
