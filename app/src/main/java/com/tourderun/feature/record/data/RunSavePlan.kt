@@ -10,6 +10,7 @@ import com.tourderun.core.data.team.MyTeam
 import com.tourderun.domain.model.LatLngValue
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.thinEvenly
+import com.tourderun.domain.run.averagePaceSecPerKm
 import com.tourderun.domain.stats.weekId
 import kotlin.math.roundToLong
 
@@ -91,7 +92,7 @@ fun runSavePlan(
             RunFields.ENDED_AT to FieldOp.Time(result.endedAtMs),
             RunFields.MOVING_SEC to result.movingSec,
             RunFields.DISTANCE_M to distanceM,
-            RunFields.PACE_SEC_PER_KM to paceSecPerKm(result.movingSec, distanceM),
+            RunFields.PACE_SEC_PER_KM to savedPaceSecPerKm(result.movingSec, distanceM),
             RunFields.PERIOD_ID to periodId,
             RunFields.TITLE to title,
             RunFields.MEMO to null,
@@ -144,8 +145,8 @@ fun runSavePlan(
 }
 
 /**
- * 평균 페이스(초/km). [distanceM]은 0보다 커야 한다.
- * TODO(REC-01): #41(최한솔)이 main에 들어오면 :domain/run의 averagePaceSecPerKm으로 바꾼다.
+ * 저장할 평균 페이스(초/km). 화면과 같은 [averagePaceSecPerKm]을 쓰고, 거리는 다른 문서와 같은 저장 거리(반올림한 정수 m)를 쓴다.
+ * 거리 0이면 페이스가 없으므로(null) 예외를 던지고, [FirestoreRunSaver]가 실패 결과로 돌려준다.
  */
-private fun paceSecPerKm(movingSec: Long, distanceM: Long): Long =
-    (movingSec * 1_000.0 / distanceM).roundToLong()
+private fun savedPaceSecPerKm(movingSec: Long, distanceM: Long): Long =
+    requireNotNull(averagePaceSecPerKm(movingSec, distanceM.toDouble())) { "거리 0m는 페이스를 계산할 수 없다" }.toLong()
