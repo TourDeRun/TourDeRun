@@ -139,6 +139,12 @@ class RunSavePlanTest {
         assertEquals(360L, run[RunFields.PACE_SEC_PER_KM])
     }
 
+    @Test fun `1800초·5000m → 페이스 360초, Long으로 저장`() {
+        val run = plan(r = result(5_000.0)).at("runs/r1").fields
+
+        assertEquals(360L, run[RunFields.PACE_SEC_PER_KM])
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `저장 거리 0 → 예외`() {
         runSavePlan(result(0.4), distanceM = 0, uid = "u1", team = team, title = "x")
