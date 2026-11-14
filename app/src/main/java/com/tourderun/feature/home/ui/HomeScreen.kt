@@ -20,6 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,10 +62,11 @@ import kotlin.math.roundToInt
 data class WeeklySummaryUi(
     val distanceM: Long,
     val runCount: Int,
-    /** 지난주 대비 (음수 가능). */
-    val diffFromLastWeekM: Long,
-    val totalTeams: Int,
-    val topPercent: Int,
+    /** 지난주 대비 (음수 가능). 지난주 기록이 없으면 null. */
+    val diffFromLastWeekM: Long?,
+    /** 상위 %를 보일 때만 값이 있다(오프라인·이번 주 0km면 null). [topPercent]와 함께 채운다. */
+    val totalTeams: Int?,
+    val topPercent: Int?,
 )
 
 /** S07 홈 화면 상태. */
@@ -71,18 +75,38 @@ data class HomeUiState(
     val stage: StageProgressUi,
     val rank: Int,
     val totalTeams: Int,
-    /** 바로 앞 팀. 선두면 null. */
+    /** 바로 앞 팀. 스테이지 안에 없으면 다음 스테이지에서 가장 가까운 팀. 전체 1위면 null. */
     val ahead: RivalTeamUi?,
-    /** 바로 뒤 팀. 꼴찌면 null. */
+    /** 바로 뒤 팀. 스테이지 안에 없으면 이전 스테이지에서 가장 가까운 팀. 전체 꼴찌면 null. */
     val behind: RivalTeamUi?,
-    val weekly: WeeklySummaryUi,
-    /** 기여 거리 순. */
+    /** 아직 통계를 받지 못했으면 null(카드를 숨긴다). */
+    val weekly: WeeklySummaryUi?,
+    /** 기여 거리 순. 비어 있으면 팀원 카드를 숨긴다. */
     val members: List<MemberUi>,
+    /** [ahead]가 다음 스테이지 팀 (RACE-02). */
+    val aheadIsOtherStage: Boolean = false,
+    /** [behind]가 이전 스테이지 팀 (RACE-02). */
+    val behindIsOtherStage: Boolean = false,
+    /** 기기 캐시 값을 보여 주는 중. */
+    val isOffline: Boolean = false,
 )
 
-/** S07 홈. 하단 탭(홈)은 AppNavHost가 붙인다. */
+/** S07 홈. 하단 탭(홈)은 AppNavHost가 붙인다. 상태를 받기 전과 팀이 없을 때는 바탕만 보인다. */
 @Composable
 fun HomeScreen(
+    onTeamClick: () -> Unit,
+    onStageRankClick: () -> Unit,
+    onWeeklyStatsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    uiState?.let { HomeContent(it, onTeamClick, onStageRankClick, onWeeklyStatsClick, modifier) }
+}
+
+/** S07 화면 내용. 상태 없음(Preview 대상). */
+@Composable
+fun HomeContent(
     uiState: HomeUiState,
     onTeamClick: () -> Unit,
     onStageRankClick: () -> Unit,
@@ -99,16 +123,18 @@ fun HomeScreen(
             .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = TdrSpacing.s5),
         verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
     ) {
-        TeamHeaderCard(uiState.team, onTeamClick)
+        TeamHeaderCard(uiState.team, uiState.isOffline, onTeamClick)
         StageCard(uiState.stage, uiState.rank, uiState.totalTeams)
         RaceCard(uiState, onStageRankClick)
-        WeeklyCard(uiState.weekly, onWeeklyStatsClick)
-        MembersChartCard(uiState.members, uiState.team.distanceM, onTeamClick)
+        uiState.weekly?.let { WeeklyCard(it, onWeeklyStatsClick) }
+        if (uiState.members.isNotEmpty()) {
+            MembersChartCard(uiState.members, uiState.team.distanceM, onTeamClick)
+        }
     }
 }
 
 @Composable
-private fun TeamHeaderCard(team: TeamUi, onClick: () -> Unit) {
+private fun TeamHeaderCard(team: TeamUi, isOffline: Boolean, onClick: () -> Unit) {
     val type = TdrTheme.typography
     TdrCard(onClick = onClick, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
@@ -119,6 +145,13 @@ private fun TeamHeaderCard(team: TeamUi, onClick: () -> Unit) {
                     stringResource(R.string.home_team_summary, team.season, team.memberCount, Format.teamKm(team.distanceM)),
                     style = type.caption,
                     color = TdrTheme.colors.inkMuted,
+                )
+            }
+            if (isOffline) {
+                Pill(
+                    stringResource(R.string.home_offline),
+                    background = TdrTheme.colors.inkMuted,
+                    contentColor = TdrTheme.colors.inkOnBrand,
                 )
             }
             Icon(TdrIcons.ChevronRight, contentDescription = null, tint = TdrTheme.colors.inkSubtle, modifier = Modifier.size(18.dp))
@@ -183,9 +216,17 @@ private fun RaceCard(uiState: HomeUiState, onClick: () -> Unit) {
     val ourM = uiState.team.distanceM
     TdrCard(onClick = onClick) {
         CardHeader(stringResource(R.string.home_race_title), trailing = stringResource(R.string.home_race_all))
+        if (uiState.ahead == null && uiState.behind == null) {
+            // 앱 전체에 다른 팀이 없다 (RACE-02)
+            Text(stringResource(R.string.home_race_empty), style = TdrTheme.typography.body, color = colors.inkMuted)
+            return@TdrCard
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
             RaceCell(
-                label = stringResource(R.string.home_race_ahead, uiState.ahead?.name ?: stringResource(R.string.home_race_none)),
+                label = stringResource(
+                    if (uiState.aheadIsOtherStage) R.string.home_race_ahead_other else R.string.home_race_ahead,
+                    uiState.ahead?.name ?: stringResource(R.string.home_race_none),
+                ),
                 value = uiState.ahead?.let { Format.signedKm(it.distanceM - ourM) + stringResource(R.string.unit_km) } ?: "-",
                 valueColor = uiState.ahead?.appearance?.color?.textColor ?: colors.inkMuted,
                 background = colors.bgSubtle,
@@ -201,7 +242,10 @@ private fun RaceCard(uiState: HomeUiState, onClick: () -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             RaceCell(
-                label = stringResource(R.string.home_race_behind, uiState.behind?.name ?: stringResource(R.string.home_race_none)),
+                label = stringResource(
+                    if (uiState.behindIsOtherStage) R.string.home_race_behind_other else R.string.home_race_behind,
+                    uiState.behind?.name ?: stringResource(R.string.home_race_none),
+                ),
                 value = uiState.behind?.let { Format.signedKm(it.distanceM - ourM) + stringResource(R.string.unit_km) } ?: "-",
                 valueColor = uiState.behind?.appearance?.color?.textColor ?: colors.inkMuted,
                 background = colors.bgSubtle,
@@ -247,16 +291,22 @@ private fun WeeklyCard(weekly: WeeklySummaryUi, onClick: () -> Unit) {
                     style = type.subtitle.copy(lineHeight = 20.sp),
                     color = colors.highlightInk,
                 )
-                Text(
-                    stringResource(
-                        R.string.home_weekly_sub,
-                        Format.signedKm(weekly.diffFromLastWeekM),
-                        weekly.totalTeams,
-                        weekly.topPercent,
-                    ),
-                    style = type.caption,
-                    color = colors.highlightInk,
-                )
+                // listOfNotNull은 inline이라 안에서 stringResource를 부를 수 있다
+                val sub = if (weekly.distanceM <= 0L) {
+                    stringResource(R.string.home_weekly_first)
+                } else {
+                    listOfNotNull(
+                        weekly.diffFromLastWeekM?.let { stringResource(R.string.home_weekly_diff, Format.signedKm(it)) },
+                        if (weekly.totalTeams != null && weekly.topPercent != null) {
+                            stringResource(R.string.home_weekly_top, weekly.totalTeams, weekly.topPercent)
+                        } else {
+                            null
+                        },
+                    ).joinToString(" · ")
+                }
+                if (sub.isNotEmpty()) {
+                    Text(sub, style = type.caption, color = colors.highlightInk)
+                }
             }
             Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.highlightInk, modifier = Modifier.size(18.dp))
         }
@@ -337,7 +387,7 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
 @Composable
 private fun HomeScreenPreview() {
     TabScreenPreview(TdrTab.Home) {
-        HomeScreen(
+        HomeContent(
             HomeUiState(
                 team = PreviewSamples.team,
                 stage = PreviewSamples.stage,

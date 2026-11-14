@@ -20,6 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -91,6 +93,22 @@ data class RoadViewUiState(
  */
 @Composable
 fun RoadViewScreen(
+    modifier: Modifier = Modifier,
+    viewModel: RoadViewViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state = uiState
+    if (state == null) {
+        // 받기 전이거나 팀이 없을 때: 지도 바탕색만
+        Box(modifier.fillMaxSize().background(TdrTheme.colors.bgMap))
+    } else {
+        RoadViewContent(state, modifier)
+    }
+}
+
+/** S08 화면 내용. 상태 없음(Preview 대상). */
+@Composable
+fun RoadViewContent(
     uiState: RoadViewUiState,
     modifier: Modifier = Modifier,
 ) {
@@ -377,7 +395,7 @@ private const val OUR_LABEL_HEIGHT = 50f
 @Composable
 private fun RoadViewScreenPreview() {
     TabScreenPreview(TdrTab.Road) {
-        RoadViewScreen(
+        RoadViewContent(
             RoadViewUiState(
                 team = PreviewSamples.team,
                 stage = PreviewSamples.stage,
