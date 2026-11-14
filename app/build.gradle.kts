@@ -73,6 +73,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    implementation(libs.maps.compose)
+
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
 }
