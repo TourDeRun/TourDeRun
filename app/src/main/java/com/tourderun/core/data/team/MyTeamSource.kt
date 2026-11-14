@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * 내 팀. S15 순위의 기준 팀이고, 러닝 저장(REC-01)의 팀 ID·시즌·저장 전 팀 거리로도 쓴다.
+ * 내 팀. S15 순위·S16 주간 통계의 기준 팀이고, 러닝 저장(REC-01)의 팀 ID·시즌·저장 전 팀 거리로도 쓴다.
  *
  * @property standing 팀 ID·이름·**기기에 캐시된 팀 거리**(`distanceM`)·도달 시각. `RaceRepository.observeRace`에 그대로 넘긴다
  */
@@ -16,7 +16,7 @@ data class MyTeam(
 )
 
 /**
- * 내 팀 정보 (S15, REC-01).
+ * 내 팀 정보 (S15, S16, REC-01).
  *
  * TODO(RACE-03): `TeamRepository`(권민찬)가 생기면 그 값으로 바꾸고 이 인터페이스와 [FixedMyTeamSource]는 지운다.
  */

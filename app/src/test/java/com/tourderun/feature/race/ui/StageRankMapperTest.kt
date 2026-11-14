@@ -3,6 +3,8 @@ package com.tourderun.feature.race.ui
 import com.tourderun.core.data.Cached
 import com.tourderun.core.data.race.RaceSummary
 import com.tourderun.core.data.race.RaceTeam
+import com.tourderun.core.ui.model.stageProgressUi
+import com.tourderun.domain.journey.locate
 import com.tourderun.domain.model.TeamStanding
 import com.tourderun.domain.race.rankInStage
 import com.tourderun.domain.route.routeFor
@@ -72,11 +74,11 @@ class StageRankMapperTest {
 
     @Test fun `헤더는 스테이지 번호와 구간, 줄에는 icon·color 번호와 인원`() {
         val c = content(race(listOf(team("me", 66_800, icon = 7, color = 5, members = 4)), "me", stageIndex = 2), "me")
-        assertEquals(3, c.stageNumber)
-        assertEquals("오산", c.fromCity)
-        assertEquals("천안", c.toCity)
-        assertEquals(48, c.startKm)
-        assertEquals(85, c.endKm)
+        assertEquals(3, c.stage.stageNumber)
+        assertEquals("오산", c.stage.fromCity)
+        assertEquals("천안", c.stage.toCity)
+        assertEquals(48, c.stage.startKm)
+        assertEquals(85, c.stage.endKm)
         val row = c.rows.single()
         assertEquals(7, row.iconIndex)
         assertEquals(5, row.colorIndex)
@@ -105,5 +107,33 @@ class StageRankMapperTest {
         val before = content(race(listOf(team("a", 69_200), team("me", 66_800)), "me"), "me")
         val next = nextStageRankState(before, race(listOf(team("me", 70_000), team("a", 69_200)), "me"), "me", route)
         assertEquals(1, (next as StageRankUiState.Content).ourRank)
+    }
+
+    @Test fun `헤더는 우리 팀 거리의 locate 결과와 같은 스테이지·남은 거리`() {
+        val c = content(race(listOf(team("a", 90_000), team("me", 84_960)), "me", stageIndex = 2), "me")
+        val position = locate(84_960, route)
+
+        assertEquals(position.stageIndex + 1, c.stage.stageNumber)
+        assertEquals(position.toNextM, c.stage.toNextM)
+        assertEquals(position.arrivals, c.stage.arrivals)
+        assertEquals(stageProgressUi(84_960, route), c.stage)
+    }
+
+    @Test fun `19000m 팀은 헤더가 스테이지 2 안양 → 오산`() {
+        val c = content(race(listOf(team("me", 19_000)), "me", stageIndex = 1), "me")
+
+        assertEquals(2, c.stage.stageNumber)
+        assertEquals("안양", c.stage.fromCity)
+        assertEquals("오산", c.stage.toCity)
+        assertEquals(1, c.stage.arrivals)
+    }
+
+    @Test fun `줄 거리는 소수 한 자리 내림, 84960m → 84점9`() {
+        val c = content(race(listOf(team("a", 85_000), team("me", 84_960)), "me"), "me")
+
+        assertEquals("85.0", c.rows[0].distanceKm)
+        assertEquals("84.9", c.rows[1].distanceKm)
+        // 앞 팀과의 차이(40m)는 지금 방식 그대로 거리 값으로 둔다
+        assertEquals(40L, c.rows[1].gapToAheadM)
     }
 }

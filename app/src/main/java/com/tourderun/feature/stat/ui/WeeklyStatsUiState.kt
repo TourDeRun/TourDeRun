@@ -1,5 +1,7 @@
 package com.tourderun.feature.stat.ui
 
+import com.tourderun.core.ui.Format
+
 /** 이번 주 기간. 화면 문구 "2026-W46 · 11월 9일(월) ~ 15일(일)". */
 data class WeekPeriodUi(
     val weekId: String,
@@ -52,7 +54,13 @@ sealed interface WeeklyStatsUiState {
         val change: WeeklyChangeUi,
         val rank: WeeklyRankUi,
         val isOffline: Boolean,
-    ) : WeeklyStatsUiState
+    ) : WeeklyStatsUiState {
+        /** 이번 주 팀 거리 표시(소수 한 자리 내림, `Format.teamKm`). 84_960 → "84.9" */
+        val distanceKm: String get() = Format.teamKm(distanceM)
+
+        /** 지난주 팀 거리 표시(소수 한 자리 내림) */
+        val lastWeekDistanceKm: String get() = Format.teamKm(lastWeekDistanceM)
+    }
 }
 
 /** S16 사용자 동작. */
