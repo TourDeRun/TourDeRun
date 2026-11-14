@@ -18,6 +18,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
@@ -55,7 +59,8 @@ data class RecordDetailUiState(
     val movingSec: Long,
     val paceSecPerKm: Long,
     val path: List<LatLngValue>,
-    val hasChanges: Boolean = false,
+    /** 저장된 값과 다르고 제목·메모 규칙을 지킬 때만 true. */
+    val canSave: Boolean = false,
     val isSaving: Boolean = false,
     val showDeleteConfirm: Boolean = false,
 ) {
@@ -65,9 +70,34 @@ data class RecordDetailUiState(
     }
 }
 
-/** S12 기록 상세. 삭제는 확인 대화상자를 거친다 (팀 거리는 줄지 않는다). */
+/** S12 기록 상세. 기록이 지워지면(또는 없으면) [onBack]으로 화면을 닫는다. */
 @Composable
 fun RecordDetailScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: RecordDetailViewModel = hiltViewModel(),
+) {
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
+        RecordDetailLoad.Loading -> Unit
+        RecordDetailLoad.Gone -> LaunchedEffect(Unit) { onBack() }
+        is RecordDetailLoad.Ready -> RecordDetailContent(
+            uiState = state.ui,
+            onBack = onBack,
+            onTitleChange = viewModel::onTitleChange,
+            onMemoChange = viewModel::onMemoChange,
+            onSave = viewModel::onSave,
+            onDeleteClick = viewModel::onDeleteClick,
+            onDeleteConfirm = viewModel::onDeleteConfirm,
+            onDeleteDismiss = viewModel::onDeleteDismiss,
+            modifier = modifier,
+        )
+    }
+}
+
+/** S12 화면 내용. 상태 없음(Preview 대상). 삭제는 확인 대화상자를 거친다 (팀 거리는 줄지 않는다). */
+@Composable
+fun RecordDetailContent(
     uiState: RecordDetailUiState,
     onBack: () -> Unit,
     onTitleChange: (String) -> Unit,
@@ -146,7 +176,7 @@ fun RecordDetailScreen(
             TdrButton(
                 stringResource(R.string.action_save),
                 onClick = onSave,
-                enabled = uiState.hasChanges && !uiState.isSaving,
+                enabled = uiState.canSave && !uiState.isSaving,
                 modifier = Modifier.weight(2f),
             )
         }
@@ -177,7 +207,7 @@ fun RecordDetailScreen(
 @Composable
 private fun RecordDetailScreenPreview() {
     TdrTheme {
-        RecordDetailScreen(
+        RecordDetailContent(
             RecordDetailUiState(
                 startedAtText = "2026. 11. 6 (금) 19:02",
                 title = "11월 6일 저녁 러닝",

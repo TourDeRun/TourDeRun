@@ -1,5 +1,6 @@
 package com.tourderun.core.navigation
 
+import com.tourderun.core.data.record.FakeRunRepository
 import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
@@ -15,8 +16,7 @@ import com.tourderun.feature.home.ui.WeeklySummaryUi
 import com.tourderun.feature.journey.ui.RoadViewUiState
 import com.tourderun.feature.profile.ui.CollectionSummaryUi
 import com.tourderun.feature.profile.ui.ProfileUiState
-import com.tourderun.feature.record.ui.RecordDetailUiState
-import com.tourderun.feature.record.ui.RecordsUiState
+import com.tourderun.feature.record.ui.toRowUi
 import com.tourderun.feature.run.ui.OvertakeUi
 import com.tourderun.feature.run.ui.RunResultUiState
 import com.tourderun.feature.run.ui.RunningUiState
@@ -60,7 +60,8 @@ internal object TempUiStates {
         isLeader = true,
         totalDistanceM = 86_400,
         runCount = 21,
-        latestRun = PreviewSamples.runs.first(),
+        // 누르면 S12가 열리므로 가짜 Repository에 실제로 있는 기록이어야 한다.
+        latestRun = FakeRunRepository.SAMPLE_RUNS.first().toRowUi(),
         collection = CollectionSummaryUi(3, 8, "천안"),
     )
 
@@ -84,23 +85,6 @@ internal object TempUiStates {
         stageAfter = stageAfterRun,
         overtake = OvertakeUi("주황이들", 2, 1, 2_400, 840),
     )
-
-    // TODO(REC-02): RecordsViewModel(#49)로 바꾼다.
-    val records = RecordsUiState(totalRuns = 21, totalDistanceM = 86_400, runs = PreviewSamples.runs)
-
-    // TODO(REC-03): RecordDetailViewModel(#49)로 바꾼다.
-    fun recordDetail(runId: String): RecordDetailUiState {
-        val run = PreviewSamples.runs.firstOrNull { it.runId == runId } ?: PreviewSamples.runs.first()
-        return RecordDetailUiState(
-            startedAtText = "2026. ${run.month}. ${run.day} 19:02",
-            title = run.title,
-            memo = "",
-            distanceM = run.distanceM,
-            movingSec = run.movingSec,
-            paceSecPerKm = run.paceSecPerKm,
-            path = SampleRoutePoints,
-        )
-    }
 
     // TODO(TEAM-04): 팀 ViewModel로 바꾼다.
     val team = TeamUiState(PreviewSamples.team, PreviewSamples.members, "4K7Q2M", isLeader = true, myUid = "u1")
