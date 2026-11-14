@@ -4,8 +4,9 @@ import com.tourderun.core.data.record.FakeRunRepository
 import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
-import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.core.ui.preview.PreviewSamples
+import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.collection.ui.CardDetailUiState
 import com.tourderun.feature.collection.ui.CollectionUiState
 import com.tourderun.feature.collection.ui.LandmarkUi
@@ -22,7 +23,6 @@ import com.tourderun.feature.record.ui.toRowUi
 import com.tourderun.feature.run.ui.OvertakeUi
 import com.tourderun.feature.run.ui.RunResultUiState
 import com.tourderun.feature.run.ui.RunningUiState
-import com.tourderun.feature.stat.ui.WeeklyStatsUiState
 import com.tourderun.feature.team.ui.TeamEditUiState
 import com.tourderun.feature.team.ui.TeamUiState
 
@@ -32,7 +32,7 @@ import com.tourderun.feature.team.ui.TeamUiState
  * 화면 주인이 ViewModel을 붙이면 그 화면의 항목을 지운다. 전부 지워지면 이 파일도 지운다.
  */
 internal object TempUiStates {
-    private val stageAfterRun = StageProgressUi(3, 7, "오산", "천안", 48, 85, 70_040)
+    private val stageAfterRun = stageProgressUi(70_040, routeFor(1))
 
     // TODO(JRN-03): HomeViewModel(#48)로 바꾼다.
     val home = HomeUiState(
@@ -93,9 +93,6 @@ internal object TempUiStates {
 
     // TODO(TEAM-05): 팀 수정 ViewModel로 바꾼다.
     val teamEdit = TeamEditUiState(PreviewSamples.team.name, TeamColor.BLUE, TeamIcon.RUNNER)
-
-    // TODO(STAT-01): PR #39의 WeeklyStatsViewModel이 들어오면 지운다.
-    val weeklyStats = WeeklyStatsUiState("2026-W45 · 11월 2일(월) ~ 8일(일)", 38, 11, 3, 42_500, 36_400, 9, 7)
 
     // TODO(EXT-01): 도감 ViewModel로 바꾼다.
     val collection = CollectionUiState(

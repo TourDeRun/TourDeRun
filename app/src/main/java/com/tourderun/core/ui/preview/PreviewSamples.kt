@@ -18,6 +18,8 @@ import com.tourderun.core.ui.model.RivalTeamUi
 import com.tourderun.core.ui.model.RunRowUi
 import com.tourderun.core.ui.model.StageProgressUi
 import com.tourderun.core.ui.model.TeamUi
+import com.tourderun.core.ui.model.stageProgressUi
+import com.tourderun.domain.route.routeFor
 
 /** @Preview 전용 가짜 데이터 (와이어프레임 값과 같다). 실제 화면에서는 쓰지 않는다. */
 object PreviewSamples {
@@ -29,15 +31,7 @@ object PreviewSamples {
         distanceM = 66_800,
     )
 
-    val stage = StageProgressUi(
-        stageNumber = 3,
-        stageCount = 7,
-        fromCity = "오산",
-        toCity = "천안",
-        startKm = 48,
-        endKm = 85,
-        teamDistanceM = 66_800,
-    )
+    val stage: StageProgressUi = stageProgressUi(66_800, routeFor(1))
 
     val members = listOf(
         MemberUi("u1", "민지", TeamColor.BLUE, 22_400, isLeader = true, isMvp = true),
