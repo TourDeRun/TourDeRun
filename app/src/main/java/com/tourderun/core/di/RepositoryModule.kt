@@ -19,6 +19,6 @@ abstract class RepositoryModule {
     // TODO(RACE-01): 로그인(AUTH-01)과 google-services.json이 준비되면 FirestoreRaceRepository로 바꾼다.
     @Binds abstract fun bindRaceRepository(impl: FakeRaceRepository): RaceRepository
 
-    // TODO(STAT-01): #12에서 FirestoreStatsRepository로 바꾼다.
+    // TODO(STAT-01): 로그인(AUTH-01)과 google-services.json이 준비되면 FirestoreStatsRepository로 바꾼다.
     @Binds abstract fun bindStatsRepository(impl: FakeStatsRepository): StatsRepository
 }
