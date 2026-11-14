@@ -8,12 +8,12 @@
 ## 명령
 
 ```
-./gradlew :domain:test                       # 핵심 로직 단위 테스트 (PR 전에 반드시)
-./gradlew :app:assembleDebug :app:lintDebug  # CI app-build와 같은 검사
-./gradlew signingReport                      # 디버그 SHA-1 확인
+./gradlew :domain:test                                             # 핵심 로직 단위 테스트 (PR 전에 반드시)
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug # CI app-build와 같은 검사 (:app 단위 테스트 포함)
+./gradlew signingReport                                            # 디버그 SHA-1 확인
 ```
 
-- CI(`.github/workflows/ci.yml`)는 `domain-test`, `app-build` 두 작업. 둘 다 통과해야 `main`에 합칠 수 있다.
+- CI(`.github/workflows/ci.yml`)는 `domain-test`(`:domain:test`), `app-build`(`:app:testDebugUnitTest` → `assembleDebug` → `lintDebug`) 두 작업. 둘 다 통과해야 `main`에 합칠 수 있다. 작업 이름은 `main` 보호 규칙의 필수 체크 이름이라 바꾸지 않는다.
 - `google-services.json`이 없으면 Firebase 플러그인이 꺼진 채로 빌드된다. 이 상태에서 Firebase를 호출하는 코드가 실행되면 앱이 꺼지므로, 파일 없이 Firebase 코드를 시작 경로에 연결하지 않는다.
 
 ## 구조
@@ -24,8 +24,8 @@
 | `:app` | 화면, ViewModel, Repository, Firestore·Room·DataStore, 서비스, Hilt | `:domain` |
 
 - 의존은 `ui → data → domain` 한 방향. **`:domain`에 `android.*`, Firebase, Compose import 금지.**
-- `:domain` 패키지: `model/`, `route/`(`routeFor(season)`, `Season1Route`), `run/`, `journey/`(`locate`·`arrivals`·`newArrivals`·`mapPosition`·`haversineM`), `race/`, `stats/`, `team/`, `card/`
-- `:app` 패키지: `core/di`, `core/data/firestore`(`Fields.kt`, DTO, `callbackFlow` 확장), `core/data/local`, `core/ui/theme|component|format`, `core/navigation`, `feature/<영역>/{ui,data}`
+- `:domain` 패키지: `model/`, `route/`(`routeFor(season)`, `Season1Route`), `run/`, `journey/`(`locate`·`arrivals`·`newArrivals`·`mapPosition`·`haversineM`), `race/`, `stats/`, `record/`(기본 제목·경로 줄이기 등 기록 관련), `team/`, `card/`
+- `:app` 패키지: `core/di`, `core/data/firestore`(`Fields.kt`, DTO, `callbackFlow` 확장), `core/data/<영역>`(공유 Repository), `core/data/local`, `core/designsystem/theme|component`(테마 토큰, 공용 컴포저블), `core/ui`(`Format.kt`, `model/` 여러 화면 공용 UI 모델, `preview/` Preview 데이터), `core/navigation`, `feature/<영역>/{ui,data}`
 - 다른 feature의 `ui`·`data` 내부 클래스를 import하지 않는다. 여러 feature가 쓰는 Repository는 `core/data`로 올린다.
 - 공유 Repository: `SessionRepository`·`TeamRepository`(권민찬), `RaceRepository`·`StatsRepository`·`RunRepository`·`RunSaver`(오영훈), `RunSessionManager`(최한솔)
 
@@ -41,6 +41,7 @@
 - **상위 %** = `ceil((더 많이 달린 팀 수 + 1) / 전체 팀 수 × 100)`. 전체 팀 수는 시즌 1 팀 전부(이번 주 0km 팀 포함). 우리 팀이 0km면 숨긴다.
 - **주간 ID**: 한국 시간, 월요일 0시 시작, ISO 주차 연도(`IsoFields`). 러닝 **시작 시각** 기준. 2027-01-01 → `2026-W53`.
 - **팀 거리는 한 번 쌓이면 줄지 않는다**(M-01·M-02 기본안): 기록 삭제·팀 탈퇴·내보내기 때 팀 거리와 통계를 빼지 않는다. 나간 팀원 몫은 "이전 팀원"으로 표시.
+- **팀 icon·color는 0~7 번호**(M-06, `teams.icon`·`teams.color`). `TeamColor`·`TeamIcon`의 선언 순서가 곧 번호라서 **순서 변경·중간 삽입 금지**, 새 값은 끝에만 추가한다. 번호 → enum은 `entries.getOrNull(n)`(범위 밖이면 기본값). 지금 순서: color `blue 0, navy 1, teal 2, green 3, purple 4, orange 5, pink 6, gray 7` / icon `runner 0, bolt 1, mountain 2, star 3, flame 4, wave 5, heart 6, flag 7`.
 - 팀은 1~4명, 팀이 있어야 러닝 가능. 팀장 승계는 가장 먼저 가입한 팀원(M-04 기본안). 최소 저장 기준 100m 또는 1분(M-05).
 
 ## Firestore
@@ -58,11 +59,11 @@
 
 ## 코드 컨벤션
 
-- 화면: `XxxScreen`(ViewModel 받음) / `XxxContent(state, onAction)`(상태 없음, Preview 대상). `XxxViewModel`, `XxxUiState`(불변 data class 또는 sealed `Loading/Content/Error`), `XxxAction`, 일회성 이벤트는 `Channel<XxxEvent>`.
+- 화면: ViewModel이 붙기 전에는 `XxxScreen(uiState, 콜백)`(상태 없음, Preview 대상)도 허용한다. 화면 주인이 ViewModel을 붙일 때 `XxxScreen(viewModel)`(상태 수집·이벤트 처리만) / `XxxContent(uiState, 콜백 또는 onAction)`(상태 없음, Preview 대상)로 나눈다. `XxxViewModel`, `XxxUiState`(불변 data class 또는 sealed `Loading/Content/Error`), `XxxAction`, 일회성 이벤트는 `Channel<XxxEvent>`.
 - Repository: 인터페이스 `XxxRepository`, 구현 `FirestoreXxxRepository`. 실패는 예외로 던지지 않고 `Result<T>` 또는 `sealed interface DataError`로. 예외를 잡는 곳은 Repository 한 층.
-- Compose: 상태 수집은 `collectAsStateWithLifecycle()`. 공개 컴포저블은 `modifier: Modifier = Modifier`를 첫 번째 선택 인자로. 색·글자·간격은 테마 토큰(`MaterialTheme`, `Dimens`), `Color(0xFF…)`·`16.dp` 직접 사용 금지. 문자열은 `strings.xml`(feature 접두어 `run_`, `team_` …). 숫자 표시는 `core/ui/format`에서만. 화면마다 `@Preview`(기본 + 빈 상태).
+- Compose: 상태 수집은 `collectAsStateWithLifecycle()`. 공개 컴포저블은 `modifier: Modifier = Modifier`를 첫 번째 선택 인자로. 화면은 `TdrTheme { }` 안에서 그리고, 색은 `TdrTheme.colors`(`brand`, `ink`, `inkMuted`, `bgCanvas`, `bgSurface`, `border` …), 글자는 `TdrTheme.typography`(`titleLg`, `subtitle`, `body`, `caption` …), 간격은 `TdrSpacing.s1~s8`·`screenHorizontal`, 모서리는 `TdrShapes.sm~xl·full`, 고정 크기는 `TdrSize`. 팀 색은 `TeamColor.color`·`textColor`. 화면 코드(`feature/`)에 `Color(0xFF…)`·숫자 `dp`·`sp` 직접 사용 금지(필요한 값은 `core/designsystem/theme`에 토큰으로 추가. PR #2 화면에 남아 있는 숫자 값은 그 화면을 고칠 때 토큰으로 바꾼다). 문자열은 `strings.xml`(feature 접두어 `run_`, `team_` …). 숫자 표시는 `core/ui/Format.kt`에서만. 화면마다 `@Preview`(기본 + 빈 상태).
 - ViewModel은 `Context`·Activity·Compose 타입을 받지 않는다.
-- 코루틴: `GlobalScope`·`runBlocking` 금지(테스트 제외). 디스패처는 Hilt 주입(`@IoDispatcher`), `Dispatchers.IO` 직접 사용 금지.
+- 코루틴: `GlobalScope`·`runBlocking` 금지(테스트 제외). 디스패처는 Hilt 주입(`@IoDispatcher`), `Dispatchers.IO` 직접 사용 금지. Firebase `Task` 대기는 `kotlinx-coroutines-play-services`의 `await()`(읽기·온라인 필수 트랜잭션만, 위 오프라인 쓰기 규칙 참고). `core/data/firestore/TaskAwait.kt`의 `awaitResult()`는 #32에서 `await()`로 바꾼다.
 - 금지: `!!`(테스트 제외, 대신 `requireNotNull(x) { "이유" }`), 위치 좌표·uid 로그, 주석 처리된 코드 커밋. 로그 태그 `TDR/<feature>`. TODO는 `// TODO(RUN-07): …`처럼 기능 ID를 붙인다.
 - 버전은 `gradle/libs.versions.toml`에서만. 버전 변경은 `chore` PR 단독으로. **AGP·Kotlin 업그레이드 제안은 따르지 않는다**(팀이 정할 때까지 고정).
 
@@ -83,12 +84,14 @@
 
 ## 담당 영역
 
-| 이름 | 개발 영역 | 소유 코드 |
-| --- | --- | --- |
-| 권민찬 (PM, Firebase) | 사용자·팀 | `feature/auth`, `feature/team`, `SessionRepository`, `TeamRepository`, `firebase/`, `domain/team`, EXT-03 |
-| 오영훈 (GitHub 관리) | 여정·경쟁 엔진 | `:domain`(경로·`locate`·`rankInStage`·`topPercent`·`weekId`), `RunSaver`, `RunRepository`, `RaceRepository`, `StatsRepository`, S15·S16, EXT-01 획득 판정 |
-| 전병국 (QA·시연) | 지도·기록·UI | S07 홈, S08 로드뷰, S10~S12, `core/navigation`, `core/ui/theme`, 지도 공용 컴포저블, S17·S18 |
-| 최한솔 (디자인·발표) | 러닝 측정 | S09, `GpsDistanceFilter`·페이스(`:domain/run`), `RunSessionManager`, `RunTrackingService`, Room·DataStore, EXT-02 |
+| 이름 | GitHub | 개발 영역 | 소유 코드 |
+| --- | --- | --- | --- |
+| 권민찬 (PM, Firebase) | `tronve` | 사용자·팀 | `feature/auth`, `feature/team`, `SessionRepository`, `TeamRepository`, `firebase/`, `domain/team`, EXT-03 |
+| 오영훈 (GitHub 관리) | `oyeonghun` | 여정·경쟁 엔진 | `:domain`(경로·`locate`·`rankInStage`·`topPercent`·`weekId`), `RunSaver`, `RunRepository`, `RaceRepository`, `StatsRepository`, S15·S16, EXT-01 획득 판정 |
+| 전병국 (QA·시연) | `jeonbinggu` | 지도·기록·UI | S07 홈, S08 로드뷰, S10~S12, `core/navigation`, `core/designsystem`, `core/ui`(`Format`·공용 UI 모델·Preview 데이터), 지도 공용 컴포저블, S17·S18 |
+| 최한솔 (디자인·발표) | `sol7722` | 러닝 측정 | S09, `GpsDistanceFilter`·페이스(`:domain/run`), `RunSessionManager`, `RunTrackingService`, Room·DataStore, EXT-02 |
+
+- 화면 UI 껍데기(`feature/*/ui`의 모든 화면)는 전병국이 PR #2에서 만들었다. 데이터 연결(ViewModel·UiState 변환)과 이후 수정은 위 표의 **화면 주인**이 한다(예: S15·S16은 오영훈, S09는 최한솔, S01~S06·S14는 권민찬). 디자인 시스템(`core/designsystem`)을 바꿔야 하면 전병국에게 알린다.
 
 다른 사람의 소유 코드를 고쳐야 하면 바꾸기 전에 사용자에게 알리고, PR에서 소유자를 리뷰어로 지정한다.
 
