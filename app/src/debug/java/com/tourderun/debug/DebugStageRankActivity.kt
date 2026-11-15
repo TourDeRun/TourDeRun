@@ -24,9 +24,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tourderun.R
 import com.tourderun.core.data.race.FakeRaceRepository
 import com.tourderun.core.data.race.RaceScenario
+import com.tourderun.core.data.team.FixedMyTeamSource
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
-import com.tourderun.feature.race.data.FixedMyTeamSource
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.race.ui.StageRankViewModel
 import dagger.hilt.android.AndroidEntryPoint
