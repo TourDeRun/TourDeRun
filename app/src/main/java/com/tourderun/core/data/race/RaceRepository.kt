@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.Flow
  * - **순위는 `rankInStage(stageTeams, myTeam.teamId)`** 로만 계산한다(거리 내림차순 → `reachedAt` 이른 팀 → teamId).
  * - **리스너는 스테이지가 바뀔 때만 다시 연결한다.** 같은 스테이지 안에서 거리가 늘어나는 것은 리스너가 알려 준다.
  *   그래서 호출하는 쪽은 내 팀 스테이지가 바뀔 때만 다시 부른다(아래 사용 예).
+ * - **`teams` 문서는 생성 때부터 `reachedAt`이 있어야 한다**(팀 만들기 배치에서 `serverTimestamp()`).
+ *   같은 스테이지 쿼리의 `orderBy(reachedAt)`은 이 필드가 없는 문서를 결과에서 빼므로, 없으면 그 팀이 목록에서 빠지고
+ *   그 팀이 내 팀이면 [RaceSummary.ranking]이 계속 null이다.
  * - 다른 스테이지 대체 팀(RACE-02)은 [RaceSummary.ranking]의 ahead(behind)가 null일 때만 조회해서 채운다.
  * - 오류를 던지지 않는다. 연결이 끊기면 마지막 값을 캐시 출처([Cached.isFromCache] = true)로 낸다.
  *

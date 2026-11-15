@@ -48,7 +48,9 @@ import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.StageProgressUi
+import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.domain.model.LatLngValue
+import com.tourderun.domain.route.routeFor
 import kotlin.math.roundToInt
 
 /** S09 러닝 중 화면 상태. 거리는 측정 중이라 m 단위 Double. */
@@ -151,13 +153,17 @@ private fun RunningContent(
                 contentDescription = stringResource(R.string.stage_progress_desc),
             )
             Text(
-                stringResource(R.string.run_to_next, stage.toCity, Format.km(stage.toNextM, decimals = 2)),
+                if (stage.finished) {
+                    stringResource(R.string.stage_finished, stage.toCity)
+                } else {
+                    stringResource(R.string.run_to_next, stage.toCity, Format.kmUp(stage.toNextM, decimals = 2))
+                },
                 style = type.subtitle,
             )
             Text(
                 stringResource(
                     R.string.run_team_info,
-                    Format.km(stage.teamDistanceM),
+                    Format.teamKm(stage.teamDistanceM),
                     stage.stageNumber,
                     stage.fromCity,
                     stage.toCity,
@@ -258,7 +264,7 @@ private fun RunningScreenPreview() {
             movingSec = 1_122,
             avgPaceSecPerKm = 346,
             currentPaceSecPerKm = 331,
-            stageWithRun = StageProgressUi(3, 7, "오산", "천안", 48, 85, 70_040),
+            stageWithRun = stageProgressUi(70_040, routeFor(1)),
             path = SampleRoutePoints,
         ),
         {}, {},

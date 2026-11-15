@@ -12,4 +12,8 @@
     <string name="debug_stage_rank_default">기본</string>
     <string name="debug_stage_rank_alone">혼자</string>
     <string name="debug_stage_rank_offline">오프라인</string>
+    <string name="debug_weekly_title">[디버그] S16 주간 통계</string>
+    <string name="debug_weekly_default">기본</string>
+    <string name="debug_weekly_zero">이번 주 0km</string>
+    <string name="debug_weekly_offline">오프라인</string>
 </resources>
