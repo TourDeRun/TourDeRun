@@ -29,7 +29,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 /**
- * REC-01 1단계(#4) 확인용. 디버그 빌드에만 있고 런처·앱 시작 경로에 연결되지 않는다.
+ * REC-01 저장 확인용. 디버그 빌드에만 있고 런처·앱 시작 경로에 연결되지 않는다.
+ * 팀 없이(`team = null`) 저장하므로 `runs`·`users`만 쓴다. `users/{uid}` 문서가 없으면 배치 전체가 거부된다.
  * google-services.json이 없으면 Firebase를 건드리지 않고 안내만 보여준다.
  * 로그인하지 않았으면 저장을 막는다(개발용 보안 규칙도 request.auth가 필요). uid는 화면을 열 때 읽는다.
  */
@@ -103,7 +104,7 @@ class DebugSaveRunActivity : ComponentActivity() {
             acceptedPoints = points,
         )
         val title = defaultRunTitle(startedAtMs, SEOUL)
-        return saver.save(result, uid = uid, teamId = null, title = title).map { result.runId }
+        return saver.save(result, uid = uid, team = null, title = title).map { result.runId }
     }
 
     private companion object {

@@ -3,8 +3,11 @@ package com.tourderun.domain.race
 import com.tourderun.domain.model.StageRanking
 import com.tourderun.domain.model.TeamStanding
 
-/** 순위 정렬: 거리 내림차순 → 먼저 도달한 팀 → teamId(완전 동점일 때 순서 고정). */
-private val StandingOrder: Comparator<TeamStanding> =
+/**
+ * 순위 정렬: 거리 내림차순 → 먼저 도달한 팀 → teamId(완전 동점일 때 순서 고정).
+ * 순위 목록을 그릴 때도 이 순서를 쓴다(RaceRepository).
+ */
+val StandingOrder: Comparator<TeamStanding> =
     compareByDescending<TeamStanding> { it.distanceM }
         .thenBy { it.reachedAtMs }
         .thenBy { it.teamId }
