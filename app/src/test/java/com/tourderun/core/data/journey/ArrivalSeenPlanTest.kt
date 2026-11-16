@@ -34,6 +34,16 @@ class ArrivalSeenPlanTest {
         assertEquals(mapOf(UserFields.CARDS to mapOf("osan" to card, "cheonan" to card)), users.fields)
     }
 
+    @Test fun `카드 1장이면 users의 cards에 그 도시 항목 하나만`() {
+        val plan = arrivalSeenPlan("uid-1", "team-1", "뛰뛰크루", pending, listOf("cheonan"))
+        assertEquals(2, plan.size)
+        val users = plan[1]
+        assertEquals("users/uid-1", users.path)
+        assertEquals(setOf(UserFields.CARDS), users.fields.keys)
+        val card = mapOf(UserFields.CARD_AT to FieldOp.ServerTime, UserFields.CARD_TEAM_NAME to "뛰뛰크루")
+        assertEquals(mapOf("cheonan" to card), users.fields[UserFields.CARDS])
+    }
+
     @Test fun `같은 카드 ID가 두 번 와도 한 번만`() {
         val plan = arrivalSeenPlan("uid-1", "team-1", "뛰뛰크루", pending, listOf("osan", "osan"))
         @Suppress("UNCHECKED_CAST")

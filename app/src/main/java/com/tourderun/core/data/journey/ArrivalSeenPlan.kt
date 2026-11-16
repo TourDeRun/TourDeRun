@@ -17,7 +17,9 @@ import com.tourderun.domain.journey.PendingArrivals
  *    `update`로 `cards` Map을 쓰면 이미 받은 카드가 지워지므로, 중첩 Map + set merge로 안쪽 키만 합친다.
  *
  * @param teamName 카드에 남길 팀 이름(카드를 받은 시점의 팀)
- * @param newCardCityIds 새로 줄 카드 도시 ID. 같은 ID가 두 번 오면 한 번만 쓴다
+ * @param newCardCityIds 새로 줄 카드 도시 ID. 같은 ID가 두 번 오면 한 번만 쓴다.
+ *   이미 가진 도시를 뺀 목록이어야 한다(`:domain`의 [com.tourderun.domain.card.newCardCityIds] 결과).
+ *   가진 도시를 넣으면 첫 획득 기록(`at`·`teamName`)이 덮어써진다
  */
 fun arrivalSeenPlan(
     uid: String,
