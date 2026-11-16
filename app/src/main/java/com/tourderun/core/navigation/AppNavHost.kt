@@ -101,26 +101,15 @@ fun AppNavHost(
             }
 
             composable<RecordsRoute> {
-                // TODO(REC-02): 더 불러오기
                 RecordsScreen(
-                    uiState = TempUiStates.records,
                     onBack = back,
                     onRunClick = { navController.navigate(RecordDetailRoute(it.runId)) },
-                    onLoadMore = {},
+                    onStartRun = { navController.selectTab(TdrTab.Run) },
                 )
             }
-            composable<RecordDetailRoute> { entry ->
-                // TODO(REC-04): 제목·메모 수정, TODO(REC-05): 삭제
-                RecordDetailScreen(
-                    uiState = TempUiStates.recordDetail(entry.toRoute<RecordDetailRoute>().runId),
-                    onBack = back,
-                    onTitleChange = {},
-                    onMemoChange = {},
-                    onSave = {},
-                    onDeleteClick = {},
-                    onDeleteConfirm = {},
-                    onDeleteDismiss = {},
-                )
+            composable<RecordDetailRoute> {
+                // 삭제로 닫힐 때 사용자가 뒤로 가기를 같이 눌러도 이 화면까지만 닫히게 경로를 지정한다.
+                RecordDetailScreen(onBack = { navController.popBackStack<RecordDetailRoute>(inclusive = true) })
             }
 
             composable<TeamRoute> {
