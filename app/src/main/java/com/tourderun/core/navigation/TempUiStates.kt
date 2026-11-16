@@ -14,7 +14,9 @@ import com.tourderun.feature.collection.ui.RegionCardStatus
 import com.tourderun.feature.collection.ui.RegionCardUi
 import com.tourderun.feature.home.ui.HomeUiState
 import com.tourderun.feature.home.ui.WeeklySummaryUi
+import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.journey.ui.RoadViewUiState
+import com.tourderun.feature.journey.ui.roadMapUi
 import com.tourderun.feature.profile.ui.CollectionSummaryUi
 import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
@@ -44,13 +46,13 @@ internal object TempUiStates {
         members = PreviewSamples.members,
     )
 
-    // TODO(JRN-04): 로드뷰 ViewModel(#50)로 바꾼다.
+    // TODO(JRN-04): 홈과 같은 데이터(내 팀 + RaceRepository)라 #48에서 ViewModel로 바꾼다.
     val roadView = RoadViewUiState(
         team = PreviewSamples.team,
         stage = PreviewSamples.stage,
         rank = 2,
         totalTeams = 5,
-        rivalsInStage = PreviewSamples.rivals.take(2),
+        map = roadMapUi(routeFor(PreviewSamples.team.season), PreviewSamples.team.distanceM, PreviewSamples.rivals.take(2)),
     )
 
     // TODO(AUTH-03): 프로필 ViewModel로 바꾼다.

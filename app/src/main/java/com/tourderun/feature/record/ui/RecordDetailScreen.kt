@@ -33,7 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tourderun.R
-import com.tourderun.core.designsystem.component.RouteSketch
+import com.tourderun.core.designsystem.component.RouteMap
 import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.StatColumn
 import com.tourderun.core.designsystem.component.StatRow
@@ -131,7 +131,7 @@ fun RecordDetailContent(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = TdrSpacing.s3),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
         ) {
-            RouteSketch(
+            RouteMap(
                 points = uiState.path,
                 modifier = Modifier
                     .fillMaxWidth()

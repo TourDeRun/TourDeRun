@@ -66,8 +66,7 @@ fun AppNavHost(
                 )
             }
             composable<RoadViewRoute> {
-                // TODO(JRN-04): 전체 보기는 지도(#50)가 들어오면 연결한다.
-                RoadViewScreen(uiState = TempUiStates.roadView, onViewAll = {})
+                RoadViewScreen(uiState = TempUiStates.roadView)
             }
             composable<ProfileRoute> {
                 // TODO(AUTH-03): 닉네임 수정, TODO(AUTH-04): 로그아웃, TODO(AUTH-05): 탈퇴
