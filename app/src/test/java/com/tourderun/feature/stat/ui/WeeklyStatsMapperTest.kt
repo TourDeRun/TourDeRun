@@ -86,4 +86,15 @@ class WeeklyStatsMapperTest {
     @Test fun `2027-01-01은 2026-W53이고 달이 바뀌는 기간`() {
         assertEquals(WeekPeriodUi("2026-W53", 12, 28, 1, 3), weekPeriod(seoulMs(2027, 1, 1)))
     }
+
+    @Test fun `팀 거리 표시는 소수 한 자리 내림, 84960m → 84점9`() {
+        val c = content(84_960, 18_999)
+
+        assertEquals("84.9", c.distanceKm)
+        assertEquals("18.9", c.lastWeekDistanceKm)
+    }
+
+    @Test fun `팀 거리 0m → 0점0`() {
+        assertEquals("0.0", content(0, 0).distanceKm)
+    }
 }

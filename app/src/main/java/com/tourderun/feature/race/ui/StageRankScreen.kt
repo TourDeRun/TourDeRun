@@ -42,6 +42,8 @@ import com.tourderun.core.designsystem.component.valueWithUnit
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.model.stageProgressUi
+import com.tourderun.domain.route.routeFor
 
 /** S15 스테이지 순위. 홈의 스테이지 경쟁 카드에서 들어온다. */
 @Composable
@@ -109,12 +111,12 @@ private fun RankBody(uiState: StageRankUiState.Content) {
     val type = TdrTheme.typography
     TdrCard(color = colors.brandStrong, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
         Text(
-            stringResource(R.string.rank_header_range, uiState.stageNumber, uiState.startKm, uiState.endKm),
+            stringResource(R.string.rank_header_range, uiState.stage.stageNumber, uiState.stage.startKm, uiState.stage.endKm),
             style = type.caption,
             color = colors.inkOnBrandMuted,
         )
         Text(
-            stringResource(R.string.rank_header_title, uiState.fromCity, uiState.toCity, uiState.totalTeams, uiState.ourRank),
+            stringResource(R.string.rank_header_title, uiState.stage.fromCity, uiState.stage.toCity, uiState.totalTeams, uiState.ourRank),
             style = type.titleLg.copy(lineHeight = 28.sp),
             color = colors.inkOnBrand,
         )
@@ -175,7 +177,7 @@ private fun RankRow(row: RankRowUi, gap: String) {
             Text(stringResource(R.string.rank_members, row.memberCount, gap), style = type.caption, color = colors.inkMuted)
         }
         Text(
-            valueWithUnit(Format.km(row.distanceM), stringResource(R.string.unit_km), unitSize = 11, unitColor = colors.inkMuted),
+            valueWithUnit(row.distanceKm, stringResource(R.string.unit_km), unitSize = 11, unitColor = colors.inkMuted),
             style = type.subtitle.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold),
         )
     }
@@ -191,11 +193,8 @@ private fun previewRow(rank: Int, name: String, color: Int, members: Int, distan
     RankRowUi(rank, name, iconIndex = 0, colorIndex = color, memberCount = members, distanceM = distanceM, gapToAheadM = gapM, isOurTeam = ours)
 
 private fun previewContent(rows: List<RankRowUi>, isOffline: Boolean = false) = StageRankUiState.Content(
-    stageNumber = 3,
-    fromCity = "오산",
-    toCity = "천안",
-    startKm = 48,
-    endKm = 85,
+    // 우리 팀(뛰뛰크루) 66.8km → 스테이지 3 오산 → 천안(48~85km)
+    stage = stageProgressUi(rows.first { it.isOurTeam }.distanceM, routeFor(1)),
     ourRank = rows.indexOfFirst { it.isOurTeam } + 1,
     rows = rows,
     isOffline = isOffline,

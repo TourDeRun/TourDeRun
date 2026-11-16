@@ -73,7 +73,7 @@ class DebugStageRankActivity : ComponentActivity() {
 }
 
 private enum class DebugRaceMode(val scenario: RaceScenario, val fromCache: Boolean, @StringRes val labelRes: Int) {
-    DEFAULT(RaceScenario.MIDDLE, fromCache = false, R.string.debug_stage_rank_default),
+    DEFAULT(RaceScenario.MIDDLE, fromCache = false, R.string.debug_mode_default),
     ALONE(RaceScenario.ALONE, fromCache = false, R.string.debug_stage_rank_alone),
-    OFFLINE(RaceScenario.MIDDLE, fromCache = true, R.string.debug_stage_rank_offline),
+    OFFLINE(RaceScenario.MIDDLE, fromCache = true, R.string.debug_mode_offline),
 }

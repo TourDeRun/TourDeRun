@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tourderun.core.data.Clock
 import com.tourderun.core.data.stats.StatsRepository
 import com.tourderun.core.data.stats.TopPercent
-import com.tourderun.feature.stat.data.MyTeamSource
+import com.tourderun.core.data.team.MyTeamSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,9 +37,9 @@ class WeeklyStatsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val uiState: StateFlow<WeeklyStatsUiState> = myTeamSource.observeMyTeam()
-        .distinctUntilChangedBy { it?.teamId }
+        .distinctUntilChangedBy { it?.standing?.teamId }
         .flatMapLatest { team ->
-            if (team == null) flowOf(WeeklyStatsUiState.NoTeam) else weeklyState(team.teamId)
+            if (team == null) flowOf(WeeklyStatsUiState.NoTeam) else weeklyState(team.standing.teamId)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeeklyStatsUiState.Loading)
 

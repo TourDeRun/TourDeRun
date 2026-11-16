@@ -24,9 +24,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tourderun.R
 import com.tourderun.core.data.SystemClock
 import com.tourderun.core.data.stats.FakeStatsRepository
+import com.tourderun.core.data.team.FixedMyTeamSource
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
-import com.tourderun.feature.stat.data.FixedMyTeamSource
 import com.tourderun.feature.stat.ui.WeeklyStatsScreen
 import com.tourderun.feature.stat.ui.WeeklyStatsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -73,9 +73,9 @@ class DebugWeeklyStatsActivity : ComponentActivity() {
 }
 
 private enum class DebugWeeklyMode(@StringRes val labelRes: Int) {
-    DEFAULT(R.string.debug_weekly_default),
+    DEFAULT(R.string.debug_mode_default),
     ZERO(R.string.debug_weekly_zero),
-    OFFLINE(R.string.debug_weekly_offline),
+    OFFLINE(R.string.debug_mode_offline),
     ;
 
     fun repository(): FakeStatsRepository = when (this) {
