@@ -23,7 +23,7 @@ interface RunRepository {
 
     /**
      * 제목·메모 수정. `checkRunText()`에 걸리면 [InvalidRunTextException]으로 실패하고 아무것도 쓰지 않는다.
-     * 통과하면 앞뒤 공백을 지운 값으로 쓴다(빈 메모는 null).
+     * 통과하면 앞뒤 공백을 지운 값으로 쓴다. 빈 메모는 Firestore에 `""`로 쓰고, 읽을 때는 null이다.
      */
     fun updateTitleMemo(runId: String, title: String, memo: String?): Result<Unit>
 
