@@ -16,9 +16,9 @@ import kotlin.math.cos
 import kotlin.math.max
 
 /**
- * 지도 SDK 없이 달린 경로 모양만 그린다 (기록 상세 지도, 러닝 미니 지도의 자리표시).
+ * 지도 SDK 없이 달린 경로 모양만 그린다. [RouteMap]의 Preview 대신 그림이자 러닝 미니 지도의 자리표시다.
  * 위경도를 칸 크기에 맞춰 늘려 그리며 시작점은 흰 원, 끝점은 채운 원이다.
- * TODO(REC·RUN): 지도 SDK(maps-compose)를 넣으면 실제 지도로 바꾼다.
+ * TODO(EXT-02): 러닝 미니 지도는 [RouteMap]과 같은 지도 설정으로 바꾼다.
  */
 @Composable
 fun RouteSketch(
