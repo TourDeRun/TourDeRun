@@ -68,14 +68,13 @@ fun AppNavHost(
 
             composable<HomeRoute> {
                 HomeScreen(
-                    uiState = TempUiStates.home,
                     onTeamClick = { navController.navigate(TeamRoute) },
                     onStageRankClick = { navController.navigate(StageRankRoute) },
                     onWeeklyStatsClick = { navController.navigate(WeeklyStatsRoute) },
                 )
             }
             composable<RoadViewRoute> {
-                RoadViewScreen(uiState = TempUiStates.roadView)
+                RoadViewScreen()
             }
             composable<ProfileRoute> {
                 // TODO(AUTH-03): 닉네임 수정. 로그아웃·탈퇴는 목이라 확인 없이 바로 되고 화면 이동만 한다.
