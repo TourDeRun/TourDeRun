@@ -3,7 +3,8 @@ package com.tourderun.core.data.race
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.snapshotFlow
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEmpty
 
 /**
  * 같은 스테이지 경쟁의 Firestore 구현 (#11). 규칙은 [RaceRepository] 참고.
@@ -37,6 +37,8 @@ import kotlinx.coroutines.flow.onEmpty
  *   조회 조건(내 거리, 1위·꼴찌 여부)이 바뀔 때만 다시 연결한다.
  * - 필요한 복합 인덱스(teams): (season↑, distanceM↓, reachedAt↑), (season↑, distanceM↑), (season↑, distanceM↓)
  *
+ * - 오류: 같은 스테이지 리스너가 첫 값 전에 실패하면 [Loaded.Failed]. 대체 팀 리스너 실패는 대체 팀 없음(null)으로 둔다.
+ *
  * 같은 쿼리를 두 번 수집해도 Firestore SDK가 리스너를 하나로 합치므로 서버 연결은 하나다.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -44,34 +46,43 @@ class FirestoreRaceRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
 ) : RaceRepository {
 
-    override fun observeRace(season: Int, myTeam: TeamStanding): Flow<Cached<RaceSummary>> {
+    override fun observeRace(season: Int, myTeam: TeamStanding): Flow<Loaded<RaceSummary>> {
         val range = stageRange(myTeam.distanceM, routeFor(season))
-        val stage = stageTeams(season, range).map { cached -> cached.toStageState(myTeam) }
+        val stage = stageTeams(season, range).map { loaded -> loaded.mapReady { it.toStageState(myTeam) } }
         val others = stage
-            .map { it.fallback }
+            .map { (it as? Loaded.Ready)?.value?.fallback ?: FallbackQuery.NONE }
             .distinctUntilChanged()
             .flatMapLatest { query ->
                 combine(nearestAhead(season, query.aboveM), nearestBehind(season, query.belowM)) { ahead, behind ->
                     OtherStageTeams(query, ahead, behind)
                 }
             }
-        return combine(stage, others) { s, o ->
-            // 두 리스너 값이 엇갈려 도착하면(조건이 막 바뀐 순간) 옛 조건의 대체 팀은 쓰지 않는다.
-            val current = o.takeIf { it.query == s.fallback }
-            Cached(
-                value = RaceSummary(
-                    stageIndex = range.stageIndex,
-                    stageTeams = s.teams,
-                    ranking = s.ranking,
-                    aheadOtherStage = current?.ahead?.value,
-                    behindOtherStage = current?.behind?.value,
-                ),
-                isFromCache = s.isFromCache || current?.ahead?.isFromCache == true || current?.behind?.isFromCache == true,
-            )
+        return combine(stage, others) { loaded, o ->
+            when (loaded) {
+                // 같은 스테이지 목록을 못 받으면 화면에 실패를 알린다(대체 팀 실패는 대체 팀 없음으로 둔다).
+                is Loaded.Failed -> loaded
+                is Loaded.Ready -> {
+                    val s = loaded.value
+                    // 두 리스너 값이 엇갈려 도착하면(조건이 막 바뀐 순간) 옛 조건의 대체 팀은 쓰지 않는다.
+                    val current = o.takeIf { it.query == s.fallback }
+                    Loaded.Ready(
+                        value = RaceSummary(
+                            stageIndex = range.stageIndex,
+                            stageTeams = s.teams,
+                            ranking = s.ranking,
+                            aheadOtherStage = current?.ahead?.value,
+                            behindOtherStage = current?.behind?.value,
+                        ),
+                        isFromCache = loaded.isFromCache ||
+                            current?.ahead?.isFromCache == true ||
+                            current?.behind?.isFromCache == true,
+                    )
+                }
+            }
         }.distinctUntilChanged()
     }
 
-    private fun stageTeams(season: Int, range: StageRange): Flow<Cached<List<RaceTeam>>> {
+    private fun stageTeams(season: Int, range: StageRange): Flow<Loaded<List<RaceTeam>>> {
         var query = teamsOf(season).whereGreaterThanOrEqualTo(TeamFields.DISTANCE_M, range.startM)
         range.endExclusiveM?.let { query = query.whereLessThan(TeamFields.DISTANCE_M, it) }
         return query
@@ -79,16 +90,15 @@ class FirestoreRaceRepository @Inject constructor(
             // teams 문서는 생성 때부터 reachedAt이 있어야 한다. 이 orderBy는 필드가 없는 문서를 결과에서 뺀다.
             .orderBy(TeamFields.REACHED_AT, Query.Direction.ASCENDING)
             .snapshotFlow(TAG)
-            .map { snapshot ->
+            .map { loaded ->
                 // 대기 쓰기의 추정 시각·teamId 동점까지 rankInStage와 같은 순서로 맞춘다.
-                val teams = snapshot.toRaceTeams().sortedWith(compareBy(StandingOrder) { it.standing })
-                Cached(teams, snapshot.metadata.isFromCache)
+                loaded.mapReady { snapshot -> snapshot.toRaceTeams().sortedWith(compareBy(StandingOrder) { it.standing }) }
             }
             .distinctUntilChanged()
     }
 
     /** 내 거리보다 먼 팀 중 가장 가까운 팀. [aboveM]이 null이면 조회하지 않는다. */
-    private fun nearestAhead(season: Int, aboveM: Long?): Flow<Cached<RaceTeam?>?> =
+    private fun nearestAhead(season: Int, aboveM: Long?): Flow<Loaded.Ready<RaceTeam?>?> =
         if (aboveM == null) {
             flowOf(null)
         } else {
@@ -100,7 +110,7 @@ class FirestoreRaceRepository @Inject constructor(
         }
 
     /** 내 거리보다 짧은 팀 중 가장 가까운 팀. [belowM]이 null이면 조회하지 않는다. */
-    private fun nearestBehind(season: Int, belowM: Long?): Flow<Cached<RaceTeam?>?> =
+    private fun nearestBehind(season: Int, belowM: Long?): Flow<Loaded.Ready<RaceTeam?>?> =
         if (belowM == null) {
             flowOf(null)
         } else {
@@ -111,12 +121,16 @@ class FirestoreRaceRepository @Inject constructor(
             )
         }
 
-    /** 리스너가 값을 내기 전에 오류로 끝나면 null을 한 번 낸다(combine이 멈추지 않게). */
-    private fun nearest(query: Query): Flow<Cached<RaceTeam?>?> =
+    /** 리스너가 첫 값 전에 실패하면 null(대체 팀 없음)을 낸다. combine이 멈추지 않고, 같은 스테이지 순위는 그대로 보인다. */
+    private fun nearest(query: Query): Flow<Loaded.Ready<RaceTeam?>?> =
         query.limit(1)
             .snapshotFlow(TAG)
-            .map<QuerySnapshot, Cached<RaceTeam?>?> { Cached(it.toRaceTeams().firstOrNull(), it.metadata.isFromCache) }
-            .onEmpty { emit(null) }
+            .map { loaded ->
+                when (loaded) {
+                    is Loaded.Ready -> Loaded.Ready(loaded.value.toRaceTeams().firstOrNull(), loaded.isFromCache)
+                    is Loaded.Failed -> null
+                }
+            }
             .distinctUntilChanged()
 
     private fun teamsOf(season: Int): Query =
@@ -124,14 +138,13 @@ class FirestoreRaceRepository @Inject constructor(
 
     private fun QuerySnapshot.toRaceTeams(): List<RaceTeam> = documents.mapNotNull { it.toTeamDto()?.toRaceTeam() }
 
-    private fun Cached<List<RaceTeam>>.toStageState(myTeam: TeamStanding): StageState {
-        val ranking = rankInStage(value.map { it.standing }, myTeam.teamId)
-        val myDistanceM = value.firstOrNull { it.standing.teamId == myTeam.teamId }?.standing?.distanceM
+    private fun List<RaceTeam>.toStageState(myTeam: TeamStanding): StageState {
+        val ranking = rankInStage(map { it.standing }, myTeam.teamId)
+        val myDistanceM = firstOrNull { it.standing.teamId == myTeam.teamId }?.standing?.distanceM
         return StageState(
-            teams = value,
+            teams = this,
             ranking = ranking,
             fallback = if (myDistanceM == null) FallbackQuery.NONE else fallbackQuery(ranking, myDistanceM),
-            isFromCache = isFromCache,
         )
     }
 
@@ -139,13 +152,12 @@ class FirestoreRaceRepository @Inject constructor(
         val teams: List<RaceTeam>,
         val ranking: StageRanking?,
         val fallback: FallbackQuery,
-        val isFromCache: Boolean,
     )
 
     private data class OtherStageTeams(
         val query: FallbackQuery,
-        val ahead: Cached<RaceTeam?>?,
-        val behind: Cached<RaceTeam?>?,
+        val ahead: Loaded.Ready<RaceTeam?>?,
+        val behind: Loaded.Ready<RaceTeam?>?,
     )
 
     private companion object {

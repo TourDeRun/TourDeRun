@@ -1,6 +1,6 @@
 package com.tourderun.core.ui.model
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.race.MyRace
 import com.tourderun.core.data.race.RaceSummary
 import com.tourderun.core.data.race.RaceTeam
@@ -33,7 +33,7 @@ class MyRaceUiTest {
         connectedDistanceM: Long = 66_800,
     ) = MyRace(
         MyTeam(season = 1, standing = TeamStanding("me", "팀me", connectedDistanceM, 0L)),
-        Cached(RaceSummary(2, stageTeams, ranking, aheadOther, behindOther), isFromCache = fromCache),
+        Loaded.Ready(RaceSummary(2, stageTeams, ranking, aheadOther, behindOther), isFromCache = fromCache),
     )
 
     private fun ranking(rank: Int, total: Int, ahead: RaceTeam?, behind: RaceTeam?) =

@@ -1,6 +1,6 @@
 package com.tourderun.core.data.race
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.domain.model.StageRanking
 import com.tourderun.domain.model.TeamStanding
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.Flow
  *   같은 스테이지 쿼리의 `orderBy(reachedAt)`은 이 필드가 없는 문서를 결과에서 빼므로, 없으면 그 팀이 목록에서 빠지고
  *   그 팀이 내 팀이면 [RaceSummary.ranking]이 계속 null이다.
  * - 다른 스테이지 대체 팀(RACE-02)은 [RaceSummary.ranking]의 ahead(behind)가 null일 때만 조회해서 채운다.
- * - 오류를 던지지 않는다. 연결이 끊기면 마지막 값을 캐시 출처([Cached.isFromCache] = true)로 낸다.
+ * - 오류를 던지지 않는다. 연결이 끊기면 마지막 값을 캐시 출처([Loaded.Ready.isFromCache] = true)로 낸다.
+ *   첫 값을 받기 전에 실패하면(권한 거절, 인덱스 누락 등) [Loaded.Failed]를 한 번 내고 끝난다. 다시 시도는 다시 부른다.
  *
  * 사용 예(ViewModel):
  * ```
@@ -32,7 +33,7 @@ interface RaceRepository {
     /**
      * @param myTeam 내 팀. 스테이지 계산과 순위의 기준 팀 ID로 쓴다. 이후 거리 변화는 리스너 값으로 반영된다.
      */
-    fun observeRace(season: Int, myTeam: TeamStanding): Flow<Cached<RaceSummary>>
+    fun observeRace(season: Int, myTeam: TeamStanding): Flow<Loaded<RaceSummary>>
 }
 
 /**

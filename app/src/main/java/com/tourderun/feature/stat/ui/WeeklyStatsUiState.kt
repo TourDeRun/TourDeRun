@@ -1,5 +1,6 @@
 package com.tourderun.feature.stat.ui
 
+import com.tourderun.core.data.DataError
 import com.tourderun.core.ui.Format
 
 /** 이번 주 기간. 화면 문구 "2026-W46 · 11월 9일(월) ~ 15일(일)". */
@@ -42,6 +43,9 @@ sealed interface WeeklyStatsUiState {
     /** 팀이 없음. 홈에서 들어올 수 없지만 팀을 나간 직후 등을 위해 둔다. */
     data object NoTeam : WeeklyStatsUiState
 
+    /** 첫 값을 받기 전에 불러오기 실패. 화면은 [error]에 맞는 문구와 다시 시도 버튼을 보인다. */
+    data class Failed(val error: DataError) : WeeklyStatsUiState
+
     /**
      * @property isOffline 기기 캐시 값이면 true(오프라인 배지, 상위 % 숨김)
      */
@@ -66,4 +70,7 @@ sealed interface WeeklyStatsUiState {
 /** S16 사용자 동작. */
 sealed interface WeeklyStatsAction {
     data object Back : WeeklyStatsAction
+
+    /** 불러오기 실패 후 다시 시도 */
+    data object Retry : WeeklyStatsAction
 }

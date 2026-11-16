@@ -1,6 +1,6 @@
 package com.tourderun.feature.race.ui
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.race.RaceSummary
 import com.tourderun.core.data.race.RaceTeam
 import com.tourderun.core.ui.model.stageProgressUi
@@ -13,6 +13,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import com.tourderun.core.data.DataError
 import org.junit.Test
 
 class StageRankMapperTest {
@@ -22,17 +23,17 @@ class StageRankMapperTest {
         RaceTeam(TeamStanding(id, "팀$id", distanceM, reachedAtMs), icon, color, members)
 
     /** 저장소처럼 순위순(거리↓ → reachedAt↑ → teamId)으로 정렬하고 rankInStage로 순위를 채운다. */
-    private fun race(teams: List<RaceTeam>, myId: String, stageIndex: Int = 2, fromCache: Boolean = false): Cached<RaceSummary> {
+    private fun race(teams: List<RaceTeam>, myId: String, stageIndex: Int = 2, fromCache: Boolean = false): Loaded.Ready<RaceSummary> {
         val ranking = rankInStage(teams.map { it.standing }, myId)
         val order = teams.sortedWith(
             compareByDescending<RaceTeam> { it.standing.distanceM }
                 .thenBy { it.standing.reachedAtMs }
                 .thenBy { it.standing.teamId },
         )
-        return Cached(RaceSummary(stageIndex, order, ranking, null, null), isFromCache = fromCache)
+        return Loaded.Ready(RaceSummary(stageIndex, order, ranking, null, null), isFromCache = fromCache)
     }
 
-    private fun content(race: Cached<RaceSummary>, myId: String) =
+    private fun content(race: Loaded.Ready<RaceSummary>, myId: String) =
         requireNotNull(stageRankContent(race, myId, route)) { "Content가 나와야 함" }
 
     @Test fun `1위면 첫 줄이 우리 팀이고 앞 팀 차이는 없음`() {
@@ -135,5 +136,28 @@ class StageRankMapperTest {
         assertEquals("84.9", c.rows[1].distanceKm)
         // 앞 팀과의 차이(40m)는 지금 방식 그대로 거리 값으로 둔다
         assertEquals(40L, c.rows[1].gapToAheadM)
+    }
+
+    @Test fun `첫 값 전 연결 불가 → 실패 상태(연결 불가)`() {
+        val next = nextStageRankState(StageRankUiState.Loading, Loaded.Failed(DataError.Unavailable), "me", route)
+        assertEquals(StageRankUiState.Failed(DataError.Unavailable), next)
+    }
+
+    @Test fun `권한 거절 → 실패 상태(권한)`() {
+        val next = nextStageRankState(StageRankUiState.Loading, Loaded.Failed(DataError.PermissionDenied), "me", route)
+        assertEquals(StageRankUiState.Failed(DataError.PermissionDenied), next)
+    }
+
+    @Test fun `실패 후 다시 시도해서 값이 오면 순위 화면`() {
+        val failed = StageRankUiState.Failed(DataError.Unavailable)
+        val next = nextStageRankState(failed, race(listOf(team("me", 70_000), team("a", 69_200)), "me"), "me", route)
+        assertTrue(next is StageRankUiState.Content)
+        assertEquals(1, (next as StageRankUiState.Content).ourRank)
+    }
+
+    @Test fun `실패 직후 순위 없는 값이면 실패가 아니라 불러오는 중`() {
+        val switching = Loaded.Ready(RaceSummary(2, emptyList(), null, null, null), isFromCache = false)
+        val failed = StageRankUiState.Failed(DataError.Other)
+        assertEquals(StageRankUiState.Loading, nextStageRankState(failed, switching, "me", route))
     }
 }
