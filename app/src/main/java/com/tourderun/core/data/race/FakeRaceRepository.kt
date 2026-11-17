@@ -1,10 +1,12 @@
 package com.tourderun.core.data.race
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.DataError
+import com.tourderun.core.data.Loaded
 import com.tourderun.domain.journey.locate
 import com.tourderun.domain.model.StageRanking
 import com.tourderun.domain.model.TeamStanding
 import com.tourderun.domain.route.routeFor
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -19,16 +21,23 @@ import kotlinx.coroutines.flow.flowOf
  *
  * Hilt는 기본 시나리오([RaceScenario.MIDDLE])로 만든다. 다른 경우는 Preview·테스트에서 직접 만든다:
  * `FakeRaceRepository(RaceScenario.FIRST)`, `FakeRaceRepository(RaceScenario.ALONE, fromCache = true)`.
+ *
+ * 실패: `FakeRaceRepository(RaceScenario.MIDDLE, failure = DataError.Unavailable)`이면 **처음 한 번** 구독은
+ * [Loaded.Failed]를 내고, 그다음 구독(다시 시도)부터는 시나리오 값을 낸다.
  */
 @Singleton
 class FakeRaceRepository(
     private val scenario: RaceScenario,
     private val fromCache: Boolean = false,
+    private val failure: DataError? = null,
 ) : RaceRepository {
+
+    private val failed = AtomicBoolean(false)
 
     @Inject constructor() : this(RaceScenario.MIDDLE)
 
-    override fun observeRace(season: Int, myTeam: TeamStanding): Flow<Cached<RaceSummary>> {
+    override fun observeRace(season: Int, myTeam: TeamStanding): Flow<Loaded<RaceSummary>> {
+        if (failure != null && failed.compareAndSet(false, true)) return flowOf(Loaded.Failed(failure))
         val ourDistanceM = scenario.stageTeams.first { it.standing.teamId == OUR_TEAM_ID }.standing.distanceM
         val stageIndex = locate(ourDistanceM, routeFor(season)).stageIndex
         val summary = RaceSummary(
@@ -44,7 +53,7 @@ class FakeRaceRepository(
             aheadOtherStage = scenario.aheadOtherStage,
             behindOtherStage = scenario.behindOtherStage,
         )
-        return flowOf(Cached(summary, isFromCache = fromCache))
+        return flowOf(Loaded.Ready(summary, isFromCache = fromCache))
     }
 
     companion object {

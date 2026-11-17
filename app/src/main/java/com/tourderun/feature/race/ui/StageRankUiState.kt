@@ -1,5 +1,6 @@
 package com.tourderun.feature.race.ui
 
+import com.tourderun.core.data.DataError
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.StageProgressUi
 
@@ -27,6 +28,9 @@ sealed interface StageRankUiState {
 
     /** 팀이 없음. 홈에서 들어올 수 없지만 팀을 나간 직후 등을 위해 둔다. */
     data object NoTeam : StageRankUiState
+
+    /** 첫 값을 받기 전에 불러오기 실패. 화면은 [error]에 맞는 문구와 다시 시도 버튼을 보인다. */
+    data class Failed(val error: DataError) : StageRankUiState
 
     /**
      * @property stage 헤더(스테이지 번호·도시·구간). 우리 팀 거리로 `stageProgressUi()`가 만든 값이라 홈·로드뷰와 같다

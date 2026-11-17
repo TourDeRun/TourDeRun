@@ -1,6 +1,6 @@
 package com.tourderun.feature.home.ui
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
 import org.junit.Assert.assertEquals
@@ -11,7 +11,7 @@ class HomeMapperTest {
     private val top = TopPercent(percent = 11, moreCount = 3, totalTeams = 38)
 
     private fun weekly(thisM: Long, lastM: Long, runs: Long = 9, fromCache: Boolean = false) =
-        Cached(WeeklyStats(thisM, runs, lastM, 7, emptyMap()), isFromCache = fromCache)
+        Loaded.Ready(WeeklyStats(thisM, runs, lastM, 7, emptyMap()), isFromCache = fromCache)
 
     @Test fun `이번 주와 지난주가 있으면 차이와 상위 퍼센트를 보인다`() {
         val ui = weeklySummaryUi(weekly(42_500, 36_400), top)

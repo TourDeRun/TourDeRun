@@ -257,6 +257,9 @@
     <string name="rank_offline">오프라인</string>
     <string name="rank_alone">이 스테이지에는 아직 우리 팀뿐이에요.</string>
     <string name="rank_no_team">팀에 들어가면 같은 스테이지 팀 순위를 볼 수 있어요.</string>
+    <string name="rank_failed_unavailable">연결을 확인해 주세요</string>
+    <string name="rank_failed_other">요청을 처리할 수 없어요</string>
+    <string name="rank_retry">다시 시도</string>
 
     <!-- S16 주간 통계 -->
     <string name="weekly_title">주간 통계</string>
@@ -278,6 +281,9 @@
     <string name="weekly_first_run">이번 주 첫 러닝을 시작해 보세요</string>
     <string name="weekly_offline">오프라인</string>
     <string name="weekly_no_team">팀에 들어가면 주간 통계를 볼 수 있어요.</string>
+    <string name="weekly_failed_unavailable">연결을 확인해 주세요</string>
+    <string name="weekly_failed_other">요청을 처리할 수 없어요</string>
+    <string name="weekly_retry">다시 시도</string>
 
     <!-- S17 지역 도감 -->
     <string name="collection_title">지역 도감</string>

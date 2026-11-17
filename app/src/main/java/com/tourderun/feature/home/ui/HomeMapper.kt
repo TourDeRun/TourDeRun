@@ -1,6 +1,6 @@
 package com.tourderun.feature.home.ui
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
 import com.tourderun.core.ui.model.MyRaceUi
@@ -11,7 +11,7 @@ import com.tourderun.core.ui.model.MyRaceUi
  * - 지난주 기록이 없으면 "지난주보다"를 보이지 않는다([WeeklySummaryUi.diffFromLastWeekM] = null)
  * - 상위 %는 오프라인이거나 이번 주 0km이거나 [top]이 없으면 숨긴다
  */
-fun weeklySummaryUi(weekly: Cached<WeeklyStats>, top: TopPercent?): WeeklySummaryUi {
+fun weeklySummaryUi(weekly: Loaded.Ready<WeeklyStats>, top: TopPercent?): WeeklySummaryUi {
     val stats = weekly.value
     val showTop = top != null && !weekly.isFromCache && stats.thisWeekM > 0L
     return WeeklySummaryUi(

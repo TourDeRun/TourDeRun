@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.RunFields
 import com.tourderun.core.data.firestore.runListOf
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 
 /**
  * 내 러닝 기록의 Firestore 구현 (REC-02·03). 규칙은 [RunRepository] 참고.
@@ -51,6 +53,8 @@ class FirestoreRunRepository @Inject constructor(
     override fun observeRun(runId: String): Flow<RunRecord?> =
         runs.document(runId)
             .snapshotFlow(TAG)
+            // TODO(REC-02): 실패를 화면에 알리기(#32 2/2). 지금은 전처럼 실패하면 값 없이 끝난다.
+            .mapNotNull { (it as? Loaded.Ready)?.value }
             .map { it.toRunDto()?.toRunRecord() }
             .distinctUntilChanged()
 
