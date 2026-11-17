@@ -2,6 +2,7 @@
 // 실행: firebase/ 폴더에서 `npm test` (에뮬레이터를 켜고 이 파일을 돌린 뒤 끈다)
 import { after, before, beforeEach, describe, test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import {
   assertFails,
   assertSucceeds,
@@ -111,6 +112,13 @@ function runBatch(uid, { teamId = 't1', runId = 'r1', distanceM = 5000, periodId
   }, { merge: true });
   b.update(doc(d, 'users', uid), { totalM: increment(distanceM), runCount: increment(1) });
   return b;
+}
+
+/** 규칙을 끄고 문서를 읽는다 (배치 결과 값 확인용). */
+async function readAsAdmin(...path) {
+  let data;
+  await seed(async (d) => { data = (await getDoc(doc(d, ...path))).data(); });
+  return data;
 }
 
 // ---------- users (AUTH-02) ----------
@@ -225,6 +233,40 @@ describe('러닝 저장 (REC-01)', () => {
     await assertFails(runBatch('u1', { memberMOf: 'u2' }).commit());
   });
 
+  test('5-1. 같은 주 두 번째 러닝 (이미 있는 teamStats에 더함) → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    await runBatch('u1', { runId: 'r1', distanceM: 5000 }).commit();
+    await assertSucceeds(runBatch('u1', { runId: 'r2', distanceM: 3000 }).commit());
+
+    const stats = await readAsAdmin('teamStats', 't1_2026-W47');
+    assert.equal(stats.distanceM, 8000);
+    assert.equal(stats.runCount, 2);
+    assert.equal(stats.memberM.u1, 8000);
+  });
+
+  test('5-2. 다른 팀원이 같은 주 문서에 더함 → 허용, 내 memberM 칸은 그대로', async () => {
+    await seedTeam(['u1', 'u2']);
+    await runBatch('u1', { runId: 'r1', distanceM: 5000 }).commit();
+    await assertSucceeds(runBatch('u2', { runId: 'r2', distanceM: 3000 }).commit());
+
+    const stats = await readAsAdmin('teamStats', 't1_2026-W47');
+    assert.equal(stats.distanceM, 8000);
+    assert.equal(stats.runCount, 2);
+    assert.deepEqual(stats.memberM, { u1: 5000, u2: 3000 });
+  });
+
+  test('5-3. 팀 없는 사용자의 저장 (runs + users 2개 문서) → 허용', async () => {
+    await seedUser('u1');
+    const d = db('u1');
+    const b = writeBatch(d);
+    b.set(doc(d, 'runs', 'r1'), {
+      uid: 'u1', teamId: null, startedAt: now(), endedAt: now(), movingSec: 1800, distanceM: 5000,
+      paceSecPerKm: 360, periodId: '2026-W47', title: '저녁 러닝', memo: null, path: [],
+    });
+    b.update(doc(d, 'users', 'u1'), { totalM: increment(5000), runCount: increment(1) });
+    await assertSucceeds(b.commit());
+  });
+
   test('9. 다른 사람의 runs 읽기 → 거절, 내 것 → 허용', async () => {
     await seedTeam(['u1', 'u2']);
     await runBatch('u2', { runId: 'r2' }).commit();
@@ -237,6 +279,23 @@ describe('러닝 저장 (REC-01)', () => {
     await runBatch('u1').commit();
     await assertFails(updateDoc(doc(db('u1'), 'runs', 'r1'), { distanceM: 99999 }));
     await assertSucceeds(updateDoc(doc(db('u1'), 'runs', 'r1'), { title: '아침 러닝' }));
+  });
+});
+
+describe('팀원 문서 수정 (JRN-05·REC-01)', () => {
+  test('본인 seenArrivals 수정 → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertSucceeds(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 3 }));
+  });
+
+  test('다른 팀원의 seenArrivals 수정 → 거절 (팀장이어도)', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 3 }));
+  });
+
+  test('러닝 없이 contributionM 직접 수정 → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { contributionM: increment(5000) }));
   });
 });
 
