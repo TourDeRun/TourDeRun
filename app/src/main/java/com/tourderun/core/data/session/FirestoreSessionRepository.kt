@@ -29,7 +29,7 @@ import kotlinx.coroutines.withTimeout
 /** [SessionRepository]의 진짜 구현. 로그인 상태 → 내 users 문서를 실시간으로 따라간다 (AUTH-01). */
 @OptIn(ExperimentalCoroutinesApi::class)   // flatMapLatest가 "실험적" 표시라 붙인다
 @Singleton
-class FirebaseSessionRepository @Inject constructor(
+class FirestoreSessionRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     @ApplicationScope appScope: CoroutineScope,
