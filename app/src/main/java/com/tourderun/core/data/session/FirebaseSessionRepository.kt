@@ -5,6 +5,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.UserFields
 import com.tourderun.core.data.firestore.awaitResult
@@ -70,7 +71,14 @@ class FirebaseSessionRepository @Inject constructor(
             } else {
                 firestore.collection(Collections.USERS).document(uid)
                     .snapshotFlow(TAG)
-                    .map { snapshot -> toSessionState(uid, snapshot) }
+                    .map { loaded ->
+                        when (loaded) {
+                            is Loaded.Ready -> toSessionState(uid, loaded.value)
+                            // 첫 값 전에 리스너가 실패함(권한 거절 등). 로그는 snapshotFlow가 남긴다.
+                            // TODO(AUTH-01): 로딩 화면에 다시 시도 버튼을 달고 여기서 재구독한다.
+                            is Loaded.Failed -> SessionState.Loading
+                        }
+                    }
             }
         }
         .stateIn(appScope, SharingStarted.Eagerly, SessionState.Loading)
