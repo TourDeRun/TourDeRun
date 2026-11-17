@@ -13,7 +13,7 @@ import com.tourderun.R
 import com.tourderun.core.designsystem.component.TeamAppearance
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.route.routeFor
-import com.tourderun.feature.auth.ui.LoginScreen
+import com.tourderun.feature.auth.ui.LoginContent
 import com.tourderun.feature.auth.ui.LoginUiState
 import com.tourderun.feature.auth.ui.NicknameScreen
 import com.tourderun.feature.auth.ui.NicknameUiState
@@ -49,7 +49,7 @@ internal fun NavController.resetTo(route: Any) {
  */
 internal fun NavGraphBuilder.entryGraph(navController: NavController, session: MockSession) {
     composable<LoginRoute> {
-        LoginScreen(
+        LoginContent(
             uiState = LoginUiState(),
             onGoogleSignIn = {
                 session.signIn()
