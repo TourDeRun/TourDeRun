@@ -16,6 +16,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,6 +39,7 @@ import com.tourderun.core.designsystem.component.Pill
 import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.component.TdrConfirmDialog
 import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.component.TdrTopBarTextAction
@@ -73,6 +79,9 @@ fun TeamScreen(
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val team = uiState.team
+    // 나가기·내보내기는 확인을 거친 뒤에만 콜백을 부른다.
+    var confirmLeave by rememberSaveable { mutableStateOf(false) }
+    var kickTarget by remember { mutableStateOf<MemberUi?>(null) }
     Column(
         modifier
             .fillMaxSize()
@@ -88,9 +97,9 @@ fun TeamScreen(
         }
 
         TdrCard {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
                 TeamImage(team.appearance, size = 64.dp)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                     Text(team.name, style = type.statSm)
                     Text(
                         stringResource(R.string.team_members_count, team.memberCount, team.maxMembers, team.season),
@@ -106,21 +115,21 @@ fun TeamScreen(
             }
         }
 
-        TdrCard(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        TdrCard(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
             CardHeader(stringResource(R.string.team_members_title))
             uiState.members.forEach { member ->
                 MemberRow(
                     member = member,
                     teamDistanceM = team.distanceM,
                     canKick = uiState.isLeader && member.uid != uiState.myUid,
-                    onKick = { onKick(member) },
+                    onKick = { kickTarget = member },
                 )
             }
         }
 
         TdrCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                     Text(stringResource(R.string.team_invite_label), style = type.caption, color = colors.inkMuted)
                     Text(
                         uiState.inviteCode,
@@ -130,29 +139,58 @@ fun TeamScreen(
                         },
                     )
                 }
-                TdrButton(
-                    text = stringResource(R.string.invite_code_share),
-                    onClick = onShareInvite,
-                    style = TdrButtonStyle.Soft,
-                    height = TdrSize.touch,
-                )
+                if (team.memberCount >= team.maxMembers) {
+                    // 정원이 차면 더 초대할 수 없다.
+                    Text(stringResource(R.string.team_full), style = type.caption, color = colors.inkMuted)
+                } else {
+                    TdrButton(
+                        text = stringResource(R.string.invite_code_share),
+                        onClick = onShareInvite,
+                        style = TdrButtonStyle.Soft,
+                        height = TdrSize.touch,
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(TdrSpacing.s3))
-        TdrButton(
-            text = stringResource(R.string.team_leave),
-            onClick = onLeave,
-            style = TdrButtonStyle.OutlineDanger,
-            height = TdrSize.buttonMd,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // 화면에서 가장 눈에 띄는 버튼이 되지 않게 글자 버튼으로 둔다.
+        TextButton(onClick = { confirmLeave = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(stringResource(R.string.team_leave), style = type.subtitle, color = colors.danger)
+        }
         Text(
             stringResource(R.string.team_leave_notice),
             style = type.micro.copy(lineHeight = 16.sp),
             color = colors.inkMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    if (confirmLeave) {
+        TdrConfirmDialog(
+            title = stringResource(R.string.team_leave_confirm_title),
+            body = stringResource(R.string.team_leave_confirm_body),
+            confirmText = stringResource(R.string.team_leave_confirm_action),
+            danger = true,
+            onConfirm = {
+                confirmLeave = false
+                onLeave()
+            },
+            onDismiss = { confirmLeave = false },
+        )
+    }
+    kickTarget?.let { member ->
+        TdrConfirmDialog(
+            title = stringResource(R.string.team_kick_confirm_title, member.nickname),
+            body = stringResource(R.string.team_kick_confirm_body, member.nickname),
+            confirmText = stringResource(R.string.team_kick),
+            danger = true,
+            onConfirm = {
+                kickTarget = null
+                onKick(member)
+            },
+            onDismiss = { kickTarget = null },
         )
     }
 }
@@ -162,11 +200,11 @@ private fun MemberRow(member: MemberUi, teamDistanceM: Long, canKick: Boolean, o
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val share = if (teamDistanceM > 0) member.contributionM.toFloat() / teamDistanceM else 0f
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s15)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
             MemberAvatar(member.color, size = 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s15)) {
                     Text(member.nickname, style = type.subtitle.copy(lineHeight = 20.sp))
                     val badge = type.micro.copy(lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
                     if (member.isLeader) Pill(stringResource(R.string.role_leader), style = badge)
@@ -210,6 +248,24 @@ private fun TeamScreenPreview() {
     TdrTheme {
         TeamScreen(
             TeamUiState(PreviewSamples.team, PreviewSamples.members, "4K7Q2M", isLeader = true, myUid = "u1"),
+            {}, {}, {}, {}, {},
+        )
+    }
+}
+
+/** 팀원 시점의 1인 팀: 수정·내보내기가 없고, 정원이 남아 초대 코드 공유가 보인다. */
+@Preview(widthDp = 390, heightDp = 844)
+@Composable
+private fun TeamScreenMemberPreview() {
+    TdrTheme {
+        TeamScreen(
+            TeamUiState(
+                PreviewSamples.team.copy(memberCount = 1, distanceM = 22_400),
+                PreviewSamples.members.take(1),
+                "4K7Q2M",
+                isLeader = false,
+                myUid = "u1",
+            ),
             {}, {}, {}, {}, {},
         )
     }

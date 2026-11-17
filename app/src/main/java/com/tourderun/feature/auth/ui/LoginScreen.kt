@@ -71,7 +71,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             AppIcon(Modifier.size(112.dp), contentDescription = stringResource(R.string.login_app_icon_desc))
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(TdrSpacing.s6))
             Text(stringResource(R.string.app_name), style = TdrTheme.typography.display, color = colors.brand)
             Spacer(Modifier.height(TdrSpacing.s2))
             Text(
@@ -98,7 +98,7 @@ fun LoginScreen(
                 } else {
                     Image(TdrIcons.GoogleLogo, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(TdrSpacing.s25))
                 Text(stringResource(R.string.login_google), style = TdrTheme.typography.subtitle)
             }
         }

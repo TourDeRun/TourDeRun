@@ -98,7 +98,7 @@ fun StageClearScreen(
             ) {
                 Pill(
                     stringResource(R.string.clear_badge, uiState.clearedStage),
-                    background = Color.White.copy(alpha = 0.16f),
+                    background = colors.onBrandChip,
                     contentColor = onBrand,
                     style = type.label.copy(fontWeight = FontWeight.Bold),
                 )
@@ -109,7 +109,7 @@ fun StageClearScreen(
                     face = MascotFace.Joy,
                     contentDescription = stringResource(R.string.clear_mascot_desc),
                 )
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s15)) {
                     Text(
                         stringResource(R.string.clear_title, uiState.arrivedCity),
                         style = type.display.copy(fontSize = 32.sp, letterSpacing = 0.sp),
@@ -131,9 +131,9 @@ fun StageClearScreen(
             Spacer(Modifier.height(TdrSpacing.s4))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
                 if (uiState.card != null) {
-                    ClearButton(stringResource(R.string.clear_view_card), onViewCard, Color.White.copy(alpha = 0.16f), onBrand, Modifier.weight(1f))
+                    ClearButton(stringResource(R.string.clear_view_card), onViewCard, colors.onBrandChip, onBrand, Modifier.weight(1f))
                 }
-                ClearButton(stringResource(R.string.action_confirm), onConfirm, Color.White, colors.brand, Modifier.weight(1f))
+                ClearButton(stringResource(R.string.action_confirm), onConfirm, colors.bgSurface, colors.brand, Modifier.weight(1f))
             }
         }
     }
@@ -173,7 +173,7 @@ private fun RegionCardMini(card: EarnedCardUi) {
         ) {
             Text(stringResource(R.string.card_photo_placeholder), style = TdrTheme.typography.caption, color = colors.inkMuted)
         }
-        Column(Modifier.padding(TdrSpacing.s3), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(TdrSpacing.s3), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
             Text(card.cityName, style = TdrTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), color = colors.ink)
             Text(
                 stringResource(R.string.clear_card_sub, card.cityNameEn, card.index, card.total),
@@ -213,6 +213,25 @@ private fun StageClearScreenPreview() {
                 nextCity = "세종",
                 nextStageKm = 40,
                 card = EarnedCardUi("천안", "Cheonan", 4, 8),
+            ),
+            {}, {},
+        )
+    }
+}
+
+/** 완주: 다음 스테이지 없음, 지역 카드 기능 꺼짐. */
+@Preview(widthDp = 390, heightDp = 844)
+@Composable
+private fun StageClearScreenFinishPreview() {
+    TdrTheme {
+        StageClearScreen(
+            StageClearUiState(
+                clearedStage = 7,
+                arrivedCity = "부산",
+                nextStage = null,
+                nextCity = null,
+                nextStageKm = null,
+                card = null,
             ),
             {}, {},
         )
