@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunRepository
 import com.tourderun.core.navigation.RecordDetailRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,7 +41,9 @@ class RecordDetailViewModel @Inject constructor(
     private val runId = savedStateHandle.toRoute<RecordDetailRoute>().runId
     private val edit = MutableStateFlow(Edit())
 
-    val uiState: StateFlow<RecordDetailLoad> = combine(runRepository.observeRun(runId), edit) { record, edit ->
+    val uiState: StateFlow<RecordDetailLoad> = combine(runRepository.observeRun(runId), edit) { loaded, edit ->
+        // TODO(REC-02): 불러오기 실패 화면. 지금은 실패하면 기록이 없을 때처럼 화면을 닫는다.
+        val record = (loaded as? Loaded.Ready)?.value
         if (record == null) {
             RecordDetailLoad.Gone
         } else {
