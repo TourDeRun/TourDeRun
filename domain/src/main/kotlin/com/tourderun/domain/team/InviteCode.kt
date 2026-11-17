@@ -19,9 +19,9 @@ fun generateInviteCode(random: Random): String {
         .joinToString("")
 }
 
-/** 입력한 코드를 비교할 모양으로 바꾼다: 앞뒤 공백을 지우고 대문자로 (TEAM-03). */
+/** 입력한 코드를 비교할 모양으로 바꾼다: 공백(띄어쓰기·탭·줄바꿈)을 위치와 상관없이 모두 지우고 대문자로 (TEAM-03). 붙여 넣기에서 "ABC 234"처럼 공백이 섞이는 경우를 받아 준다. */
 fun normalizeInviteCode(input: String): String {
-    return input.trim().uppercase()
+    return input.filterNot { it.isWhitespace() }.uppercase()
 }
 
 /** 6자리이고 허용된 글자만 쓰였는지. 서버에 묻기 전에 형식부터 거른다 (TEAM-03). */

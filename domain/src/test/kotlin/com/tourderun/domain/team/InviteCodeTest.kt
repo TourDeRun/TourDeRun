@@ -48,6 +48,14 @@ class InviteCodeTest {
         assertEquals("ABC234", normalizeInviteCode("  ABC234 "))
     }
 
+    @Test fun `가운데 공백도 지운다`() {
+        assertEquals("ABC234", normalizeInviteCode("ABC 234"))
+    }
+
+    @Test fun `탭과 줄바꿈도 지운다`() {
+        assertEquals("ABC234", normalizeInviteCode("\tabc 2 3 4\n"))
+    }
+
     // ---- 형식 검사 (TEAM-03) ----
 
     @Test fun `6자리 허용 글자는 통과`() {
