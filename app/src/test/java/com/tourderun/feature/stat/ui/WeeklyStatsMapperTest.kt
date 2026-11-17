@@ -1,6 +1,6 @@
 package com.tourderun.feature.stat.ui
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
 import java.time.LocalDateTime
@@ -8,6 +8,7 @@ import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import com.tourderun.core.data.DataError
 import org.junit.Test
 
 class WeeklyStatsMapperTest {
@@ -18,7 +19,7 @@ class WeeklyStatsMapperTest {
         WeeklyStats(thisM, thisRuns, lastM, lastRuns, emptyMap())
 
     private fun content(thisM: Long, lastM: Long, top: TopPercent? = this.top, fromCache: Boolean = false) =
-        weeklyStatsContent(Cached(stats(thisM, lastM), isFromCache = fromCache), top, period)
+        weeklyStatsContent(Loaded.Ready(stats(thisM, lastM), isFromCache = fromCache), top, period)
 
     private fun seoulMs(y: Int, mo: Int, d: Int, h: Int = 12, mi: Int = 0) =
         LocalDateTime.of(y, mo, d, h, mi).atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli()
@@ -69,9 +70,9 @@ class WeeklyStatsMapperTest {
     }
 
     @Test fun `상위 %는 온라인이고 이번 주 거리가 있을 때만 조회`() {
-        assertTrue(needsTopPercent(Cached(stats(42_500, 0), isFromCache = false)))
-        assertFalse(needsTopPercent(Cached(stats(42_500, 0), isFromCache = true)))
-        assertFalse(needsTopPercent(Cached(stats(0, 36_400), isFromCache = false)))
+        assertTrue(needsTopPercent(Loaded.Ready(stats(42_500, 0), isFromCache = false)))
+        assertFalse(needsTopPercent(Loaded.Ready(stats(42_500, 0), isFromCache = true)))
+        assertFalse(needsTopPercent(Loaded.Ready(stats(0, 36_400), isFromCache = false)))
     }
 
     @Test fun `기간은 한국 시간 월요일부터 일요일`() {
@@ -96,5 +97,20 @@ class WeeklyStatsMapperTest {
 
     @Test fun `팀 거리 0m → 0점0`() {
         assertEquals("0.0", content(0, 0).distanceKm)
+    }
+
+    @Test fun `첫 값 전 실패 → 실패 상태`() {
+        val state = weeklyStatsState(Loaded.Failed(DataError.Unavailable), top, period)
+        assertEquals(WeeklyStatsUiState.Failed(DataError.Unavailable), state)
+    }
+
+    @Test fun `다시 시도 후 값이 오면 통계 화면`() {
+        val state = weeklyStatsState(Loaded.Ready(stats(42_500, 36_400), isFromCache = false), top, period)
+        assertTrue(state is WeeklyStatsUiState.Content)
+        assertEquals(42_500L, (state as WeeklyStatsUiState.Content).distanceM)
+    }
+
+    @Test fun `실패면 상위 %를 묻지 않음`() {
+        assertFalse(needsTopPercent(Loaded.Failed(DataError.Other)))
     }
 }
