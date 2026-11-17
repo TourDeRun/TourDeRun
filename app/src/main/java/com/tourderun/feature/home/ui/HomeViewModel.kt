@@ -2,7 +2,7 @@ package com.tourderun.feature.home.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.Clock
 import com.tourderun.core.data.race.RaceRepository
 import com.tourderun.core.data.race.observeMyRace
@@ -50,7 +50,12 @@ class HomeViewModel @Inject constructor(
     private val race: Flow<MyRaceUi?> = observeMyRace(myTeamSource, raceRepository)
         .scan<_, MyRaceUi?>(null) { previous, myRace ->
             // 팀이 없으면 비우고, 스테이지 전환 중(순위 없음)이면 직전 값을 유지한다.
-            if (myRace == null) null else myRaceUi(myRace) ?: previous
+            when {
+                myRace == null -> null
+                // TODO(JRN-03): 불러오기 실패 화면. 지금은 못 받았을 때처럼 비워 둔다.
+                myRace.race is Loaded.Failed -> null
+                else -> myRaceUi(myRace) ?: previous
+            }
         }
 
     private val weekly: Flow<WeeklySummaryUi?> = myTeamSource.observeMyTeam()
@@ -67,11 +72,17 @@ class HomeViewModel @Inject constructor(
      * 이번 주 요약. 상위 %는 온라인이고 이번 주 거리가 0보다 클 때만 묻고, 이번 주 거리가 바뀌면 다시 묻는다.
      * 다시 묻는 동안에는 직전 %를 그대로 보여 준다.
      */
-    private fun weeklySummary(teamId: String): Flow<WeeklySummaryUi> = flow {
+    private fun weeklySummary(teamId: String): Flow<WeeklySummaryUi?> = flow {
         val nowMs = clock.nowMs()
         var lastTop: TopFetch? = null
         emitAll(
-            statsRepository.observeWeekly(teamId, nowMs).transformLatest { weekly: Cached<WeeklyStats> ->
+            statsRepository.observeWeekly(teamId, nowMs).transformLatest { loaded: Loaded<WeeklyStats> ->
+                // TODO(JRN-03): 불러오기 실패 표시. 지금은 받기 전처럼 이번 주 카드를 숨긴다.
+                if (loaded !is Loaded.Ready) {
+                    emit(null)
+                    return@transformLatest
+                }
+                val weekly = loaded
                 if (weekly.isFromCache || weekly.value.thisWeekM <= 0L) {
                     emit(weeklySummaryUi(weekly, top = null))
                     return@transformLatest

@@ -34,8 +34,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.CardHeader
 import com.tourderun.core.designsystem.component.Pill
+import com.tourderun.core.designsystem.component.TdrButton
+import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrStatCard
 import com.tourderun.core.designsystem.component.TdrTopBar
@@ -54,6 +57,7 @@ fun WeeklyStatsScreen(
     WeeklyStatsContent(uiState, modifier = modifier) { action ->
         when (action) {
             WeeklyStatsAction.Back -> onBack()
+            WeeklyStatsAction.Retry -> viewModel.retry()
         }
     }
 }
@@ -102,8 +106,30 @@ fun WeeklyStatsContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
             )
 
+            is WeeklyStatsUiState.Failed -> FailedBody(uiState.error) { onAction(WeeklyStatsAction.Retry) }
+
             is WeeklyStatsUiState.Content -> WeeklyBody(uiState)
         }
+    }
+}
+
+/** 불러오기 실패: 실패 종류에 맞는 문구와 다시 시도 버튼. */
+@Composable
+private fun FailedBody(error: DataError, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
+    ) {
+        Text(
+            stringResource(
+                if (error == DataError.Unavailable) R.string.weekly_failed_unavailable else R.string.weekly_failed_other,
+            ),
+            style = TdrTheme.typography.body,
+            color = TdrTheme.colors.inkMuted,
+            textAlign = TextAlign.Center,
+        )
+        TdrButton(text = stringResource(R.string.weekly_retry), onClick = onRetry, style = TdrButtonStyle.Outline)
     }
 }
 
@@ -276,4 +302,10 @@ private fun WeeklyStatsContentZeroPreview() {
 @Composable
 private fun WeeklyStatsContentOfflinePreview() {
     TdrTheme { WeeklyStatsContent(previewContent(rank = WeeklyRankUi.Hidden, isOffline = true)) {} }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun WeeklyStatsContentFailedPreview() {
+    TdrTheme { WeeklyStatsContent(WeeklyStatsUiState.Failed(DataError.Unavailable)) {} }
 }
