@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 디버그 빌드 전용. 런처에 나오지 않고, adb로만 연다:
-     adb shell am start -n com.tourderun/.debug.DebugSaveRunActivity
-     adb shell am start -n com.tourderun/.debug.DebugStageRankActivity
-     adb shell am start -n com.tourderun/.debug.DebugWeeklyStatsActivity -->
+<!-- 디버그 빌드 전용. 런처에 나오지 않고, adb로만 연다(아래 액티비티와 같은 순서):
+     adb shell am start -n com.tourderun/.debug.DebugSaveRunActivity       (REC-01 러닝 저장)
+     adb shell am start -n com.tourderun/.debug.DebugStageRankActivity     (S15 스테이지 순위)
+     adb shell am start -n com.tourderun/.debug.DebugWeeklyStatsActivity   (S16 주간 통계) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity

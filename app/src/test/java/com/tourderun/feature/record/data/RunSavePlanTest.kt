@@ -1,10 +1,13 @@
 package com.tourderun.feature.record.data
 
+import com.tourderun.core.data.firestore.DocWrite
+import com.tourderun.core.data.firestore.FieldOp
 import com.tourderun.core.data.firestore.MemberFields
 import com.tourderun.core.data.firestore.RunFields
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.TeamStatFields
 import com.tourderun.core.data.firestore.UserFields
+import com.tourderun.core.data.firestore.WriteMode
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.domain.model.GpsPoint
 import com.tourderun.domain.model.RunResult
@@ -136,6 +139,12 @@ class RunSavePlanTest {
         assertEquals(true, RunFields.MEMO in run)
         assertNull(run[RunFields.MEMO])
         // 1,800초 / 5.001km = 359.9… → 360
+        assertEquals(360L, run[RunFields.PACE_SEC_PER_KM])
+    }
+
+    @Test fun `1800초·5000m → 페이스 360초, Long으로 저장`() {
+        val run = plan(r = result(5_000.0)).at("runs/r1").fields
+
         assertEquals(360L, run[RunFields.PACE_SEC_PER_KM])
     }
 

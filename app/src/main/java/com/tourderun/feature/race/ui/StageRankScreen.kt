@@ -31,7 +31,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.Pill
+import com.tourderun.core.designsystem.component.TdrButton
+import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.component.TeamAppearance
@@ -42,6 +45,8 @@ import com.tourderun.core.designsystem.component.valueWithUnit
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.model.stageProgressUi
+import com.tourderun.domain.route.routeFor
 
 /** S15 스테이지 순위. 홈의 스테이지 경쟁 카드에서 들어온다. */
 @Composable
@@ -51,7 +56,7 @@ fun StageRankScreen(
     viewModel: StageRankViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    StageRankContent(uiState, onBack, modifier)
+    StageRankContent(uiState, onBack, viewModel::retry, modifier)
 }
 
 /** S15 화면 내용. 상태 없음(Preview 대상). */
@@ -59,6 +64,7 @@ fun StageRankScreen(
 fun StageRankContent(
     uiState: StageRankUiState,
     onBack: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
@@ -98,8 +104,30 @@ fun StageRankContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
             )
 
+            is StageRankUiState.Failed -> FailedBody(uiState.error, onRetry)
+
             is StageRankUiState.Content -> RankBody(uiState)
         }
+    }
+}
+
+/** 불러오기 실패: 실패 종류에 맞는 문구와 다시 시도 버튼. */
+@Composable
+private fun FailedBody(error: DataError, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
+    ) {
+        Text(
+            stringResource(
+                if (error == DataError.Unavailable) R.string.rank_failed_unavailable else R.string.rank_failed_other,
+            ),
+            style = TdrTheme.typography.body,
+            color = TdrTheme.colors.inkMuted,
+            textAlign = TextAlign.Center,
+        )
+        TdrButton(text = stringResource(R.string.rank_retry), onClick = onRetry, style = TdrButtonStyle.Outline)
     }
 }
 
@@ -109,12 +137,12 @@ private fun RankBody(uiState: StageRankUiState.Content) {
     val type = TdrTheme.typography
     TdrCard(color = colors.brandStrong, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
         Text(
-            stringResource(R.string.rank_header_range, uiState.stageNumber, uiState.startKm, uiState.endKm),
+            stringResource(R.string.rank_header_range, uiState.stage.stageNumber, uiState.stage.startKm, uiState.stage.endKm),
             style = type.caption,
             color = colors.inkOnBrandMuted,
         )
         Text(
-            stringResource(R.string.rank_header_title, uiState.fromCity, uiState.toCity, uiState.totalTeams, uiState.ourRank),
+            stringResource(R.string.rank_header_title, uiState.stage.fromCity, uiState.stage.toCity, uiState.totalTeams, uiState.ourRank),
             style = type.titleLg.copy(lineHeight = 28.sp),
             color = colors.inkOnBrand,
         )
@@ -175,7 +203,7 @@ private fun RankRow(row: RankRowUi, gap: String) {
             Text(stringResource(R.string.rank_members, row.memberCount, gap), style = type.caption, color = colors.inkMuted)
         }
         Text(
-            valueWithUnit(Format.km(row.distanceM), stringResource(R.string.unit_km), unitSize = 11, unitColor = colors.inkMuted),
+            valueWithUnit(row.distanceKm, stringResource(R.string.unit_km), unitSize = 11, unitColor = colors.inkMuted),
             style = type.subtitle.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold),
         )
     }
@@ -191,11 +219,8 @@ private fun previewRow(rank: Int, name: String, color: Int, members: Int, distan
     RankRowUi(rank, name, iconIndex = 0, colorIndex = color, memberCount = members, distanceM = distanceM, gapToAheadM = gapM, isOurTeam = ours)
 
 private fun previewContent(rows: List<RankRowUi>, isOffline: Boolean = false) = StageRankUiState.Content(
-    stageNumber = 3,
-    fromCity = "오산",
-    toCity = "천안",
-    startKm = 48,
-    endKm = 85,
+    // 우리 팀(뛰뛰크루) 66.8km → 스테이지 3 오산 → 천안(48~85km)
+    stage = stageProgressUi(rows.first { it.isOurTeam }.distanceM, routeFor(1)),
     ourRank = rows.indexOfFirst { it.isOurTeam } + 1,
     rows = rows,
     isOffline = isOffline,
@@ -216,6 +241,7 @@ private fun StageRankContentPreview() {
                 ),
             ),
             onBack = {},
+            onRetry = {},
         )
     }
 }
@@ -227,6 +253,7 @@ private fun StageRankContentAlonePreview() {
         StageRankContent(
             previewContent(listOf(previewRow(1, "뛰뛰크루", 0, 4, 66_800, null, ours = true)), isOffline = true),
             onBack = {},
+            onRetry = {},
         )
     }
 }
@@ -235,6 +262,14 @@ private fun StageRankContentAlonePreview() {
 @Composable
 private fun StageRankContentLoadingPreview() {
     TdrTheme {
-        StageRankContent(StageRankUiState.Loading, onBack = {})
+        StageRankContent(StageRankUiState.Loading, onBack = {}, onRetry = {})
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun StageRankContentFailedPreview() {
+    TdrTheme {
+        StageRankContent(StageRankUiState.Failed(DataError.Unavailable), onBack = {}, onRetry = {})
     }
 }

@@ -6,7 +6,8 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.TeamStatFields
@@ -36,22 +37,27 @@ class FirestoreStatsRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
 ) : StatsRepository {
 
-    override fun observeWeekly(teamId: String, nowMs: Long): Flow<Cached<WeeklyStats>> {
-        val thisWeek = weekDoc(teamId, weekId(nowMs)).snapshotFlow(TAG)
-            .map { Cached(it.toTeamStatDto(), it.metadata.isFromCache) }
-        val lastWeek = weekDoc(teamId, lastWeekId(nowMs)).snapshotFlow(TAG)
-            .map { Cached(it.toTeamStatDto(), it.metadata.isFromCache) }
+    override fun observeWeekly(teamId: String, nowMs: Long): Flow<Loaded<WeeklyStats>> {
+        val thisWeek = weekDoc(teamId, weekId(nowMs)).snapshotFlow(TAG).map { it.mapReady { doc -> doc.toTeamStatDto() } }
+        val lastWeek = weekDoc(teamId, lastWeekId(nowMs)).snapshotFlow(TAG).map { it.mapReady { doc -> doc.toTeamStatDto() } }
         return combine(thisWeek, lastWeek) { now, last ->
-            Cached(
-                value = WeeklyStats(
-                    thisWeekM = now.value.distanceM,
-                    thisWeekRuns = now.value.runCount,
-                    lastWeekM = last.value.distanceM,
-                    lastWeekRuns = last.value.runCount,
-                    memberM = now.value.memberM,
-                ),
-                isFromCache = now.isFromCache || last.isFromCache,
-            )
+            // 두 문서 중 하나라도 첫 값 전에 실패하면 화면에 실패를 알린다.
+            when (now) {
+                is Loaded.Failed -> now
+                is Loaded.Ready -> when (last) {
+                    is Loaded.Failed -> last
+                    is Loaded.Ready -> Loaded.Ready(
+                        value = WeeklyStats(
+                            thisWeekM = now.value.distanceM,
+                            thisWeekRuns = now.value.runCount,
+                            lastWeekM = last.value.distanceM,
+                            lastWeekRuns = last.value.runCount,
+                            memberM = now.value.memberM,
+                        ),
+                        isFromCache = now.isFromCache || last.isFromCache,
+                    )
+                }
+            }
         }.distinctUntilChanged()
     }
 

@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.secrets)
 }
 
-// google-services.json(권민찬 공유)이 있을 때만 적용한다. 없어도 빌드·실행은 된다.
+// google-services.json(권민찬 공유)이 있을 때만 적용한다.
 if (file("google-services.json").exists()) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
 }
@@ -30,13 +30,16 @@ android {
             isMinifyEnabled = false
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -81,6 +84,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.maps.compose)
 
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
