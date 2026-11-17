@@ -18,6 +18,8 @@ kotlinxCoroutines = "1.7.3"
 firebaseBom = "33.7.0"
 googleServices = "4.4.2"
 secrets = "2.0.1"
+# 7.x 이상은 더 새 Compose·Kotlin을 끌어온다. 지금 composeBom·kotlin과 맞는 마지막 6.x로 고정
+mapsCompose = "6.4.1"
 junit = "4.13.2"
 
 [libraries]
@@ -40,6 +42,7 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

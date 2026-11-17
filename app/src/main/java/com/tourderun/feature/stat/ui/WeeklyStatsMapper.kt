@@ -1,6 +1,6 @@
 package com.tourderun.feature.stat.ui
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
 import com.tourderun.domain.stats.SEOUL
@@ -11,13 +11,25 @@ import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
 /**
+ * 리스너 값 하나 → S16 상태. 불러오기 실패면 [WeeklyStatsUiState.Failed], 아니면 [weeklyStatsContent].
+ */
+fun weeklyStatsState(
+    weekly: Loaded<WeeklyStats>,
+    top: TopPercent?,
+    period: WeekPeriodUi,
+): WeeklyStatsUiState = when (weekly) {
+    is Loaded.Failed -> WeeklyStatsUiState.Failed(weekly.error)
+    is Loaded.Ready -> weeklyStatsContent(weekly, top, period)
+}
+
+/**
  * 주간 통계 → S16 상태.
  *
  * - 지난주 0km → [WeeklyChangeUi.NoLastWeek], 같으면 [WeeklyChangeUi.Same], 아니면 차이
  * - 상위 %: 이번 주 0km → [WeeklyRankUi.FirstRun], 오프라인이거나 [top]이 null → [WeeklyRankUi.Hidden]
  */
 fun weeklyStatsContent(
-    weekly: Cached<WeeklyStats>,
+    weekly: Loaded.Ready<WeeklyStats>,
     top: TopPercent?,
     period: WeekPeriodUi,
 ): WeeklyStatsUiState.Content {
@@ -44,9 +56,9 @@ fun weeklyStatsContent(
     )
 }
 
-/** 상위 %를 서버에 물어볼 상황인지. 오프라인이거나 이번 주 0km면 묻지 않는다(어차피 숨김). */
-fun needsTopPercent(weekly: Cached<WeeklyStats>): Boolean =
-    !weekly.isFromCache && weekly.value.thisWeekM > 0L
+/** 상위 %를 서버에 물어볼 상황인지. 불러오기 실패·오프라인·이번 주 0km면 묻지 않는다(어차피 숨김). */
+fun needsTopPercent(weekly: Loaded<WeeklyStats>): Boolean =
+    weekly is Loaded.Ready && !weekly.isFromCache && weekly.value.thisWeekM > 0L
 
 /** [nowMs]가 속한 주(월요일 0시 시작, 한국 시간). 2027-01-01(금) → 2026-W53, 12월 28일(월) ~ 1월 3일(일). */
 fun weekPeriod(nowMs: Long, zone: ZoneId = SEOUL): WeekPeriodUi {

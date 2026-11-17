@@ -1,5 +1,7 @@
 package com.tourderun.core.di
 
+import com.tourderun.core.data.journey.ArrivalRepository
+import com.tourderun.core.data.journey.FakeArrivalRepository
 import com.tourderun.core.data.race.FakeRaceRepository
 import com.tourderun.core.data.race.RaceRepository
 import com.tourderun.core.data.stats.FakeStatsRepository
@@ -21,4 +23,7 @@ abstract class RepositoryModule {
 
     // TODO(STAT-01): 로그인(AUTH-01)과 google-services.json이 준비되면 FirestoreStatsRepository로 바꾼다.
     @Binds abstract fun bindStatsRepository(impl: FakeStatsRepository): StatsRepository
+
+    // TODO(JRN-05): Firestore 구현(#63 머지 후)이 생기고 로그인이 준비되면 그 구현으로 바꾼다.
+    @Binds abstract fun bindArrivalRepository(impl: FakeArrivalRepository): ArrivalRepository
 }
