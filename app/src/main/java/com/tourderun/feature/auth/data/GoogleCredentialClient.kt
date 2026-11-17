@@ -46,6 +46,7 @@ class GoogleCredentialClient {
         } catch (e: GetCredentialCancellationException) {
             GoogleSignInResult.Cancelled
         } catch (e: NoCredentialException) {
+            Log.w(TAG, "쓸 수 있는 구글 계정 없음: ${e.type} ${e.errorMessage}")
             GoogleSignInResult.NoAccount
         } catch (e: GetCredentialException) {
             Log.w(TAG, "계정 선택 실패: ${e.type}")
