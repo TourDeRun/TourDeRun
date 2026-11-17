@@ -1,0 +1,116 @@
+package com.tourderun.core.data.session
+
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.tourderun.core.data.firestore.Collections
+import com.tourderun.core.data.firestore.UserFields
+import com.tourderun.core.data.firestore.awaitResult
+import com.tourderun.core.data.firestore.snapshotFlow
+import com.tourderun.core.di.ApplicationScope
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withTimeout
+
+/** [SessionRepository]의 진짜 구현. 로그인 상태 → 내 users 문서를 실시간으로 따라간다 (AUTH-01). */
+@OptIn(ExperimentalCoroutinesApi::class)   // flatMapLatest가 "실험적" 표시라 붙인다
+@Singleton
+class FirebaseSessionRepository @Inject constructor(
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore,
+    @ApplicationScope appScope: CoroutineScope,
+) : SessionRepository {
+
+    // ── 1. 로그인 상태를 Flow로 ───────────────────────────────
+    /** 로그인하면 uid, 로그아웃하면 null을 낸다. */
+    private fun authUidFlow(): Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            trySend(firebaseAuth.currentUser?.uid)
+        }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }
+
+    // ── 2. users 문서 스냅샷 → SessionState ──────────────────
+    private fun toSessionState(uid: String, snapshot: DocumentSnapshot): SessionState {
+
+        if (!snapshot.exists()) {
+            return if (snapshot.metadata.isFromCache) SessionState.Loading
+            else SessionState.NeedsNickname(uid)
+        }
+
+        val nickname = snapshot.getString(UserFields.NICKNAME)
+            ?: return SessionState.NeedsNickname(uid)
+
+        val user = SessionUser(uid = uid, nickname = nickname)
+        val teamId = snapshot.getString(UserFields.TEAM_ID)
+
+        return if (teamId == null) SessionState.NoTeam(user)
+        else SessionState.Ready(user, teamId)
+    }
+
+    // ── 3. 둘을 이어서 앱 전체에 공개 ────────────────────────
+    override val state: StateFlow<SessionState> = authUidFlow()
+        .flatMapLatest { uid ->
+            if (uid == null) {
+                flowOf(SessionState.SignedOut)
+            } else {
+                firestore.collection(Collections.USERS).document(uid)
+                    .snapshotFlow(TAG)
+                    .map { snapshot -> toSessionState(uid, snapshot) }
+            }
+        }
+        .stateIn(appScope, SharingStarted.Eagerly, SessionState.Loading)
+
+    // ── 4. S01 로그인 ────────────────────────────────────────
+    override suspend fun signInWithGoogle(idToken: String): Result<Unit> = runCatching {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+
+        auth.signInWithCredential(credential).awaitResult()
+        Unit
+    }
+
+    // ── 5. S02 users 문서 만들기 ─────────────────────────────
+    override suspend fun createUser(nickname: String): Result<Unit> = runCatching {
+        val uid = requireNotNull(auth.currentUser?.uid) { "로그인하지 않은 상태에서 createUser를 불렀다" }
+        val ref = firestore.collection(Collections.USERS).document(uid)
+        val data = mapOf(
+            UserFields.NICKNAME to nickname,
+            UserFields.CREATED_AT to FieldValue.serverTimestamp(),
+            UserFields.TERMS_AGREED_AT to FieldValue.serverTimestamp(),
+            UserFields.TEAM_ID to null,
+            UserFields.TOTAL_M to 0L,
+            UserFields.RUN_COUNT to 0L,
+            UserFields.CARDS to emptyMap<String, Any>(),
+        )
+        withTimeout(CREATE_TIMEOUT_MS) {
+            firestore.runTransaction { tx ->
+                // 이미 문서가 있으면(다른 기기에서 먼저 만듦) 덮어쓰지 않는다
+                if (!tx.get(ref).exists()) tx.set(ref, data)
+            }.awaitResult()
+        }
+    }
+
+    // ── 6. 로그아웃 ──────────────────────────────────────────
+    override fun signOut() {
+        auth.signOut()   // state는 리스너가 알아서 SignedOut으로 바꾼다
+    }
+
+    private companion object {
+        const val TAG = "TDR/auth"
+        const val CREATE_TIMEOUT_MS = 10_000L
+    }
+}
