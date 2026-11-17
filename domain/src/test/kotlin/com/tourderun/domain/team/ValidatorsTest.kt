@@ -51,4 +51,12 @@ class NicknameValidatorTest {
     @Test fun `공백 한 글자는 길이보다 글자 종류를 먼저 알려줌`() {
         assertEquals(NicknameError.INVALID_CHARS, validateNickname(" "))
     }
+
+    @Test fun `이모지는 허용하지 않음`() {
+        assertEquals(NicknameError.INVALID_CHARS, validateNickname("러너😀"))
+    }
+
+    @Test fun `끝에 붙은 공백도 글자 종류 오류`() {
+        assertEquals(NicknameError.INVALID_CHARS, validateNickname("민찬 "))
+    }
 }
