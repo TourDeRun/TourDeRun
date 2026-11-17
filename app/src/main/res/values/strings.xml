@@ -64,6 +64,9 @@
     <string name="login_tagline">같이 달린 거리로\n전국을 여행해요</string>
     <string name="login_google">Google로 시작하기</string>
     <string name="login_hint">처음이라면 약관 동의 후 닉네임만 정하면 돼요</string>
+    <string name="login_error_no_account">이 기기에 구글 계정이 없어요. 설정에서 계정을 추가해 주세요</string>
+    <string name="login_error_failed">로그인하지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="login_error_network">인터넷 연결을 확인해 주세요</string>
 
     <!-- S01-1 약관 동의 -->
     <string name="terms_step">1 / 2</string>
