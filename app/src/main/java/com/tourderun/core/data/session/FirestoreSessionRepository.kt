@@ -8,7 +8,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.UserFields
-import com.tourderun.core.data.firestore.awaitResult
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.di.ApplicationScope
 import javax.inject.Inject
@@ -24,6 +23,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 
 /** [SessionRepository]의 진짜 구현. 로그인 상태 → 내 users 문서를 실시간으로 따라간다 (AUTH-01). */
@@ -87,7 +87,7 @@ class FirestoreSessionRepository @Inject constructor(
     override suspend fun signInWithGoogle(idToken: String): Result<Unit> = runCatching {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
 
-        auth.signInWithCredential(credential).awaitResult()
+        auth.signInWithCredential(credential).await()
         Unit
     }
 
@@ -108,7 +108,7 @@ class FirestoreSessionRepository @Inject constructor(
             firestore.runTransaction { tx ->
                 // 이미 문서가 있으면(다른 기기에서 먼저 만듦) 덮어쓰지 않는다
                 if (!tx.get(ref).exists()) tx.set(ref, data)
-            }.awaitResult()
+            }.await()
         }
     }
 
