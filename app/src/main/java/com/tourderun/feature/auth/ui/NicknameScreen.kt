@@ -1,5 +1,6 @@
 package com.tourderun.feature.auth.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,11 +33,11 @@ import com.tourderun.core.designsystem.theme.TdrTheme
 
 /**
  * S02 닉네임 설정 화면 상태.
- * @property errorMessage 서버 검증 실패 등 ViewModel이 정한 문구. null이면 도움말을 보인다.
+ * @property errorRes 저장 실패 등 ViewModel이 정한 문구의 리소스 ID. null이면 도움말을 보인다.
  */
 data class NicknameUiState(
     val nickname: String = "",
-    val errorMessage: String? = null,
+    @StringRes val errorRes: Int? = null,
     val isSubmitting: Boolean = false,
 ) {
     /** 2~10자, 한글·영문·숫자만 (공백 불가). */
@@ -48,9 +49,9 @@ data class NicknameUiState(
     }
 }
 
-/** S02 닉네임 설정. */
+/** S02 닉네임 설정 화면 그리기만 한다 (상태 없음, Preview 대상). */
 @Composable
-fun NicknameScreen(
+fun NicknameContent(
     uiState: NicknameUiState,
     onBack: () -> Unit,
     onNicknameChange: (String) -> Unit,
@@ -95,7 +96,7 @@ fun NicknameScreen(
                 label = stringResource(R.string.nickname_label),
                 placeholder = stringResource(R.string.nickname_placeholder),
                 helper = stringResource(R.string.nickname_helper),
-                error = uiState.errorMessage,
+                error = uiState.errorRes?.let { stringResource(it) },
                 maxLength = NicknameUiState.MAX_LENGTH,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             )
@@ -112,6 +113,6 @@ fun NicknameScreen(
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
-private fun NicknameScreenPreview() {
-    TdrTheme { NicknameScreen(NicknameUiState(nickname = "민지"), {}, {}, {}) }
+private fun NicknameContentPreview() {
+    TdrTheme { NicknameContent(NicknameUiState(nickname = "민지"), {}, {}, {}) }
 }

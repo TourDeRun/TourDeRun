@@ -99,6 +99,8 @@
     <string name="nickname_placeholder">2~10자</string>
     <string name="nickname_helper">2~10자, 한글·영문·숫자만 쓸 수 있어요 (공백 불가)</string>
     <string name="nickname_start">시작하기</string>
+    <string name="nickname_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="nickname_error_failed">저장하지 못했어요. 잠시 후 다시 시도해 주세요</string>
 
     <!-- S03 팀 시작 -->
     <string name="team_start_title">함께 달릴 팀이 필요해요</string>

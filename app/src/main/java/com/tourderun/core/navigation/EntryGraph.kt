@@ -15,7 +15,7 @@ import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.auth.ui.LoginContent
 import com.tourderun.feature.auth.ui.LoginUiState
-import com.tourderun.feature.auth.ui.NicknameScreen
+import com.tourderun.feature.auth.ui.NicknameContent
 import com.tourderun.feature.auth.ui.NicknameUiState
 import com.tourderun.feature.auth.ui.TermsItem
 import com.tourderun.feature.auth.ui.TermsScreen
@@ -78,7 +78,7 @@ internal fun NavGraphBuilder.entryGraph(navController: NavController, session: M
 
     composable<NicknameRoute> {
         var state by remember { mutableStateOf(NicknameUiState()) }
-        NicknameScreen(
+        NicknameContent(
             uiState = state,
             // 앱을 다시 켜서 S02부터 시작한 경우에는 돌아갈 화면이 없어 아무 일도 없다.
             onBack = { navController.popBackStack() },
