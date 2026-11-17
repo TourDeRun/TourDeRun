@@ -7,6 +7,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.SetOptions
 import com.tourderun.core.data.firestore.Collections
+import com.tourderun.core.data.firestore.FieldOp
+import com.tourderun.core.data.firestore.WriteMode
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.SaveOutcome
