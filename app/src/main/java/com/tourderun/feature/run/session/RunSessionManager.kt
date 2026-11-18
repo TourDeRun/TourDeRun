@@ -188,6 +188,19 @@ class RunSessionManager @Inject constructor(
     }
 
     /**
+     * 측정 서비스를 시작하지 못했거나 위치 요청이 실패했을 때 부른다. 위치를 받을 수 없으므로
+     * 측정 중이면 일시정지(RUNNING → PAUSED), 카운트다운 중이면 취소(COUNTDOWN → IDLE)한다.
+     * 일시정지·종료 상태는 그대로 둔다(종료 결과도 유지).
+     *
+     * @return 상태를 바꿨으면 true
+     */
+    suspend fun stopForServiceFailure(nowMs: Long): Boolean = when (state.value.phase) {
+        RunPhase.RUNNING -> pause(nowMs)
+        RunPhase.COUNTDOWN -> cancelCountdown()
+        RunPhase.IDLE, RunPhase.PAUSED, RunPhase.FINISHED -> false
+    }
+
+    /**
      * 사용자가 러닝을 저장하지 않고 버리기로 선택한 경우에만 호출한다.
      * 종료 후(짧은 러닝의 "저장 없이 종료")와 복구 안내의 "버리기"(일시정지 상태)에서 쓴다.
      */

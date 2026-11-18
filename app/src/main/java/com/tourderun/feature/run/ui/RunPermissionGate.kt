@@ -41,7 +41,8 @@ private fun Context.activityOrNull(): Activity? = when (this) {
     else -> null
 }
 
-private fun Context.hasRunPermissions(): Boolean {
+/** 정확한 위치와(Android 13 이상) 알림 권한이 모두 있으면 true. 서비스를 시작하기 전에 확인한다. */
+internal fun Context.hasRunPermissions(): Boolean {
     val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     val notifications = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED

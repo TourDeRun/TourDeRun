@@ -18,40 +18,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
+private typealias FakeDao = FakeRunPointDao
+private typealias FakeStore = FakeActiveRunStore
+
 class RunSessionManagerTest {
-    private class FakeDao : RunPointDao {
-        private val rows = MutableStateFlow<List<RunPointEntity>>(emptyList())
-        var failNext = false
-        var failAfterInsert = false
-        var failDelete = false
-        override suspend fun insert(point: RunPointEntity): Long {
-            if (failNext) { failNext = false; throw IllegalStateException("저장 실패") }
-            val id = (rows.value.lastOrNull()?.id ?: 0) + 1
-            rows.value = rows.value + point.copy(id = id)
-            if (failAfterInsert) { failAfterInsert = false; throw IllegalStateException("저장 결과 알 수 없음") }
-            return id
-        }
-        override suspend fun pointsForRun(runId: String) = rows.value.filter { it.runId == runId }
-        override suspend fun acceptedPointsForRun(runId: String) = rows.value.filter { it.runId == runId && it.accepted }
-        override fun observePointsForRun(runId: String): Flow<List<RunPointEntity>> = rows.map { list -> list.filter { it.runId == runId } }
-        override suspend fun deleteForRun(runId: String) {
-            if (failDelete) throw IllegalStateException("삭제 실패")
-            rows.value = rows.value.filterNot { it.runId == runId }
-        }
-    }
-    private class FakeStore : ActiveRunStore {
-        override val session = MutableStateFlow<StoredRunSession?>(null)
-        var savedSignal: CompletableDeferred<Unit>? = null
-        var completeSave: CompletableDeferred<Unit>? = null
-        override suspend fun save(session: StoredRunSession) {
-            this.session.value = session
-            savedSignal?.complete(Unit)
-            completeSave?.await()
-        }
-        override suspend fun clearIfRunIdMatches(runId: String) {
-            if (session.value?.runId == runId) session.value = null
-        }
-    }
     private fun point(lng: Double, timeMs: Long) = GpsPoint(0.0, lng, timeMs, 5f)
 
     @Test fun `일시정지 구간은 더하지 않고 각 구간 첫 점을 경로에 포함`() = runBlocking {
@@ -318,5 +288,31 @@ class RunSessionManagerTest {
         manager.tick(3_000)
         assertNull(manager.pendingRecovery())
         assertNull(manager.recover())
+    }
+
+    @Test fun `서비스 실패면 측정 중은 일시정지로 돌아간다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        assertTrue(manager.stopForServiceFailure(5_000))
+        assertEquals(RunPhase.PAUSED, manager.state.value.phase)
+    }
+
+    @Test fun `서비스 실패면 카운트다운은 취소돼 IDLE이 된다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        assertTrue(manager.stopForServiceFailure(1_000))
+        assertEquals(RunPhase.IDLE, manager.state.value.phase)
+    }
+
+    @Test fun `서비스 실패여도 종료된 러닝은 결과를 그대로 둔다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        manager.onLocation(point(0.0, 4_000), 4_000)
+        val result = requireNotNull(manager.finish(10_000))
+        assertFalse(manager.stopForServiceFailure(11_000))
+        assertEquals(RunPhase.FINISHED, manager.state.value.phase)
+        assertEquals(result, manager.state.value.result)
     }
 }

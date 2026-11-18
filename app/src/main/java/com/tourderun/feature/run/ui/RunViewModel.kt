@@ -91,7 +91,7 @@ class RunViewModel @Inject constructor(
         viewModelScope.launch {
             when (manager.state.value.phase) {
                 RunPhase.RUNNING -> manager.pause(clock.nowMs())
-                RunPhase.PAUSED -> if (manager.resume(clock.nowMs())) events.send(RunEvent.StartService)
+                RunPhase.PAUSED -> events.send(RunEvent.RequestResume)
                 else -> Unit
             }
         }
@@ -107,9 +107,22 @@ class RunViewModel @Inject constructor(
 
     /** 짧은 러닝 안내에서 "계속하기". 종료 시각부터 지금까지는 일시정지로 본다. */
     fun continueRun() {
+        viewModelScope.launch { events.send(RunEvent.RequestResume) }
+    }
+
+    /**
+     * 화면이 위치 권한을 확인한 뒤에만 부른다. 권한 없이 재개하면 서비스가 시작되지 않아
+     * 화면만 측정 중으로 남기 때문이다(PR #87 리뷰).
+     */
+    fun resume() {
         viewModelScope.launch {
             if (manager.resume(clock.nowMs())) events.send(RunEvent.StartService)
         }
+    }
+
+    /** 시스템이 측정 서비스 시작을 거절했을 때. 측정 중이면 일시정지, 카운트다운이면 취소로 되돌린다. */
+    fun onServiceStartFailed() {
+        viewModelScope.launch { manager.stopForServiceFailure(clock.nowMs()) }
     }
 
     /** 종료된 러닝을 저장하지 않고 버린다. */

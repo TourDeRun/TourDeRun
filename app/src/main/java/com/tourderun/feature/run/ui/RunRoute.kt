@@ -11,10 +11,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +35,7 @@ import com.tourderun.R
 import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
@@ -53,11 +59,17 @@ fun RunRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var askPermission by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
                 // 이 화면이 보이는 동안에만 서비스를 시작한다(Android 12+ 백그라운드 시작 제한).
-                RunEvent.StartService -> RunTrackingService.start(context)
+                RunEvent.StartService -> if (!RunTrackingService.start(context)) {
+                    // 시작 요청이 거절되면 onStartCommand까지 가지 않으므로 여기서 러닝을 되돌린다.
+                    viewModel.onServiceStartFailed()
+                    askPermission = true
+                }
+                RunEvent.RequestResume -> if (context.hasRunPermissions()) viewModel.resume() else askPermission = true
                 RunEvent.OpenResult -> onOpenResult()
                 RunEvent.Close -> onClose()
             }
@@ -74,6 +86,35 @@ fun RunRoute(
         onOpenResult = viewModel::openResult,
         onClose = onClose,
         modifier = modifier,
+    )
+    if (askPermission) {
+        RunPermissionDialog(
+            onReady = {
+                askPermission = false
+                viewModel.resume()
+            },
+            onDismiss = { askPermission = false },
+        )
+    }
+}
+
+/**
+ * 다시 시작할 때 위치·알림 권한이 꺼져 있으면 띄운다. 권한을 받기 전까지 러닝은 버튼을 누르기 전 상태
+ * (일시정지 또는 종료 결과) 그대로다. S09와 복구 안내(RunRecoveryHost)가 같이 쓴다.
+ */
+@Composable
+internal fun RunPermissionDialog(onReady: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.run_permission_resume_title), style = TdrTheme.typography.title) },
+        text = { RunPermissionGate(onReady = onReady, continueLabel = stringResource(R.string.run_resume)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel), color = TdrTheme.colors.ink, style = TdrTheme.typography.subtitle)
+            }
+        },
+        containerColor = TdrTheme.colors.bgSurface,
+        shape = TdrShapes.lg,
     )
 }
 

@@ -1,7 +1,6 @@
 package com.tourderun.feature.run.service
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -14,17 +13,10 @@ import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.tourderun.MainActivity
 import com.tourderun.R
 import com.tourderun.core.data.Clock
@@ -41,8 +33,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -63,28 +53,10 @@ class RunTrackingService : Service() {
     @Inject lateinit var clock: Clock
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private lateinit var locationClient: FusedLocationProviderClient
-    private var tracking = false
-
-    private val callback = object : LocationCallback() {
-        override fun onLocationResult(result: LocationResult) {
-            val points = result.locations.map { it.toGpsPoint(clock.nowMs()) }
-            scope.launch {
-                for (point in points) {
-                    try {
-                        manager.onLocation(point, clock.nowMs())
-                    } catch (error: Exception) {
-                        // 기기 저장 실패. 매니저가 다음 계산 전에 저장된 점을 다시 읽는다.
-                        Log.w(TAG, "위치점 저장 실패", error)
-                    }
-                }
-            }
-        }
-    }
+    private var controller: RunTrackingController? = null
 
     override fun onCreate() {
         super.onCreate()
-        locationClient = LocationServices.getFusedLocationProviderClient(this)
         createChannel()
     }
 
@@ -100,33 +72,35 @@ class RunTrackingService : Service() {
                 if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0,
             )
         }
+        val current = controller ?: RunTrackingController(
+            manager = manager,
+            clock = clock,
+            locationSource = FusedLocationSource(this, clock),
+            scope = scope,
+            onStop = ::stopTracking,
+            log = { message, error -> Log.w(TAG, message, error) },
+        ).also { controller = it }
         if (started.isFailure || !hasFineLocation()) {
-            Log.w(TAG, "포그라운드 서비스 시작 실패", started.exceptionOrNull())
-            stopSelf()
+            // 위치를 받을 수 없으니 화면이 측정 중으로 남지 않게 러닝을 되돌린 뒤 서비스를 끝낸다.
+            current.fail(started.exceptionOrNull() as? Exception)
             return START_NOT_STICKY
         }
         if (!tracking) {
             tracking = true
-            requestLocation()
+            // 위치 요청이 바로 실패하거나(예외) 나중에 실패해도(Task) controller가 러닝을 되돌리고 stopTracking을 부른다.
+            current.start()
             launchTicker()
             launchNotificationUpdates()
         }
         return START_NOT_STICKY
     }
 
+    private var tracking = false
+
     override fun onDestroy() {
-        locationClient.removeLocationUpdates(callback)
+        controller?.stop()
         scope.cancel()
         super.onDestroy()
-    }
-
-    @SuppressLint("MissingPermission") // hasFineLocation()으로 확인한 뒤에만 부른다.
-    private fun requestLocation() {
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, LOCATION_INTERVAL_MS)
-            .setMinUpdateIntervalMillis(LOCATION_MIN_INTERVAL_MS)
-            .setWaitForAccurateLocation(false)
-            .build()
-        locationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
     }
 
     private fun launchTicker() = scope.launch {
@@ -136,23 +110,28 @@ class RunTrackingService : Service() {
         }
     }
 
+    /**
+     * 경과 시간은 알림의 크로노미터가 스스로 세므로 다시 그리지 않는다.
+     * 단계가 바뀌면 바로, 거리만 바뀌면 5초에 한 번만 갱신한다([shouldUpdateNotification]).
+     * 매니저 상태는 tick마다 바뀌므로, 건너뛴 거리 변화도 5초가 지나면 다음 tick에서 표시된다.
+     */
     private fun launchNotificationUpdates() = scope.launch {
-        manager.state
-            // 알림은 초 단위로만 바뀌면 되므로 화면용 값(현재 페이스 등)의 변화는 거른다.
-            .map { NotificationContent(it.phase, it.distanceM.roundToLong() / 10, it.movingSec, it.countdownSec) }
-            .distinctUntilChanged()
-            .collect { content ->
-                if (content.phase == RunPhase.IDLE || content.phase == RunPhase.FINISHED) {
-                    stopTracking()
-                } else {
-                    val notificationManager = getSystemService(NotificationManager::class.java)
-                    notificationManager.notify(NOTIFICATION_ID, notification(manager.state.value))
-                }
+        var shown: ShownNotification? = null
+        manager.state.collect { state ->
+            if (state.phase == RunPhase.IDLE || state.phase == RunPhase.FINISHED) {
+                stopTracking()
+                return@collect
             }
+            val content = NotificationContent(state.phase, state.distanceM.roundToLong() / 10, state.countdownSec)
+            val nowMs = clock.nowMs()
+            if (!shouldUpdateNotification(shown, content, nowMs)) return@collect
+            shown = ShownNotification(content, nowMs)
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(state))
+        }
     }
 
     private fun stopTracking() {
-        locationClient.removeLocationUpdates(callback)
+        controller?.stop()
         tracking = false
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -160,11 +139,11 @@ class RunTrackingService : Service() {
 
     private fun notification(state: RunState): Notification {
         val km = Format.km(state.distanceM.roundToLong(), decimals = 2)
-        val time = Format.duration(state.movingSec)
+        val running = state.phase == RunPhase.RUNNING
         val text = when (state.phase) {
             RunPhase.COUNTDOWN -> getString(R.string.run_notification_countdown)
-            RunPhase.PAUSED -> getString(R.string.run_notification_paused, km, time)
-            else -> getString(R.string.run_notification_running, km, time)
+            RunPhase.PAUSED -> getString(R.string.run_notification_paused, km, Format.duration(state.movingSec))
+            else -> getString(R.string.run_notification_running, km)
         }
         val openApp = PendingIntent.getActivity(
             this,
@@ -177,6 +156,10 @@ class RunTrackingService : Service() {
             .setSmallIcon(R.drawable.ic_run_notification)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
+            // 측정 중에는 경과 시간을 시스템 크로노미터가 센다(움직인 시간 기준). 일시정지 중에는 글자로 멈춘 시간을 보인다.
+            .setUsesChronometer(running)
+            .setShowWhen(running)
+            .setWhen(chronometerBaseMs(clock.nowMs(), state.movingSec))
             .setContentIntent(openApp)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -194,19 +177,29 @@ class RunTrackingService : Service() {
     private fun hasFineLocation(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-    private data class NotificationContent(val phase: RunPhase, val distance10M: Long, val movingSec: Long, val countdownSec: Int)
-
     companion object {
         private const val TAG = "TDR/run"
         private const val CHANNEL_ID = "run_tracking"
         private const val NOTIFICATION_ID = 9001
-        private const val LOCATION_INTERVAL_MS = 1_000L
-        private const val LOCATION_MIN_INTERVAL_MS = 1_000L
         private const val TICK_MS = 1_000L
 
-        /** 앱 화면이 보일 때만 부른다. 이미 실행 중이면 아무 일도 하지 않는다. */
-        fun start(context: Context) {
+        /**
+         * 앱 화면이 보일 때만 부른다. 이미 실행 중이면 아무 일도 하지 않는다.
+         *
+         * 시스템이 시작 요청 자체를 거절하면(Android 12+ 백그라운드 시작 제한
+         * `ForegroundServiceStartNotAllowedException`(IllegalStateException), 권한 문제 `SecurityException`)
+         * onStartCommand까지 오지 않는다. 그때는 false를 돌려주고, 호출부가
+         * [RunSessionManager.stopForServiceFailure]로 러닝을 되돌린다.
+         */
+        fun start(context: Context): Boolean = try {
             ContextCompat.startForegroundService(context, Intent(context, RunTrackingService::class.java))
+            true
+        } catch (error: IllegalStateException) {
+            Log.w(TAG, "측정 서비스 시작 거절", error)
+            false
+        } catch (error: SecurityException) {
+            Log.w(TAG, "측정 서비스 시작 거절", error)
+            false
         }
     }
 }

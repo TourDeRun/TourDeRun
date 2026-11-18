@@ -35,6 +35,9 @@ sealed interface RunScreenUiState {
 /** 화면이 처리하는 일회성 이벤트. 서비스 시작은 Context가 필요해 화면에서 한다. */
 sealed interface RunEvent {
     data object StartService : RunEvent
+
+    /** 다시 시작 전에 화면이 위치 권한을 확인한다. 있으면 [RunViewModel.resume], 없으면 권한 안내. */
+    data object RequestResume : RunEvent
     data object OpenResult : RunEvent
     data object Close : RunEvent
 }
