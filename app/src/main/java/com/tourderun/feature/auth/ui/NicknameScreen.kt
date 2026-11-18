@@ -107,7 +107,7 @@ fun NicknameContent(
                 verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
             ) {
                 Mascot(size = 96.dp)
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s15)) {
                     Text(stringResource(R.string.nickname_title), style = type.titleLg)
                     Text(stringResource(R.string.nickname_subtitle), style = type.bodySm, color = colors.inkMuted)
                 }
@@ -137,4 +137,11 @@ fun NicknameContent(
 @Composable
 private fun NicknameContentPreview() {
     TdrTheme { NicknameContent(NicknameUiState(nickname = "민지"), {}, {}, {}) }
+}
+
+/** 빈 상태: 아직 입력 전. */
+@Preview(widthDp = 390, heightDp = 844)
+@Composable
+private fun NicknameScreenEmptyPreview() {
+    TdrTheme { NicknameScreen(NicknameUiState(), {}, {}, {}) }
 }

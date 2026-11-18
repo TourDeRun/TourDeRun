@@ -110,7 +110,7 @@ internal fun JoinTeamContent(
                 horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
             ) {
                 TeamImage(team.appearance, size = 40.dp)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                     Text(team.name, style = type.bodySm.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold))
                     Text(
                         stringResource(

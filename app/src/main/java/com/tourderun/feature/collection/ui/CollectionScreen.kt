@@ -96,7 +96,7 @@ fun CollectionScreen(
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(Modifier.padding(horizontal = 2.dp), verticalAlignment = Alignment.Bottom) {
+                Row(Modifier.padding(horizontal = TdrSpacing.s05), verticalAlignment = Alignment.Bottom) {
                     Text(
                         stringResource(R.string.collection_count, uiState.collected, uiState.cards.size),
                         style = type.statSm,
@@ -151,7 +151,7 @@ private fun RegionCardTile(card: RegionCardUi, onClick: () -> Unit) {
                 )
             }
         }
-        Column(Modifier.padding(horizontal = TdrSpacing.s3, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(horizontal = TdrSpacing.s3, vertical = TdrSpacing.s25), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
             Text(
                 card.name,
                 style = type.subtitle.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 20.sp),
@@ -183,6 +183,31 @@ private fun CollectionScreenPreview() {
                     RegionCardUi("anyang", "안양", RegionCardStatus.Collected("10월 31일")),
                     RegionCardUi("osan", "오산", RegionCardStatus.Collected("11월 4일")),
                     RegionCardUi("cheonan", "천안", RegionCardStatus.Next(18_200)),
+                    RegionCardUi("sejong", "세종", RegionCardStatus.Locked(4, 125)),
+                    RegionCardUi("yeongdong", "영동", RegionCardStatus.Locked(5, 181)),
+                    RegionCardUi("daegu", "대구", RegionCardStatus.Locked(6, 262)),
+                    RegionCardUi("busan", "부산", RegionCardStatus.Locked(7, 350)),
+                ),
+            ),
+            {}, {},
+        )
+    }
+}
+
+/** 빈 상태: 출발 도시 카드만 있다. */
+@Preview(widthDp = 390, heightDp = 900)
+@Composable
+private fun CollectionScreenStartPreview() {
+    TdrTheme {
+        CollectionScreen(
+            CollectionUiState(
+                "서울",
+                "부산",
+                listOf(
+                    RegionCardUi("seoul", "서울", RegionCardStatus.Collected("10월 28일")),
+                    RegionCardUi("anyang", "안양", RegionCardStatus.Next(19_000)),
+                    RegionCardUi("osan", "오산", RegionCardStatus.Locked(2, 48)),
+                    RegionCardUi("cheonan", "천안", RegionCardStatus.Locked(3, 85)),
                     RegionCardUi("sejong", "세종", RegionCardStatus.Locked(4, 125)),
                     RegionCardUi("yeongdong", "영동", RegionCardStatus.Locked(5, 181)),
                     RegionCardUi("daegu", "대구", RegionCardStatus.Locked(6, 262)),

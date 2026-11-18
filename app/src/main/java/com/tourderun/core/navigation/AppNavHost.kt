@@ -99,7 +99,7 @@ fun AppNavHost(
                 RoadViewScreen()
             }
             composable<ProfileRoute> {
-                // TODO(AUTH-03): 닉네임 수정. 로그아웃·탈퇴는 목이라 확인 없이 바로 되고 화면 이동만 한다.
+                // TODO(AUTH-03): 닉네임 수정. 로그아웃·탈퇴는 화면의 확인 다이얼로그를 거쳐 오고, 목이라 화면 이동만 한다.
                 ProfileScreen(
                     uiState = TempUiStates.profile.copy(
                         nickname = session.nickname ?: TempUiStates.profile.nickname,
@@ -149,7 +149,7 @@ fun AppNavHost(
             }
 
             composable<TeamRoute> {
-                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기. 팀 나가기는 목이라 화면 이동만 한다.
+                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기. 팀 나가기는 화면의 확인 다이얼로그를 거쳐 오고, 목이라 화면 이동만 한다.
                 TeamScreen(
                     uiState = TempUiStates.team,
                     onBack = back,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -112,7 +113,7 @@ private fun RunningContent(
             Text(
                 stringResource(if (uiState.isPaused) R.string.run_status_paused else R.string.run_status),
                 style = type.label.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(start = 6.dp).weight(1f),
+                modifier = Modifier.padding(start = TdrSpacing.s15).weight(1f),
             )
             Pill(
                 stringResource(if (uiState.gpsGood) R.string.run_gps_ok else R.string.run_gps_weak),
@@ -123,7 +124,7 @@ private fun RunningContent(
         }
 
         Column(
-            Modifier.fillMaxWidth().padding(top = TdrSpacing.s3, bottom = 4.dp),
+            Modifier.fillMaxWidth().padding(top = TdrSpacing.s3, bottom = TdrSpacing.s1),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(Format.km(runM, decimals = 2), style = type.runHero, color = colors.brandBright)
@@ -137,12 +138,12 @@ private fun RunningContent(
             StatColumn(AnnotatedString(Format.pace(uiState.currentPaceSecPerKm)), stringResource(R.string.run_current_pace), Modifier.weight(1f), big)
         }
 
-        TdrCard(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        TdrCard(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
             Row {
                 Text(stringResource(R.string.run_team_adding), style = type.caption, color = colors.inkMuted, modifier = Modifier.weight(1f))
                 Text(
                     Format.signedKm(runM, decimals = 2) + stringResource(R.string.unit_km),
-                    style = type.caption.copy(fontWeight = FontWeight.Bold),
+                    style = type.captionBold,
                     color = colors.brandBright,
                 )
             }
@@ -175,23 +176,19 @@ private fun RunningContent(
         }
 
         if (uiState.path.size >= 2) {
-            Box(Modifier.weight(1f).fillMaxWidth().clip(TdrShapes.lg)) {
-                RouteSketch(
-                    points = uiState.path,
-                    modifier = Modifier.fillMaxSize(),
-                    background = colors.bgSurface,
-                    roadColor = colors.border,
-                    lineColor = colors.brandBright,
-                    pointColor = colors.ink,
-                )
-                Pill(
-                    stringResource(R.string.run_minimap),
-                    background = colors.bgSubtle,
-                    contentColor = colors.inkMuted,
-                    style = type.micro,
-                    modifier = Modifier.padding(start = TdrSpacing.s3, top = 10.dp),
-                )
-            }
+            val minimapDesc = stringResource(R.string.run_minimap)
+            RouteSketch(
+                points = uiState.path,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(TdrShapes.lg)
+                    .semantics { contentDescription = minimapDesc },
+                background = colors.bgSurface,
+                roadColor = colors.border,
+                lineColor = colors.brandBright,
+                pointColor = colors.ink,
+            )
         } else {
             Box(Modifier.weight(1f))
         }
@@ -205,28 +202,42 @@ private fun RunControls(isPaused: Boolean, onPauseToggle: () -> Unit, onStopLong
     val colors = TdrTheme.colors
     val stopLabel = stringResource(R.string.run_stop)
     Row(
-        Modifier.fillMaxWidth().padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+        Modifier.fillMaxWidth().padding(top = TdrSpacing.s1),
+        horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s4, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 종료: 길게 눌러야 동작. 접근성 서비스에는 길게 누르기 동작으로 알린다.
-        Box(
-            Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(colors.bgSubtle)
-                .pointerInput(onStopLongPress) { detectTapGestures(onLongPress = { onStopLongPress() }) }
-                .semantics {
-                    contentDescription = stopLabel
-                    role = Role.Button
-                    onLongClick(label = stopLabel) {
-                        onStopLongPress()
-                        true
-                    }
-                },
-            contentAlignment = Alignment.Center,
+        // 종료 버튼과 안내를 한 묶음으로 둔다(안내가 버튼에서 떨어져 있으면 무엇을 길게 누르는지 알기 어렵다).
+        Column(
+            Modifier.width(StopSlotWidth),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(TdrSpacing.s15),
         ) {
-            Icon(TdrIcons.Stop, contentDescription = null, tint = colors.ink, modifier = Modifier.size(18.dp))
+            // 종료: 길게 눌러야 동작. 접근성 서비스에는 길게 누르기 동작으로 알린다.
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(colors.bgSubtle)
+                    .pointerInput(onStopLongPress) { detectTapGestures(onLongPress = { onStopLongPress() }) }
+                    .semantics {
+                        contentDescription = stopLabel
+                        role = Role.Button
+                        onLongClick(label = stopLabel) {
+                            onStopLongPress()
+                            true
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(TdrIcons.Stop, contentDescription = null, tint = colors.ink, modifier = Modifier.size(18.dp))
+            }
+            Text(
+                stringResource(R.string.run_stop_hint),
+                style = TdrTheme.typography.micro,
+                color = colors.inkMuted,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
         }
         Surface(
             onClick = onPauseToggle,
@@ -245,15 +256,13 @@ private fun RunControls(isPaused: Boolean, onPauseToggle: () -> Unit, onStopLong
                 )
             }
         }
-        Text(
-            stringResource(R.string.run_stop_hint),
-            style = TdrTheme.typography.micro,
-            color = colors.inkMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(56.dp),
-        )
+        // 일시정지 버튼이 화면 가운데에 오게 종료 묶음과 같은 너비를 비워 둔다.
+        Spacer(Modifier.width(StopSlotWidth))
     }
 }
+
+/** 종료 버튼 + 안내 글자가 들어가는 칸 너비. */
+private val StopSlotWidth = 88.dp
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
@@ -266,6 +275,24 @@ private fun RunningScreenPreview() {
             currentPaceSecPerKm = 331,
             stageWithRun = stageProgressUi(70_040, routeFor(1)),
             path = SampleRoutePoints,
+        ),
+        {}, {},
+    )
+}
+
+/** 막 시작해 일시정지한 상태: GPS 약함, 경로 없음(미니 지도 숨김). */
+@Preview(widthDp = 390, heightDp = 844)
+@Composable
+private fun RunningScreenPausedPreview() {
+    RunningScreen(
+        RunningUiState(
+            distanceM = 0.0,
+            movingSec = 0,
+            avgPaceSecPerKm = 0,
+            currentPaceSecPerKm = 0,
+            gpsGood = false,
+            isPaused = true,
+            stageWithRun = stageProgressUi(66_800, routeFor(1)),
         ),
         {}, {},
     )

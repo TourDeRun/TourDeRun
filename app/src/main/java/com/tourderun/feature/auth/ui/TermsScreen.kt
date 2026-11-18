@@ -90,7 +90,7 @@ fun TermsScreen(
                 .padding(top = TdrSpacing.s5),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s5),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s15)) {
                 Text(stringResource(R.string.terms_title), style = type.titleLg)
                 Text(stringResource(R.string.terms_subtitle), style = type.bodySm, color = colors.inkMuted)
             }
@@ -119,7 +119,7 @@ fun TermsScreen(
                 Text(stringResource(R.string.terms_all), style = type.subtitle.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold))
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
                 TermsItem.entries.forEach { item ->
                     TermsRow(
                         item = item,
@@ -153,7 +153,7 @@ private fun TermsRow(item: TermsItem, checked: Boolean, onToggle: () -> Unit, on
                 .weight(1f)
                 .heightIn(min = 48.dp)
                 .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = TdrSpacing.s1),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
         ) {
@@ -181,7 +181,7 @@ private fun TermsRow(item: TermsItem, checked: Boolean, onToggle: () -> Unit, on
             modifier = Modifier
                 .clip(TdrShapes.sm)
                 .clickable(onClickLabel = stringResource(R.string.terms_view_desc, label), onClick = onView)
-                .padding(horizontal = TdrSpacing.s2, vertical = 14.dp),
+                .padding(horizontal = TdrSpacing.s2, vertical = TdrSpacing.s35),
         )
     }
 }
@@ -201,7 +201,7 @@ private fun PrivacySummary() {
             .clip(TdrShapes.lg)
             .background(colors.bgSubtle)
             .padding(TdrSpacing.s4),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25),
     ) {
         Text(stringResource(R.string.terms_summary_title), style = TdrTheme.typography.label.copy(fontWeight = FontWeight.Bold))
         val small = TdrTheme.typography.caption.copy(lineHeight = 18.sp)

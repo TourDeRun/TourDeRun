@@ -16,10 +16,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tourderun.core.designsystem.component.TdrButton
-import com.tourderun.core.designsystem.component.TdrIcons
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -31,11 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
 import com.tourderun.core.designsystem.component.DateTile
+import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.component.valueWithUnit
 import com.tourderun.core.designsystem.theme.TdrSpacing
@@ -117,7 +116,7 @@ fun RecordsContent(
                     stringResource(R.string.records_summary, uiState.totalRuns, Format.km(uiState.totalDistanceM)),
                     style = TdrTheme.typography.caption,
                     color = colors.inkMuted,
-                    modifier = Modifier.padding(horizontal = 2.dp),
+                    modifier = Modifier.padding(horizontal = TdrSpacing.s05),
                 )
             }
             if (uiState.runs.isEmpty() && !uiState.isLoading) {
@@ -164,7 +163,7 @@ fun RunRow(run: RunRowUi, onClick: () -> Unit, modifier: Modifier = Modifier, in
     val content: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
             DateTile(stringResource(R.string.month_label, run.month), run.day.toString())
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                 Text(run.title, style = type.subtitle.copy(lineHeight = 20.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     Format.duration(run.movingSec) + " · " + stringResource(R.string.pace_per_km, Format.pace(run.paceSecPerKm)),
@@ -179,7 +178,7 @@ fun RunRow(run: RunRowUi, onClick: () -> Unit, modifier: Modifier = Modifier, in
         }
     }
     if (inCard) {
-        TdrCard(modifier, onClick = onClick, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) { content() }
+        TdrCard(modifier, onClick = onClick, contentPadding = PaddingValues(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s35)) { content() }
     } else {
         content()
     }

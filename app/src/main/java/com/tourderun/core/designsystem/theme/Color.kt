@@ -26,6 +26,10 @@ data class TdrColors(
     val inkOnBrand: Color,
     /** 남색 카드(brandStrong) 위 보조 글자. */
     val inkOnBrandMuted: Color,
+    /** 남색·강조색 바탕 위 옅은 칩·보조 버튼 바탕 (흰색 16%). */
+    val onBrandChip: Color,
+    /** 남색 바탕 위 진행 바 트랙 (흰색 20%). */
+    val onBrandTrack: Color,
     val brand: Color,
     val brandStrong: Color,
     val brandSoft: Color,
@@ -38,7 +42,7 @@ data class TdrColors(
     val highlightSoft: Color,
     val highlightInk: Color,
     val danger: Color,
-    /** 지도 위 남은 길. */
+    /** 지도 위 남은 길. 지도 바탕(bgMap)과 3:1 이상. */
     val routeRemaining: Color,
     /** 지도 자리표시의 도로. */
     val mapRoad: Color,
@@ -64,6 +68,8 @@ val LightTdrColors = TdrColors(
     inkSubtle = Color(0xFF8A909C),
     inkOnBrand = Color(0xFFFFFFFF),
     inkOnBrandMuted = Color(0xFFC9D3E6),
+    onBrandChip = Color(0x29FFFFFF),
+    onBrandTrack = Color(0x33FFFFFF),
     brand = Color(0xFF1D5FE0),
     brandStrong = Color(0xFF0E2A5C),
     brandSoft = Color(0xFFE6EEFC),
@@ -74,7 +80,7 @@ val LightTdrColors = TdrColors(
     highlightSoft = Color(0xFFFFF4D6),
     highlightInk = Color(0xFF8A6100),
     danger = Color(0xFFD6342C),
-    routeRemaining = Color(0xFFB7C4D8),
+    routeRemaining = Color(0xFF7389B0),
     mapRoad = Color(0xFFD6DDE8),
     locked = Color(0xFFECEEF2),
     live = Color(0xFF3DDC84),

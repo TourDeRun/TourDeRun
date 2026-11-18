@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -96,7 +95,7 @@ fun RunResultScreen(
             Modifier.weight(1f).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
         ) {
-            Column(Modifier.padding(top = TdrSpacing.s6, bottom = TdrSpacing.s2), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.padding(top = TdrSpacing.s6, bottom = TdrSpacing.s2), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
                 Text(uiState.title, style = type.label.copy(fontWeight = FontWeight.Normal), color = colors.inkMuted)
                 Text(
                     stringResource(R.string.result_title, Format.km(uiState.distanceM, decimals = 2)),
@@ -124,7 +123,7 @@ fun RunResultScreen(
                 TdrCard(color = colors.highlightSoft) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
                         Icon(TdrIcons.TrendUp, contentDescription = null, tint = colors.highlightInk, modifier = Modifier.size(28.dp))
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                             Text(
                                 stringResource(R.string.result_overtake_title, o.teamName, o.fromRank, o.toRank),
                                 style = type.subtitle.copy(lineHeight = 20.sp),
@@ -154,7 +153,7 @@ private fun TeamDistanceCard(uiState: RunResultUiState) {
     val before = stage.progressOf(uiState.teamBeforeM)
     TdrCard(color = colors.brandStrong) {
         Text(stringResource(R.string.result_team_distance), style = type.caption, color = colors.inkOnBrandMuted)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
             Text(
                 stringResource(R.string.km_value, Format.teamKm(uiState.teamBeforeM)),
                 style = type.title.copy(lineHeight = 24.sp),
@@ -170,8 +169,8 @@ private fun TeamDistanceCard(uiState: RunResultUiState) {
         TdrProgressBar(
             progress = before,
             secondary = stage.progress,
-            trackColor = Color.White.copy(alpha = 0.2f),
-            fillColor = Color.White,
+            trackColor = colors.onBrandTrack,
+            fillColor = colors.inkOnBrand,
             secondaryColor = DarkTdrColors.brandBright,
             contentDescription = stringResource(R.string.result_stage_progress_desc, stage.stageNumber),
         )
@@ -201,6 +200,25 @@ private fun RunResultScreenPreview() {
                 teamBeforeM = 66_800,
                 stageAfter = stageProgressUi(70_040, routeFor(1)),
                 overtake = OvertakeUi("주황이들", 2, 1, 2_400, 840),
+            ),
+            onConfirm = {},
+        )
+    }
+}
+
+/** 추월이 없는 결과. */
+@Preview(widthDp = 390, heightDp = 844)
+@Composable
+private fun RunResultScreenNoOvertakePreview() {
+    TdrTheme {
+        RunResultScreen(
+            RunResultUiState(
+                title = "11월 6일 저녁 러닝",
+                distanceM = 1_200,
+                movingSec = 480,
+                paceSecPerKm = 400,
+                teamBeforeM = 66_800,
+                stageAfter = stageProgressUi(68_000, routeFor(1)),
             ),
             onConfirm = {},
         )
