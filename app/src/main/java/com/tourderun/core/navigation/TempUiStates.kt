@@ -98,8 +98,8 @@ internal object TempUiStates {
             distanceFromStartKm = routeFor(1).stages.take(index).sumOf { it.lengthKm },
             description = content?.intro.orEmpty(),
             landmarks = content?.landmarks.orEmpty().map { LandmarkUi(it.name, it.description) },
-            // TODO(EXT-01): 사진(이용 조건 확인)이 정해지면 출처를 채운다.
-            photoCredit = content?.photoCredit ?: "준비 중",
+            // 사진이 정해지기 전에는 null이라 S18이 출처 줄을 숨긴다. TODO(EXT-01): 사진과 출처를 채운다.
+            photoCredit = content?.photoCredit,
             acquiredDateText = (card.status as? RegionCardStatus.Collected)?.dateText.orEmpty(),
             teamName = PreviewSamples.team.name,
         )
