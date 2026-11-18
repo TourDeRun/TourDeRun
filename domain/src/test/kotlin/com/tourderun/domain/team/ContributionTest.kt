@@ -44,12 +44,25 @@ class ContributionTest {
         assertEquals(listOf(34, 33, 33), shares.map { it.percent })
     }
 
-    @Test fun `퍼센트 합은 항상 100`() {
+    @Test fun `퍼센트 합은 항상 100 - 소수점 아래가 큰 줄부터 1씩 더한다`() {
+        // 정확한 값: u1 33.333 / u2 16.667 / u3 9.999 / u4 0.001 / 이전 팀원 40.0
+        // 버림하면 33·16·9·0·40 = 98 → 모자란 2를 소수점 아래가 큰 u3(.999), u2(.667)에 하나씩
         val shares = contributionShares(
             100_000,
             mapOf("u1" to 33_333L, "u2" to 16_667L, "u3" to 9_999L, "u4" to 1L),
         )
+        assertEquals(
+            listOf("u1" to 33, "u2" to 17, "u3" to 10, "u4" to 0, null to 40),
+            shares.map { it.uid to it.percent },
+        )
         assertEquals(100, shares.sumOf { it.percent })
+    }
+
+    @Test fun `팀원 기여 합이 팀 거리보다 크면 이전 팀원 줄 없이 팀원 합 기준으로 100%`() {
+        // 리스너가 teams와 members를 따로 받아서 잠깐 생길 수 있는 경우 (팀 5km, 팀원 합 7km)
+        val shares = contributionShares(5_000, mapOf("u1" to 4_000L, "u2" to 3_000L))
+        assertEquals(listOf("u1" to 57, "u2" to 43), shares.map { it.uid to it.percent })
+        assertTrue(shares.none { it.uid == null })
     }
 
     @Test fun `팀 거리 0이면 모두 0%·이전 팀원 줄 없음`() {
