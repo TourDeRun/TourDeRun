@@ -1,5 +1,10 @@
 package com.tourderun.core.data.session
 
+import android.content.Context
+import android.util.Log
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.exceptions.ClearCredentialException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentSnapshot
@@ -10,6 +15,7 @@ import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.UserFields
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.di.ApplicationScope
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +29,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 
@@ -32,7 +39,8 @@ import kotlinx.coroutines.withTimeout
 class FirestoreSessionRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    @ApplicationScope appScope: CoroutineScope,
+    @ApplicationContext private val context: Context,
+    @ApplicationScope private val appScope: CoroutineScope,
 ) : SessionRepository {
 
     // ── 1. 로그인 상태를 Flow로 ───────────────────────────────
@@ -115,6 +123,15 @@ class FirestoreSessionRepository @Inject constructor(
     // ── 6. 로그아웃 ──────────────────────────────────────────
     override fun signOut() {
         auth.signOut()   // state는 리스너가 알아서 SignedOut으로 바꾼다
+        // AUTH-04: 기기에 남은 "마지막으로 고른 구글 계정"도 지워서, 다음 로그인 때 계정을 다시 고르게 한다.
+        // 화면을 기다리게 하지 않으려고 앱 범위 코루틴에서 따로 한다. 실패해도 로그아웃은 이미 끝났다.
+        appScope.launch {
+            try {
+                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+            } catch (e: ClearCredentialException) {
+                Log.w(TAG, "계정 선택 기록 지우기 실패: ${e.type}")
+            }
+        }
     }
 
     private companion object {

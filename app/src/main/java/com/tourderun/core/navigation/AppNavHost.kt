@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -99,18 +100,26 @@ fun AppNavHost(
                 RoadViewScreen()
             }
             composable<ProfileRoute> {
-                // TODO(AUTH-03): 닉네임 수정. 로그아웃·탈퇴는 목이라 확인 없이 바로 되고 화면 이동만 한다.
+                // TODO(AUTH-03): 닉네임 수정.
+                // AUTH-04: 확인 창이 열렸는지는 화면 회전에도 남게 rememberSaveable로 둔다.
+                var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
                 ProfileScreen(
                     uiState = TempUiStates.profile.copy(
                         nickname = session.nickname ?: TempUiStates.profile.nickname,
                         teamName = session.team?.name,
+                        showLogoutConfirm = showLogoutConfirm,
                     ),
                     onEditNickname = {},
                     onTeamClick = { navController.navigate(TeamRoute) },
                     onRecordsClick = { navController.navigate(RecordsRoute) },
                     onRunClick = { navController.navigate(RecordDetailRoute(it.runId)) },
                     onCollectionClick = { navController.navigate(CollectionRoute) },
-                    onLogout = entryViewModel::signOut,
+                    onLogout = { showLogoutConfirm = true },
+                    onLogoutDismiss = { showLogoutConfirm = false },
+                    onLogoutConfirm = {
+                        showLogoutConfirm = false
+                        entryViewModel.signOut()
+                    },
                     onWithdraw = {
                         // TODO(AUTH-05): 실제 탈퇴. 지금은 목 데이터만 지우고 로그아웃한다.
                         session.withdraw()
