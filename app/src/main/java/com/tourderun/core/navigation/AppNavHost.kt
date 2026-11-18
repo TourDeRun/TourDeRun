@@ -12,7 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -34,6 +33,7 @@ import com.tourderun.feature.collection.ui.CollectionScreen
 import com.tourderun.feature.home.ui.HomeScreen
 import com.tourderun.feature.journey.ui.RoadViewScreen
 import com.tourderun.feature.profile.ui.ProfileScreen
+import com.tourderun.feature.profile.ui.ProfileViewModel
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
 import com.tourderun.feature.record.ui.RecordsScreen
@@ -50,7 +50,7 @@ import com.tourderun.feature.team.ui.TeamScreen
  * ViewModel이 없는 화면은 [TempUiStates]의 고정 상태로 띄운다. 화면 주인은 ViewModel을 붙일 때
  * 해당 `composable { }` 안의 상태와 빈 콜백(`{}`)을 자기 것으로 바꾼다.
  *
- * 시작 화면은 [EntryStage]로 정한다. 로그인·닉네임은 [SessionRepository](Firebase), 팀은 아직 목([MockSession])이다.
+ * 시작 화면은 [EntryStage]로 정한다. 로그인·닉네임·팀 여부는 모두 [SessionRepository](Firebase)의 값이다.
  */
 @Composable
 fun AppNavHost(
@@ -60,12 +60,9 @@ fun AppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTab = backStackEntry?.destination?.tab()
     val back: () -> Unit = { navController.popBackStack() }
-    // TODO(TEAM-01): TeamRepository가 생기면 목 팀(MockSession)을 지우고 세션 상태의 teamId만 본다.
-    val context = LocalContext.current
-    val session = remember { MockSession(context.applicationContext) }
     val entryViewModel: EntryViewModel = hiltViewModel()
     val sessionState by entryViewModel.sessionState.collectAsStateWithLifecycle()
-    val stage = sessionState.toEntryStage(hasMockTeam = session.team != null)
+    val stage = sessionState.toEntryStage()
 
     // 시작 화면은 세션 상태의 첫 값으로 한 번만 정한다. 그 전에는 로딩 화면을 보인다.
     var startRoute by remember { mutableStateOf<Any?>(null) }
@@ -88,7 +85,7 @@ fun AppNavHost(
             startDestination = start,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
-            entryGraph(navController, session, onSignOut = entryViewModel::signOut)
+            entryGraph(navController, onSignOut = entryViewModel::signOut)
 
             composable<HomeRoute> {
                 HomeScreen(
@@ -102,12 +99,14 @@ fun AppNavHost(
             }
             composable<ProfileRoute> {
                 // TODO(AUTH-03): 닉네임 수정.
+                val profileViewModel: ProfileViewModel = hiltViewModel()
+                val header by profileViewModel.header.collectAsStateWithLifecycle()
                 // AUTH-04: 확인 창이 열렸는지는 화면 회전에도 남게 rememberSaveable로 둔다.
                 var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
                 ProfileScreen(
                     uiState = TempUiStates.profile.copy(
-                        nickname = session.nickname ?: TempUiStates.profile.nickname,
-                        teamName = session.team?.name,
+                        nickname = header.nickname ?: TempUiStates.profile.nickname,
+                        teamName = header.teamName,
                         showLogoutConfirm = showLogoutConfirm,
                     ),
                     onEditNickname = {},
@@ -121,11 +120,8 @@ fun AppNavHost(
                         showLogoutConfirm = false
                         entryViewModel.signOut()
                     },
-                    onWithdraw = {
-                        // TODO(AUTH-05): 실제 탈퇴. 지금은 목 데이터만 지우고 로그아웃한다.
-                        session.withdraw()
-                        entryViewModel.signOut()
-                    },
+                    // TODO(AUTH-05): 실제 탈퇴. 지금은 로그아웃만 한다.
+                    onWithdraw = entryViewModel::signOut,
                 )
             }
 
@@ -156,17 +152,15 @@ fun AppNavHost(
             }
 
             composable<TeamRoute> {
-                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기. 팀 나가기는 목이라 화면 이동만 한다.
+                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기, TODO(TEAM-07): 팀 나가기.
                 TeamScreen(
                     uiState = TempUiStates.team,
                     onBack = back,
                     onEdit = { navController.navigate(TeamEditRoute) },
                     onKick = {},
                     onShareInvite = {},
-                    onLeave = {
-                        session.leaveTeam()
-                        navController.resetTo(TeamStartRoute)
-                    },
+                    // 나가기가 되면 users.teamId가 null → NoTeam이 되고, 팀 시작 화면 이동은 그때 정한다
+                    onLeave = {},
                 )
             }
             composable<TeamEditRoute> {
