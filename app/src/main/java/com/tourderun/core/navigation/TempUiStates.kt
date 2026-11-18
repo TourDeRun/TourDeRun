@@ -5,6 +5,7 @@ import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.card.RegionCards
+import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.collection.ui.CardDetailUiState
 import com.tourderun.feature.collection.ui.CollectionUiState
 import com.tourderun.feature.collection.ui.LandmarkUi
