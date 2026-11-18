@@ -135,8 +135,10 @@ service cloud.firestore {
           );
 
         allow update: if signedIn() && (
-          // AUTH-03 닉네임, JRN-05 본 도착 수
-          (uid == me() && onlyChanged(['nickname', 'seenArrivals']))
+          // AUTH-03 닉네임, JRN-05 본 도착 수 (본 도착 수는 늘어나기만, 도시 7곳까지)
+          (uid == me() && onlyChanged(['nickname', 'seenArrivals'])
+              && request.resource.data.get('seenArrivals', 0) >= resource.data.get('seenArrivals', 0)
+              && request.resource.data.get('seenArrivals', 0) <= 7)
           // REC-01: 기여 거리 (같은 배치의 새 러닝 거리만큼만)
           || (uid == me() && onlyChanged(['contributionM', 'lastRunId'])
               && isNewRunOf(request.resource.data.lastRunId, teamId)

@@ -288,6 +288,38 @@ describe('팀원 문서 수정 (JRN-05·REC-01)', () => {
     await assertSucceeds(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 3 }));
   });
 
+  /** u2의 본 도착 수를 n으로 맞춰 둔다. */
+  const seedSeen = (n) => seed((d) => updateDoc(doc(d, 'teams', 't1', 'members', 'u2'), { seenArrivals: n }));
+
+  test('본 도착 수 2 → 3 → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    await seedSeen(2);
+    await assertSucceeds(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 3 }));
+  });
+
+  test('본 도착 수 3 → 2 (줄이기) → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    await seedSeen(3);
+    await assertFails(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 2 }));
+  });
+
+  test('본 도착 수 8 (도시 7곳 초과) → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 8 }));
+  });
+
+  test('본 도착 수 그대로 다시 쓰기 → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    await seedSeen(3);
+    await assertSucceeds(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 3 }));
+  });
+
+  test('닉네임만 수정 (본 도착 수 그대로) → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    await seedSeen(3);
+    await assertSucceeds(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { nickname: '바뀐닉' }));
+  });
+
   test('다른 팀원의 seenArrivals 수정 → 거절 (팀장이어도)', async () => {
     await seedTeam(['u1', 'u2']);
     await assertFails(updateDoc(doc(db('u1'), 'teams', 't1', 'members', 'u2'), { seenArrivals: 3 }));
