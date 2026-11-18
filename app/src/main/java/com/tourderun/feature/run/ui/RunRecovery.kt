@@ -122,6 +122,7 @@ fun RunRecoveryHost(
     val recovered by viewModel.recovered.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var askPermission by rememberSaveable { mutableStateOf(false) }
+    var startFailed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(viewModel) {
         viewModel.outcomeFlow.collect { outcome ->
             when (outcome) {
@@ -130,7 +131,10 @@ fun RunRecoveryHost(
                 } else {
                     // 시작 요청이 거절되면 onStartCommand까지 가지 않으므로 여기서 일시정지로 되돌린다.
                     viewModel.onServiceStartFailed()
-                    askPermission = true
+                    when (serviceStartFailureNotice(context.hasRunPermissions())) {
+                        ServiceStartFailureNotice.Permission -> askPermission = true
+                        ServiceStartFailureNotice.Retry -> startFailed = true
+                    }
                 }
                 RecoveryOutcome.Discarded -> Unit
             }
@@ -160,6 +164,7 @@ fun RunRecoveryHost(
             onDismiss = { askPermission = false },
         )
     }
+    if (startFailed) RunStartFailedDialog(onDismiss = { startFailed = false })
 }
 
 @Composable
