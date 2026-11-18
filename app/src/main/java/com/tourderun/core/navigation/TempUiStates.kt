@@ -5,7 +5,7 @@ import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.core.ui.preview.PreviewSamples
-import com.tourderun.domain.route.routeFor
+import com.tourderun.domain.card.RegionCards
 import com.tourderun.feature.collection.ui.CardDetailUiState
 import com.tourderun.feature.collection.ui.CollectionUiState
 import com.tourderun.feature.collection.ui.LandmarkUi
@@ -73,18 +73,21 @@ internal object TempUiStates {
         ),
     )
 
-    // TODO(EXT-01): 카드 콘텐츠(M-07)가 준비되면 cityId로 실제 카드를 찾는다.
+    // 글 콘텐츠는 M-07(RegionCards). 획득 날짜·팀 이름은 TODO(EXT-01): 도감 ViewModel에서 users.cards로 바꾼다.
     fun cardDetail(cityId: String): CardDetailUiState {
         val card = collection.cards.firstOrNull { it.cityId == cityId } ?: collection.cards.first()
+        val content = RegionCards.of(card.cityId)
+        val index = collection.cards.indexOf(card)
         return CardDetailUiState(
             name = card.name,
-            nameEn = card.cityId.replaceFirstChar { it.uppercase() },
-            stageNumber = collection.cards.indexOf(card).takeIf { it > 0 },
+            nameEn = content?.nameEn ?: card.cityId.replaceFirstChar { it.uppercase() },
+            stageNumber = index.takeIf { it > 0 },
             startCity = collection.routeFrom,
-            distanceFromStartKm = 0,
-            description = "[지역 소개 준비 중]",
-            landmarks = listOf(LandmarkUi("[랜드마크]", "[설명 준비 중]")),
-            photoCredit = "[출처]",
+            distanceFromStartKm = routeFor(1).stages.take(index).sumOf { it.lengthKm },
+            description = content?.intro.orEmpty(),
+            landmarks = content?.landmarks.orEmpty().map { LandmarkUi(it.name, it.description) },
+            // 사진이 정해지기 전에는 null이라 S18이 출처 줄을 숨긴다. TODO(EXT-01): 사진과 출처를 채운다.
+            photoCredit = content?.photoCredit,
             acquiredDateText = (card.status as? RegionCardStatus.Collected)?.dateText.orEmpty(),
             teamName = PreviewSamples.team.name,
         )
