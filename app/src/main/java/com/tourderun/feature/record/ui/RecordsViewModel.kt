@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
  *
  * - uid가 null(로그인 전·로그아웃)이면 구독하지 않고 빈 목록을 낸다.
  * - uid가 바뀌면 이전 계정 구독을 끊고 다시 구독한다. 새 목록이 올 때까지는 불러오는 중(이전 계정 목록을 보이지 않는다).
+ * - uid가 바뀌면 개수도 20개로 되돌린다([onUidChanged]. null로 바뀔 때도 불러서 같은 계정으로 다시 로그인해도 20개부터).
  * - 같은 uid에서 개수만 늘면 다시 구독하는 동안 직전 목록을 그대로 둔다.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -34,9 +35,11 @@ internal fun recordsUiStates(
     uids: Flow<String?>,
     limits: Flow<Long>,
     observeRuns: (uid: String, limit: Long) -> Flow<Loaded<List<RunRecord>>>,
+    onUidChanged: () -> Unit,
 ): Flow<RecordsUiState> = uids
     .distinctUntilChanged()
     .flatMapLatest { uid ->
+        onUidChanged()
         if (uid == null) {
             flowOf(recordsUiState(emptyList(), RunRepository.PAGE_SIZE))
         } else {
@@ -62,7 +65,12 @@ class RecordsViewModel @Inject constructor(
     private val limit = MutableStateFlow(RunRepository.PAGE_SIZE)
 
     val uiState: StateFlow<RecordsUiState> =
-        recordsUiStates(sessionRepository.state.map { it.uid }, limit, runRepository::observeRuns)
+        recordsUiStates(
+            uids = sessionRepository.state.map { it.uid },
+            limits = limit,
+            observeRuns = runRepository::observeRuns,
+            onUidChanged = { limit.value = RunRepository.PAGE_SIZE },
+        )
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordsUiState.Loading)
 
     /** 지금 보이는 개수 기준이라 여러 번 불려도 한 쪽만 늘어난다. */

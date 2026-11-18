@@ -40,7 +40,12 @@ class RecordsUiStatesTest {
     ): List<RecordsUiState> = runBlocking {
         val states = mutableListOf<RecordsUiState>()
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
-            recordsUiStates(uids, limits, recorder::observe).toList(states)
+            recordsUiStates(
+                uids = uids,
+                limits = limits,
+                observeRuns = recorder::observe,
+                onUidChanged = { limits.value = RunRepository.PAGE_SIZE },
+            ).toList(states)
         }
         settle()
         block()
@@ -108,6 +113,26 @@ class RecordsUiStatesTest {
 
         assertEquals(listOf("a" to 20L, "a" to 40L), recorder.calls)
         assertEquals(1, states.count { it.isLoading })
+    }
+
+    @Test fun `uid가 바뀌면 20개부터 다시 구독`() {
+        val recorder = Recorder(
+            mapOf(
+                "a" to Loaded.Ready(samples, isFromCache = false),
+                "b" to Loaded.Ready(samples.take(1), isFromCache = false),
+            ),
+        )
+        val uids = MutableStateFlow<String?>("a")
+        val limits = MutableStateFlow(RunRepository.PAGE_SIZE)
+
+        collect(uids, limits, recorder) {
+            limits.value = 60L
+            settle()
+            uids.value = "b"
+        }
+
+        assertEquals(listOf("a" to 20L, "a" to 60L, "b" to 20L), recorder.calls)
+        assertEquals(RunRepository.PAGE_SIZE, limits.value)
     }
 
     @Test fun `실패는 건너뛰어 불러오는 중에 머문다`() {
