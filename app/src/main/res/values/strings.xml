@@ -179,6 +179,34 @@
     <string name="run_pause">일시정지</string>
     <string name="run_resume">다시 시작</string>
     <string name="run_stop_hint">종료는\n길게 눌러요</string>
+    <string name="run_ready_title">달릴 준비 됐나요?</string>
+    <string name="run_ready_stage">지금 스테이지 %1$d · %2$s → %3$s</string>
+    <string name="run_start">시작</string>
+    <string name="run_close">닫기</string>
+    <string name="run_no_team_title">팀이 있어야 달릴 수 있어요</string>
+    <string name="run_no_team_body">혼자 달리고 싶다면 1인 팀을 만들어 주세요. 팀에 들어간 뒤 달린 거리부터 팀 여정에 더해져요.</string>
+    <string name="run_countdown_gps">GPS를 준비하고 있어요</string>
+    <string name="run_countdown_cancel">취소</string>
+    <string name="run_too_short_title">너무 짧아 저장되지 않아요</string>
+    <string name="run_too_short_body">%1$skm · %2$s 달렸어요. 100m 이상, 1분 이상 달려야 기록과 팀 거리에 더해져요.</string>
+    <string name="run_too_short_continue">계속 달리기</string>
+    <string name="run_too_short_discard">저장 없이 종료</string>
+    <string name="run_finished_title">저장하지 않은 러닝이 있어요</string>
+    <string name="run_finished_body">%1$skm · %2$s. 결과 화면에서 저장해 주세요.</string>
+    <string name="run_finished_open">결과 보기</string>
+    <string name="run_battery_title">화면을 끄면 측정이 멈추나요?</string>
+    <string name="run_battery_body">절전 기능이 측정을 멈출 수 있어요. 배터리 최적화 목록에서 Tour De Run을 \'최적화 안 함\'으로 바꿔 주세요.</string>
+    <string name="run_battery_open">배터리 설정 열기</string>
+    <string name="run_notification_channel">러닝 측정</string>
+    <string name="run_notification_countdown">곧 측정을 시작해요</string>
+    <string name="run_notification_running">측정 중 · %1$skm · %2$s</string>
+    <string name="run_notification_paused">일시정지 · %1$skm · %2$s</string>
+    <string name="run_recovery_title">종료되지 않은 러닝이 있어요</string>
+    <string name="run_recovery_body">%1$skm · %2$s까지 측정됐어요. 앱이 꺼져 있던 시간은 일시정지로 계산해요.</string>
+    <string name="run_recovery_too_short">100m 또는 1분이 안 돼 저장할 수 없어요.</string>
+    <string name="run_recovery_resume">이어하기</string>
+    <string name="run_recovery_save">지금까지 저장</string>
+    <string name="run_recovery_discard">버리기</string>
 
     <!-- S10 러닝 결과 -->
     <string name="result_title">수고했어요! 팀이 %1$skm 더 갔어요</string>

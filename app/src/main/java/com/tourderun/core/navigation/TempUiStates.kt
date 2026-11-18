@@ -1,7 +1,6 @@
 package com.tourderun.core.navigation
 
 import com.tourderun.core.data.record.FakeRunRepository
-import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.model.stageProgressUi
@@ -18,7 +17,6 @@ import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
 import com.tourderun.feature.run.ui.OvertakeUi
 import com.tourderun.feature.run.ui.RunResultUiState
-import com.tourderun.feature.run.ui.RunningUiState
 import com.tourderun.feature.team.ui.TeamEditUiState
 import com.tourderun.feature.team.ui.TeamUiState
 
@@ -40,16 +38,6 @@ internal object TempUiStates {
         // 누르면 S12가 열리므로 가짜 Repository에 실제로 있는 기록이어야 한다.
         latestRun = FakeRunRepository.SAMPLE_RUNS.first().toRowUi(),
         collection = CollectionSummaryUi(3, 8, "천안"),
-    )
-
-    // TODO(RUN-03): 러닝 ViewModel(RunSessionManager)로 바꾼다.
-    val running = RunningUiState(
-        distanceM = 3_240.0,
-        movingSec = 1_122,
-        avgPaceSecPerKm = 346,
-        currentPaceSecPerKm = 331,
-        stageWithRun = stageAfterRun,
-        path = SampleRoutePoints,
     )
 
     // TODO(REC-06): 결과 화면 ViewModel(#51)로 바꾼다.
