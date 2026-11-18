@@ -36,7 +36,7 @@ import com.tourderun.feature.profile.ui.ProfileScreen
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
 import com.tourderun.feature.record.ui.RecordsScreen
-import com.tourderun.feature.run.ui.RunResultScreen
+import com.tourderun.feature.run.ui.RunResultHost
 import com.tourderun.feature.run.ui.RunRecoveryHost
 import com.tourderun.feature.run.ui.RunRoute
 import com.tourderun.feature.stat.ui.WeeklyStatsScreen
@@ -130,10 +130,8 @@ fun AppNavHost(
                 )
             }
             composable<RunResultRoute> {
-                RunResultScreen(
-                    uiState = TempUiStates.runResult,
-                    onConfirm = { navController.popBackStack(HomeRoute, inclusive = false) },
-                )
+                // 종료된 러닝을 저장하고 결과를 보인다(REC-01). 저장할 러닝이 없으면 바로 홈으로 간다.
+                RunResultHost(onDone = { navController.popBackStack(HomeRoute, inclusive = false) })
             }
 
             composable<RecordsRoute> {
