@@ -18,40 +18,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
+private typealias FakeDao = FakeRunPointDao
+private typealias FakeStore = FakeActiveRunStore
+
 class RunSessionManagerTest {
-    private class FakeDao : RunPointDao {
-        private val rows = MutableStateFlow<List<RunPointEntity>>(emptyList())
-        var failNext = false
-        var failAfterInsert = false
-        var failDelete = false
-        override suspend fun insert(point: RunPointEntity): Long {
-            if (failNext) { failNext = false; throw IllegalStateException("저장 실패") }
-            val id = (rows.value.lastOrNull()?.id ?: 0) + 1
-            rows.value = rows.value + point.copy(id = id)
-            if (failAfterInsert) { failAfterInsert = false; throw IllegalStateException("저장 결과 알 수 없음") }
-            return id
-        }
-        override suspend fun pointsForRun(runId: String) = rows.value.filter { it.runId == runId }
-        override suspend fun acceptedPointsForRun(runId: String) = rows.value.filter { it.runId == runId && it.accepted }
-        override fun observePointsForRun(runId: String): Flow<List<RunPointEntity>> = rows.map { list -> list.filter { it.runId == runId } }
-        override suspend fun deleteForRun(runId: String) {
-            if (failDelete) throw IllegalStateException("삭제 실패")
-            rows.value = rows.value.filterNot { it.runId == runId }
-        }
-    }
-    private class FakeStore : ActiveRunStore {
-        override val session = MutableStateFlow<StoredRunSession?>(null)
-        var savedSignal: CompletableDeferred<Unit>? = null
-        var completeSave: CompletableDeferred<Unit>? = null
-        override suspend fun save(session: StoredRunSession) {
-            this.session.value = session
-            savedSignal?.complete(Unit)
-            completeSave?.await()
-        }
-        override suspend fun clearIfRunIdMatches(runId: String) {
-            if (session.value?.runId == runId) session.value = null
-        }
-    }
     private fun point(lng: Double, timeMs: Long) = GpsPoint(0.0, lng, timeMs, 5f)
 
     @Test fun `일시정지 구간은 더하지 않고 각 구간 첫 점을 경로에 포함`() = runBlocking {
@@ -215,4 +185,134 @@ class RunSessionManagerTest {
         assertTrue(dao.pointsForRun("run1").isEmpty())
     }
 
+
+    @Test fun `저장 확인 후 completeSave하면 기기 데이터를 지우고 다음 러닝을 시작할 수 있다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        val manager = RunSessionManager(dao, store)
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        manager.onLocation(point(0.0, 4_000), 4_000)
+        requireNotNull(manager.finish(10_000))
+        assertFalse(manager.completeSave("other"))
+        assertTrue(manager.completeSave("run1"))
+        assertEquals(RunPhase.IDLE, manager.state.value.phase)
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertNull(store.session.value)
+        assertTrue(manager.beginCountdown("run2", 20_000))
+    }
+
+    @Test fun `종료 전에는 completeSave가 동작하지 않는다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        assertFalse(manager.completeSave("run1"))
+        assertEquals(RunPhase.RUNNING, manager.state.value.phase)
+    }
+
+    @Test fun `채택된 점이 10초 동안 없으면 GPS 약함, 점이 들어오면 해제`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        manager.tick(12_000)
+        assertFalse(manager.state.value.gpsWeak)
+        manager.tick(13_000)
+        assertTrue(manager.state.value.gpsWeak)
+        manager.onLocation(point(0.0, 13_500), 13_500)
+        assertFalse(manager.state.value.gpsWeak)
+        manager.pause(14_000)
+        manager.tick(40_000)
+        assertFalse(manager.state.value.gpsWeak)
+    }
+
+    @Test fun `앱이 꺼진 뒤 복구하면 거리를 다시 계산하고 꺼진 시간은 일시정지로 본다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        val before = RunSessionManager(dao, store)
+        before.beginCountdown("run1", 0)
+        before.tick(3_000)
+        before.onLocation(point(0.0, 4_000), 4_000)
+        before.onLocation(point(0.0001, 14_000), 14_000)
+        // 프로세스가 죽고 새 매니저가 같은 기기 저장소를 읽는다.
+        val after = RunSessionManager(dao, store)
+        val pending = requireNotNull(after.pendingRecovery())
+        assertEquals("run1", pending.runId)
+        val recovered = requireNotNull(after.recover())
+        assertEquals(11.1, recovered.distanceM, 0.2)
+        assertEquals(14_000L, recovered.endMs)
+        assertEquals(11L, recovered.movingSec)
+        assertFalse(recovered.finished)
+        assertEquals(RunPhase.PAUSED, after.state.value.phase)
+
+        // 이어하기: 꺼져 있던 14초~100초는 움직인 시간에서 빠진다.
+        assertTrue(after.resume(100_000))
+        after.onLocation(point(1.0, 101_000), 101_000)
+        val result = requireNotNull(after.finish(111_000))
+        assertEquals(22L, result.movingSec)
+        assertEquals(11.1, result.distanceM, 0.2)
+    }
+
+    @Test fun `복구 후 지금까지 저장하면 마지막으로 살아 있던 시각에 끝난다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        val before = RunSessionManager(dao, store)
+        before.beginCountdown("run1", 0)
+        before.tick(3_000)
+        before.onLocation(point(0.0, 4_000), 4_000)
+        before.onLocation(point(0.0001, 14_000), 14_000)
+        val after = RunSessionManager(dao, store)
+        val recovered = requireNotNull(after.recover())
+        val result = requireNotNull(after.finish(recovered.endMs))
+        assertEquals(14_000L, result.endedAtMs)
+        assertEquals(2, result.acceptedPoints.size)
+    }
+
+    @Test fun `복구 후 버리면 기기 데이터를 지운다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        val before = RunSessionManager(dao, store)
+        before.beginCountdown("run1", 0)
+        before.tick(3_000)
+        before.onLocation(point(0.0, 4_000), 4_000)
+        val after = RunSessionManager(dao, store)
+        requireNotNull(after.recover())
+        assertTrue(after.discard("run1"))
+        assertNull(store.session.value)
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertNull(after.pendingRecovery())
+    }
+
+    @Test fun `측정 중인 프로세스에서는 복구 안내를 띄우지 않는다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        assertNull(manager.pendingRecovery())
+        assertNull(manager.recover())
+    }
+
+    @Test fun `서비스 실패면 측정 중은 일시정지로 돌아간다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        assertTrue(manager.stopForServiceFailure(5_000))
+        assertEquals(RunPhase.PAUSED, manager.state.value.phase)
+    }
+
+    @Test fun `서비스 실패면 카운트다운은 취소돼 IDLE이 된다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        assertTrue(manager.stopForServiceFailure(1_000))
+        assertEquals(RunPhase.IDLE, manager.state.value.phase)
+    }
+
+    @Test fun `서비스 실패여도 종료된 러닝은 결과를 그대로 둔다`() = runBlocking {
+        val manager = RunSessionManager(FakeDao(), FakeStore())
+        manager.beginCountdown("run1", 0)
+        manager.tick(3_000)
+        manager.onLocation(point(0.0, 4_000), 4_000)
+        val result = requireNotNull(manager.finish(10_000))
+        assertFalse(manager.stopForServiceFailure(11_000))
+        assertEquals(RunPhase.FINISHED, manager.state.value.phase)
+        assertEquals(result, manager.state.value.result)
+    }
 }
