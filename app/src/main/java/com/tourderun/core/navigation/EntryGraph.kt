@@ -12,14 +12,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.tourderun.R
 import com.tourderun.core.designsystem.theme.TdrTheme
-import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.feature.auth.ui.LoginScreen
 import com.tourderun.feature.auth.ui.NicknameScreen
 import com.tourderun.feature.auth.ui.TermsItem
@@ -28,7 +25,6 @@ import com.tourderun.feature.auth.ui.TermsUiState
 import com.tourderun.feature.team.ui.CreateTeamScreen
 import com.tourderun.feature.team.ui.InviteCodeScreen
 import com.tourderun.feature.team.ui.JoinTeamDialog
-import com.tourderun.feature.team.ui.JoinTeamPreviewUi
 import com.tourderun.feature.team.ui.JoinTeamUiState
 import com.tourderun.feature.team.ui.TeamStartScreen
 
@@ -78,13 +74,10 @@ internal fun NavController.resetTo(route: Any) {
 
 /**
  * 최초 진입 화면 S01~S06 (#52). S01·S02는 ViewModel이 세션에 쓰고, 다음 화면 이동은 [followEntryStage]가 한다.
- * 팀(S03~S06)은 아직 목([session])이다.
- *
- * TODO(TEAM-01): TeamRepository가 생기면 팀 화면의 [session] 호출을 바꾼다.
+ * 팀 만들기(S04)·초대 코드(S06)는 Firestore에 연결돼 있고, 팀 참여(S05)는 TEAM-03에서 붙인다.
  */
 internal fun NavGraphBuilder.entryGraph(
     navController: NavController,
-    session: MockSession,
     onSignOut: () -> Unit,
 ) {
     composable<LoginRoute> {
@@ -123,38 +116,14 @@ internal fun NavGraphBuilder.entryGraph(
                 },
             )
             TeamDialog.JOIN -> {
+                // TODO(TEAM-03): JoinTeamViewModel로 코드 미리 보기(inviteCodes → teams)와 참여 트랜잭션을 붙인다.
+                //  그 전까지는 코드 입력만 되고 참여 버튼은 눌리지 않는다(preview가 없음).
                 var code by remember { mutableStateOf("") }
-                val found = code == MockSession.INVITE_CODE
-                val joinTeam = PreviewSamples.team
                 JoinTeamDialog(
-                    uiState = JoinTeamUiState(
-                        code = code,
-                        preview = if (found) {
-                            JoinTeamPreviewUi(
-                                name = joinTeam.name,
-                                appearance = joinTeam.appearance,
-                                memberCount = 3,
-                                stageNumber = PreviewSamples.stage.stageNumber,
-                                fromCity = PreviewSamples.stage.fromCity,
-                                toCity = PreviewSamples.stage.toCity,
-                            )
-                        } else {
-                            null
-                        },
-                        errorMessage = if (code.length == JoinTeamUiState.CODE_LENGTH && !found) {
-                            stringResource(R.string.join_error_not_found)
-                        } else {
-                            null
-                        },
-                    ),
+                    uiState = JoinTeamUiState(code = code),
                     onDismiss = { dialog = TeamDialog.NONE },
                     onCodeChange = { code = it.uppercase() },
-                    onJoin = {
-                        if (found) {
-                            session.joinTeam(MockTeam(joinTeam.name, joinTeam.appearance))
-                            navController.resetTo(HomeRoute)
-                        }
-                    },
+                    onJoin = {},
                 )
             }
         }

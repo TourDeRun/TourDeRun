@@ -19,16 +19,13 @@ class EntryViewModel @Inject constructor(
     fun signOut() = session.signOut()
 }
 
-/**
- * 세션 상태 → 진입 단계. 아직 모르면(Loading) null.
- * 팀은 TeamRepository가 생기기 전까지 목 팀([hasMockTeam])도 "팀 있음"으로 본다.
- */
-fun SessionState.toEntryStage(hasMockTeam: Boolean): EntryStage? {
+/** 세션 상태 → 진입 단계. 아직 모르면(Loading) null. 팀 여부는 `users.teamId`로만 본다. */
+fun SessionState.toEntryStage(): EntryStage? {
     return when (this) {
         SessionState.Loading -> null
         SessionState.SignedOut -> EntryStage.SIGNED_OUT
         is SessionState.NeedsNickname -> EntryStage.NEEDS_NICKNAME
-        is SessionState.NoTeam -> if (hasMockTeam) EntryStage.READY else EntryStage.NEEDS_TEAM
+        is SessionState.NoTeam -> EntryStage.NEEDS_TEAM
         is SessionState.Ready -> EntryStage.READY
     }
 }
