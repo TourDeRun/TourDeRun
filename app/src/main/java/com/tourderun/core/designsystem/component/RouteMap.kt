@@ -13,21 +13,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.tourderun.R
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.domain.model.LatLngValue
@@ -51,6 +57,21 @@ val StaticMapUiSettings = MapUiSettings(
     zoomControlsEnabled = false,
     zoomGesturesEnabled = false,
 )
+
+/**
+ * 앱 팔레트에 맞춘 지도 스타일 (JRN-04). 밝은 단색 면(땅·산·물)과 고속도로만 남기고 지명·POI·대중교통 라벨을 모두 숨긴다.
+ * 색은 `res/raw/map_style.json`(라이트)·`map_style_dark.json`(다크)에 있고, `Color.kt`를 바꾸면 같이 맞춘다.
+ * 앱의 모든 `GoogleMap`은 이 값을 `properties`로 넘긴다.
+ */
+@Composable
+fun rememberTdrMapProperties(): MapProperties {
+    val context = LocalContext.current
+    val isDark = TdrTheme.colors.isDark
+    return remember(context, isDark) {
+        val style = if (isDark) R.raw.map_style_dark else R.raw.map_style
+        MapProperties(mapStyleOptions = MapStyleOptions.loadRawResourceStyle(context, style))
+    }
+}
 
 /**
  * 달린 경로를 실제 지도 위에 그린다 (REC-03). 선 + 시작(흰 원)·끝(채운 원) 표시, 경로가 칸에 맞게 확대된다.
@@ -84,9 +105,13 @@ fun RouteMap(
         }
     }
 
+    // 타일을 받기 전에 보이는 바탕(기본 베이지)을 지도 바탕색으로 맞춘다.
+    val mapBackground = colors.bgMap.toArgb()
     GoogleMap(
         modifier = modifier,
         cameraPositionState = camera,
+        properties = rememberTdrMapProperties(),
+        googleMapOptionsFactory = { GoogleMapOptions().backgroundColor(mapBackground) },
         uiSettings = StaticMapUiSettings,
         onMapLoaded = { loaded = true },
     ) {
