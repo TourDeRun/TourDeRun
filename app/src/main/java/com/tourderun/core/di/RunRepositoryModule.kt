@@ -1,6 +1,6 @@
 package com.tourderun.core.di
 
-import com.tourderun.core.data.record.FakeRunRepository
+import com.tourderun.core.data.record.FirestoreRunRepository
 import com.tourderun.core.data.record.RunRepository
 import dagger.Binds
 import dagger.Module
@@ -8,12 +8,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
 /**
- * [RunRepository] 바인딩. 로그인(AUTH-01) 전에는 실제 조회가 규칙에 막혀서 가짜 구현을 쓴다.
- * 가짜 구현은 Firebase를 쓰지 않아 google-services.json 없이도 앱이 실행된다.
+ * [RunRepository] 바인딩. 로그인한 계정의 실제 기록을 읽는다(uid는 화면 ViewModel이 `SessionRepository`에서 읽어 넘긴다).
+ * Firestore는 S11·S12를 열 때 처음 만들어지므로 앱 시작 경로에는 없다.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RunRepositoryModule {
-    // TODO(REC-02): 로그인 머지 후 구현 클래스를 FirestoreRunRepository로 바꾼다(#20).
-    @Binds abstract fun bindRunRepository(impl: FakeRunRepository): RunRepository
+    @Binds abstract fun bindRunRepository(impl: FirestoreRunRepository): RunRepository
 }

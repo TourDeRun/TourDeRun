@@ -41,16 +41,25 @@ private fun Context.activityOrNull(): Activity? = when (this) {
     else -> null
 }
 
-private fun Context.hasRunPermissions(): Boolean {
+/** 정확한 위치와(Android 13 이상) 알림 권한이 모두 있으면 true. 서비스를 시작하기 전에 확인한다. */
+internal fun Context.hasRunPermissions(): Boolean {
     val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     val notifications = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     return fine && notifications
 }
 
-/** 위치·알림 권한 안내. 서비스는 사용자가 앱을 보고 있을 때 시작한다. */
+/**
+ * 위치·알림 권한 안내. 서비스는 사용자가 앱을 보고 있을 때 시작한다.
+ *
+ * @param continueLabel 권한이 모두 있을 때 보이는 버튼 글자 (S09에서는 "시작")
+ */
 @Composable
-fun RunPermissionGate(onReady: () -> Unit, modifier: Modifier = Modifier) {
+fun RunPermissionGate(
+    onReady: () -> Unit,
+    modifier: Modifier = Modifier,
+    continueLabel: String = stringResource(R.string.run_permission_continue),
+) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val preferences = remember(context) { context.getSharedPreferences("run_permissions", Context.MODE_PRIVATE) }
@@ -78,7 +87,7 @@ fun RunPermissionGate(onReady: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.run_permission_explanation))
         if (granted) {
-            Button(onClick = onReady) { Text(stringResource(R.string.run_permission_continue)) }
+            Button(onClick = onReady) { Text(continueLabel) }
         } else {
             Button(onClick = {
                 preferences.edit().putBoolean("requested", true).apply()

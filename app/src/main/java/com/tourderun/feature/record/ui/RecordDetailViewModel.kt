@@ -4,8 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunRepository
 import com.tourderun.core.navigation.RecordDetailRoute
+import com.tourderun.domain.record.RunRecord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,25 @@ sealed interface RecordDetailLoad {
 }
 
 /**
+ * 리스너 값 → S12 상태.
+ *
+ * - `Ready(null)`(지웠거나 처음부터 없음)일 때만 [RecordDetailLoad.Gone]으로 화면을 닫는다.
+ * - [Loaded.Failed]는 닫지 않고 [RecordDetailLoad.Loading]에 머문다(첫 값 전 실패만 오므로 직전 상태도 Loading이다).
+ *   TODO(REC-02): 불러오기 실패 화면
+ */
+internal fun recordDetailLoad(
+    loaded: Loaded<RunRecord?>,
+    draftTitle: String?,
+    draftMemo: String?,
+    showDeleteConfirm: Boolean,
+): RecordDetailLoad = when (loaded) {
+    is Loaded.Failed -> RecordDetailLoad.Loading
+    is Loaded.Ready -> loaded.value
+        ?.let { RecordDetailLoad.Ready(recordDetailUiState(it, draftTitle, draftMemo, showDeleteConfirm)) }
+        ?: RecordDetailLoad.Gone
+}
+
+/**
  * S12 기록 상세 (REC-03·04·05).
  *
  * 수정·삭제는 오프라인 대기 쓰기라 기다리지 않는다. 쓰기를 시작하면 리스너가 바로 새 값을 주므로
@@ -40,12 +61,8 @@ class RecordDetailViewModel @Inject constructor(
     private val runId = savedStateHandle.toRoute<RecordDetailRoute>().runId
     private val edit = MutableStateFlow(Edit())
 
-    val uiState: StateFlow<RecordDetailLoad> = combine(runRepository.observeRun(runId), edit) { record, edit ->
-        if (record == null) {
-            RecordDetailLoad.Gone
-        } else {
-            RecordDetailLoad.Ready(recordDetailUiState(record, edit.title, edit.memo, edit.showDeleteConfirm))
-        }
+    val uiState: StateFlow<RecordDetailLoad> = combine(runRepository.observeRun(runId), edit) { loaded, edit ->
+        recordDetailLoad(loaded, edit.title, edit.memo, edit.showDeleteConfirm)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordDetailLoad.Loading)
 
     fun onTitleChange(title: String) = edit.update { it.copy(title = title) }

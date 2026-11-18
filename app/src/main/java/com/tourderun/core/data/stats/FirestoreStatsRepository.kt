@@ -11,7 +11,6 @@ import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.TeamStatFields
-import com.tourderun.core.data.firestore.awaitResult
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.data.firestore.toTeamStatDto
 import com.tourderun.domain.stats.lastWeekId
@@ -24,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import com.tourderun.domain.stats.topPercent as calcTopPercent
 
 /**
@@ -65,7 +65,7 @@ class FirestoreStatsRepository @Inject constructor(
         val periodId = weekId(nowMs)
         return try {
             // count 집계는 서버에서만 되므로 우리 거리도 서버 값으로 맞춘다. 오프라인이면 예외 → null.
-            val ourM = weekDoc(teamId, periodId).get(Source.SERVER).awaitResult().toTeamStatDto().distanceM
+            val ourM = weekDoc(teamId, periodId).get(Source.SERVER).await().toTeamStatDto().distanceM
             if (ourM <= 0) return null
             coroutineScope {
                 val moreCount = async {
@@ -98,7 +98,7 @@ class FirestoreStatsRepository @Inject constructor(
     private fun weekDoc(teamId: String, periodId: String): DocumentReference =
         firestore.collection(Collections.TEAM_STATS).document(TeamStatFields.docId(teamId, periodId))
 
-    private suspend fun Query.serverCount(): Long = count().get(AggregateSource.SERVER).awaitResult().count
+    private suspend fun Query.serverCount(): Long = count().get(AggregateSource.SERVER).await().count
 
     private companion object {
         const val TAG = "TDR/stats"

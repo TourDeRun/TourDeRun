@@ -5,10 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -19,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.TdrTabBar
 import com.tourderun.core.designsystem.theme.TdrTheme
@@ -31,7 +37,8 @@ import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
 import com.tourderun.feature.record.ui.RecordsScreen
 import com.tourderun.feature.run.ui.RunResultScreen
-import com.tourderun.feature.run.ui.RunningScreen
+import com.tourderun.feature.run.ui.RunRecoveryHost
+import com.tourderun.feature.run.ui.RunRoute
 import com.tourderun.feature.stat.ui.WeeklyStatsScreen
 import com.tourderun.feature.team.ui.TeamEditScreen
 import com.tourderun.feature.team.ui.TeamScreen
@@ -42,7 +49,7 @@ import com.tourderun.feature.team.ui.TeamScreen
  * ViewModel이 없는 화면은 [TempUiStates]의 고정 상태로 띄운다. 화면 주인은 ViewModel을 붙일 때
  * 해당 `composable { }` 안의 상태와 빈 콜백(`{}`)을 자기 것으로 바꾼다.
  *
- * 시작 화면은 [EntryStage]로 정한다. 지금은 로그인·팀 상태가 목([MockSession])이라 기기에만 저장된다.
+ * 시작 화면은 [EntryStage]로 정한다. 로그인·닉네임은 [SessionRepository](Firebase), 팀은 아직 목([MockSession])이다.
  */
 @Composable
 fun AppNavHost(
@@ -52,19 +59,35 @@ fun AppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTab = backStackEntry?.destination?.tab()
     val back: () -> Unit = { navController.popBackStack() }
-    // TODO(AUTH-01): SessionRepository·TeamRepository가 생기면 목 대신 그 값으로 EntryStage를 계산한다.
+    // TODO(TEAM-01): TeamRepository가 생기면 목 팀(MockSession)을 지우고 세션 상태의 teamId만 본다.
     val context = LocalContext.current
     val session = remember { MockSession(context.applicationContext) }
-    // 시작 화면은 앱을 열 때 한 번만 정한다. 그 뒤 이동은 각 화면이 resetTo()로 한다.
-    val startRoute = remember { session.stage.startRoute() }
+    val entryViewModel: EntryViewModel = hiltViewModel()
+    val sessionState by entryViewModel.sessionState.collectAsStateWithLifecycle()
+    val stage = sessionState.toEntryStage(hasMockTeam = session.team != null)
+
+    // 시작 화면은 세션 상태의 첫 값으로 한 번만 정한다. 그 전에는 로딩 화면을 보인다.
+    var startRoute by remember { mutableStateOf<Any?>(null) }
+    LaunchedEffect(stage) {
+        if (startRoute == null && stage != null) startRoute = stage.startRoute()
+    }
+    val start = startRoute
+    if (start == null) {
+        EntryLoadingScreen(modifier)
+        return
+    }
+    // 그 뒤로는 세션 상태가 바뀌면 진입 화면 사이를 옮긴다 (로그인 성공, 닉네임 저장, 로그아웃).
+    LaunchedEffect(stage) {
+        if (stage != null) navController.followEntryStage(stage)
+    }
 
     Column(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas)) {
         NavHost(
             navController = navController,
-            startDestination = startRoute,
+            startDestination = start,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
-            entryGraph(navController, session)
+            entryGraph(navController, session, onSignOut = entryViewModel::signOut)
 
             composable<HomeRoute> {
                 HomeScreen(
@@ -88,25 +111,22 @@ fun AppNavHost(
                     onRecordsClick = { navController.navigate(RecordsRoute) },
                     onRunClick = { navController.navigate(RecordDetailRoute(it.runId)) },
                     onCollectionClick = { navController.navigate(CollectionRoute) },
-                    onLogout = {
-                        session.signOut()
-                        navController.resetTo(LoginRoute)
-                    },
+                    onLogout = entryViewModel::signOut,
                     onWithdraw = {
+                        // TODO(AUTH-05): 실제 탈퇴. 지금은 목 데이터만 지우고 로그아웃한다.
                         session.withdraw()
-                        navController.resetTo(LoginRoute)
+                        entryViewModel.signOut()
                     },
                 )
             }
 
             composable<RunningRoute> {
-                // TODO(RUN-02): 일시정지·종료는 RunSessionManager가 처리하고, 종료 결과로 결과 화면을 연다.
-                RunningScreen(
-                    uiState = TempUiStates.running,
-                    onPauseToggle = {},
-                    onStopLongPress = {
+                // 권한·카운트다운·측정·종료는 RunRoute 안에서 바뀐다. 종료 결과는 RunSessionManager.state.value.result.
+                RunRoute(
+                    onOpenResult = {
                         navController.navigate(RunResultRoute) { popUpTo<RunningRoute> { inclusive = true } }
                     },
+                    onClose = back,
                 )
             }
             composable<RunResultRoute> {
@@ -176,6 +196,9 @@ fun AppNavHost(
             TdrTabBar(selected = currentTab, onSelect = { navController.selectTab(it) })
         }
     }
+
+    // RUN-07: 앱을 열 때 끝나지 않은 러닝이 있으면 어느 화면 위에서든 복구 안내를 먼저 띄운다.
+    RunRecoveryHost(onOpenRun = { navController.navigate(RunningRoute) { launchSingleTop = true } })
 }
 
 /** 이 화면이 탭 화면이면 그 탭, 아니면 null(하단 탭을 숨긴다). */
@@ -194,7 +217,7 @@ private fun NavController.selectTab(tab: TdrTab) {
         TdrTab.Profile -> ProfileRoute
         TdrTab.Run -> {
             // 러닝은 탭이 아니라 화면 전체를 덮는 화면이라 그냥 위에 쌓는다.
-            // TODO(RUN-01): 팀 확인·권한 요청·카운트다운은 러닝 담당이 이 앞에 붙인다.
+            // 팀 확인·권한 요청·카운트다운은 RunRoute(S09) 안에서 한다.
             navigate(RunningRoute) { launchSingleTop = true }
             return
         }

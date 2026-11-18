@@ -20,7 +20,7 @@ enum class WriteMode {
 }
 
 /**
- * Firebase 타입을 쓰지 않는 필드 값. Firestore 구현(`FirestoreRunSaver` 등)이 Firestore 값으로 바꾼다.
+ * Firebase 타입을 쓰지 않는 필드 값. 공용 `batchOf()`가 Firestore 값으로 바꾼다.
  * 그래서 배치 내용을 Firestore 없이 테스트할 수 있다.
  */
 sealed interface FieldOp {
