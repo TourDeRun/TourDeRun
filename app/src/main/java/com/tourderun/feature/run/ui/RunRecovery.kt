@@ -23,12 +23,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.tourderun.R
 import com.tourderun.core.data.Clock
+import com.tourderun.core.data.local.StoredRunStatus
 import com.tourderun.core.designsystem.component.TdrButton
+import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.domain.run.isTooShortToSave
 import com.tourderun.feature.run.data.RunSaveCoordinator
 import com.tourderun.feature.run.service.RunTrackingService
 import com.tourderun.feature.run.session.RecoveredRun
@@ -49,14 +52,16 @@ enum class RecoveryOutcome {
     /** 이어서 측정 중. 서비스를 시작하고 러닝 화면으로 간다. */
     Resumed,
     Discarded,
+
+    /** 종료 상태로 만들었다. 결과 화면(S10)으로 가서 저장한다(REC-06). */
+    OpenResult,
 }
 
 /**
  * RUN-07 강제 종료 후 복구. 앱을 열 때 기기에 끝나지 않은 러닝이 남아 있고 측정 중이 아니면 안내를 띄운다.
- * 이어하기·버리기를 [RunSessionManager]에 넘긴다.
+ * 이어하기·지금까지 저장·버리기를 [RunSessionManager]에 넘긴다. 저장은 결과 화면(S10)이 한다(REC-06).
  *
- * TODO(REC-06): S10이 RunSessionManager의 result로 저장하게 되면(#51) "지금까지 저장"을 다시 넣는다.
- *  그 전에는 저장 없이 가짜 결과만 보이고 러닝이 FINISHED로 남아, 다음에 앱을 열 때 안내가 또 뜬다.
+ * 저장을 시작한 러닝(서버 확인 전에 앱이 꺼짐)은 안내 없이 [RunSaveCoordinator]가 정리한다(#23, #99).
  */
 @HiltViewModel
 class RunRecoveryViewModel @Inject constructor(
@@ -72,7 +77,10 @@ class RunRecoveryViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            if (manager.pendingRecovery() == null) return@launch
+            manager.pruneOrphanPoints()
+            val pending = manager.pendingRecovery() ?: return@launch
+            // 저장을 시작한 러닝은 서버 반영을 기다렸다가 정리한다. 캐시에 없으면(거부 등) 종료 상태로 되돌아와 아래에서 안내한다.
+            if (pending.status == StoredRunStatus.SAVED && saveCoordinator.settleSaved(pending.runId)) return@launch
             val run = manager.recover()
             // 저장을 시작한 뒤 서버 확인 전에 앱이 꺼진 러닝은 안내 없이, 서버에 반영되면 기기 데이터를 지운다(#23).
             if (run != null && run.finished && saveCoordinator.settleIfSavedOnDevice(run.runId)) return@launch
@@ -101,6 +109,14 @@ class RunRecoveryViewModel @Inject constructor(
         viewModelScope.launch { manager.stopForServiceFailure(clock.nowMs()) }
     }
 
+    /**
+     * "지금까지 저장"(REC-06). 일시정지 상태면 앱이 꺼진 시각([RecoveredRun.endMs])으로 종료하고 결과 화면으로 간다.
+     * 이미 종료된 러닝(결과 화면에서 저장하기 전에 꺼짐)은 바로 결과 화면으로 간다.
+     */
+    fun save() = act { run ->
+        if (run.finished || manager.finish(run.endMs) != null) outcomes.send(RecoveryOutcome.OpenResult)
+    }
+
     fun discard() = act { run ->
         if (manager.discard(run.runId)) outcomes.send(RecoveryOutcome.Discarded)
     }
@@ -119,10 +135,12 @@ class RunRecoveryViewModel @Inject constructor(
  * 권한을 받으면 재개한다. 권한 안내를 닫으면 일시정지로 남아 러닝 탭에서 다시 시작할 수 있다.
  *
  * @param onOpenRun 재개한 뒤 러닝 화면(S09)으로
+ * @param onOpenResult "지금까지 저장"을 고른 뒤 결과 화면(S10)으로
  */
 @Composable
 fun RunRecoveryHost(
     onOpenRun: () -> Unit,
+    onOpenResult: () -> Unit,
     viewModel: RunRecoveryViewModel = hiltViewModel(),
 ) {
     val recovered by viewModel.recovered.collectAsStateWithLifecycle()
@@ -138,6 +156,7 @@ fun RunRecoveryHost(
                     viewModel.onServiceStartFailed()
                     askPermission = true
                 }
+                RecoveryOutcome.OpenResult -> onOpenResult()
                 RecoveryOutcome.Discarded -> Unit
             }
         }
@@ -154,6 +173,7 @@ fun RunRecoveryHost(
                     askPermission = true
                 }
             },
+            onSave = viewModel::save,
             onDiscard = viewModel::discard,
         )
     }
@@ -172,6 +192,7 @@ fun RunRecoveryHost(
 fun RunRecoveryDialog(
     run: RecoveredRun,
     onResume: () -> Unit,
+    onSave: () -> Unit,
     onDiscard: () -> Unit,
 ) {
     val colors = TdrTheme.colors
@@ -201,7 +222,15 @@ fun RunRecoveryDialog(
                 if (!run.finished) {
                     TdrButton(stringResource(R.string.run_recovery_resume), onResume, height = TdrSize.buttonMd)
                 }
-                // TODO(REC-06): "지금까지 저장" 버튼은 S10 저장 연결(#51) 뒤에 다시 넣는다.
+                // 기준 미달(M-05)이면 저장할 수 없어 이어하기·버리기만 보인다.
+                if (!isTooShortToSave(run.distanceM, run.movingSec)) {
+                    TdrButton(
+                        stringResource(R.string.run_recovery_save),
+                        onSave,
+                        style = if (run.finished) TdrButtonStyle.Primary else TdrButtonStyle.Outline,
+                        height = TdrSize.buttonMd,
+                    )
+                }
                 TextButton(onClick = onDiscard) {
                     Text(stringResource(R.string.run_recovery_discard), color = colors.danger, style = type.subtitle)
                 }

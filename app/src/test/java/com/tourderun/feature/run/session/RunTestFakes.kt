@@ -29,6 +29,12 @@ internal class FakeRunPointDao : RunPointDao {
         if (failDelete) throw IllegalStateException("삭제 실패")
         rows.value = rows.value.filterNot { it.runId == runId }
     }
+    override suspend fun deleteOtherRuns(runId: String) {
+        rows.value = rows.value.filter { it.runId == runId }
+    }
+    override suspend fun deleteAll() {
+        rows.value = emptyList()
+    }
 }
 /** 메모리에만 저장하는 진행 중 러닝 상태. */
 internal class FakeActiveRunStore : ActiveRunStore {

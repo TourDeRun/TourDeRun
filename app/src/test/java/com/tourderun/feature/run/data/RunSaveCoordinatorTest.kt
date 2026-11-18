@@ -1,5 +1,6 @@
 package com.tourderun.feature.run.data
 
+import com.tourderun.core.data.local.StoredRunStatus
 import com.tourderun.core.data.record.RunSaver
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
@@ -41,6 +42,7 @@ class RunSaveCoordinatorTest {
         var failure: Throwable? = null
         var confirm: (() -> Unit)? = null
         var savedOnDevice = false
+        var confirmImmediately = false
         val pendingWrites = CompletableDeferred<Boolean>()
 
         override fun newRunId() = "run-new"
@@ -57,6 +59,7 @@ class RunSaveCoordinatorTest {
             lastUid = uid
             lastTeam = team
             confirm = onServerConfirmed
+            if (confirmImmediately) onServerConfirmed()
             return Result.success(null)
         }
 
@@ -105,26 +108,47 @@ class RunSaveCoordinatorTest {
         return manager
     }
 
-    @Test fun `같은 러닝을 두 번 저장 → 저장은 1번, 두 번째는 처음 값`() = runBlocking {
+    @Test fun `같은 러닝을 두 번 저장 → 저장은 1번`() = runBlocking {
         val coordinator = coordinator(finishedManager())
-        val first = coordinator.saveFinished()
-        val second = coordinator.saveFinished()
+        assertNotNull(coordinator.saveFinished())
+        // 저장을 시작하면 IDLE로 넘어가 두 번째는 저장할 러닝이 없다.
+        assertNull(coordinator.saveFinished())
         assertEquals(1, saver.saveCount)
-        assertNotNull(first)
-        assertEquals(first, second)
         assertEquals("u1", saver.lastUid)
     }
 
-    @Test fun `서버 확인 전에는 completeSave 안 함, 확인되면 기기 데이터를 지우고 IDLE`() = runBlocking {
+    @Test fun `저장 시작 → IDLE과 SAVED, 서버 확인 전에는 위치점을 남기고 확인되면 지운다`() = runBlocking {
         val manager = finishedManager()
         coordinator(manager).saveFinished()
-        assertEquals(RunPhase.FINISHED, manager.state.value.phase)
-        assertNotNull(store.session.value)
+        assertEquals(RunPhase.IDLE, manager.state.value.phase)
+        assertEquals(StoredRunStatus.SAVED, store.session.value?.status)
+        assertEquals(3, dao.pointsForRun("run1").size)
 
         requireNotNull(saver.confirm).invoke()
         yield()
+        assertNull(store.session.value)
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+    }
+
+    @Test fun `서버 확인 전(오프라인)에도 새 러닝을 시작할 수 있다(#99)`() = runBlocking {
+        val manager = finishedManager()
+        coordinator(manager).saveFinished()
+        assertTrue(manager.beginCountdown("run2", 30_000))
+        manager.tick(33_000)
+        requireNotNull(saver.confirm).invoke()
+        yield()
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertEquals("run2", store.session.value?.runId)
+        assertEquals(RunPhase.RUNNING, manager.state.value.phase)
+    }
+
+    @Test fun `서버 확인이 저장 시작 표시보다 먼저 와도 정리된다`() = runBlocking {
+        val manager = finishedManager()
+        saver.confirmImmediately = true
+        assertNotNull(coordinator(manager).saveFinished())
         assertEquals(RunPhase.IDLE, manager.state.value.phase)
         assertNull(store.session.value)
+        assertTrue(dao.pointsForRun("run1").isEmpty())
     }
 
     @Test fun `저장 실패 → null, completeSave 안 함`() = runBlocking {
@@ -169,6 +193,59 @@ class RunSaveCoordinatorTest {
         yield()
         assertEquals(RunPhase.IDLE, restarted.state.value.phase)
         assertNull(store.session.value)
+    }
+
+    @Test fun `앱 재시작, 캐시에 있었지만 반영 뒤 사라짐(서버 거부) → completeSave 안 하고 다시 저장할 수 있음`() = runBlocking {
+        finishedManager()
+        val restarted = RunSessionManager(dao, store)
+        restarted.recover()
+        saver.savedOnDevice = true
+        val coordinator = coordinator(restarted)
+        assertTrue(coordinator.settleIfSavedOnDevice("run1"))
+        saver.savedOnDevice = false
+        saver.pendingWrites.complete(true)
+        yield()
+        assertEquals(RunPhase.FINISHED, restarted.state.value.phase)
+        assertEquals(3, dao.pointsForRun("run1").size)
+        // 결과 보기에서 다시 저장한다.
+        assertNotNull(coordinator.saveFinished())
+        assertEquals(1, saver.saveCount)
+    }
+
+    /** 저장을 시작(SAVED)한 뒤 서버 확인 전에 앱이 꺼지고 다시 켜진 매니저. */
+    private suspend fun restartedAfterSaveStarted(): RunSessionManager {
+        coordinator(finishedManager()).saveFinished()
+        return RunSessionManager(dao, store)
+    }
+
+    @Test fun `앱 재시작, 저장 대기 러닝이 캐시에 있음 → 반영 뒤 기기 데이터 정리`() = runBlocking {
+        val restarted = restartedAfterSaveStarted()
+        saver.savedOnDevice = true
+        assertTrue(coordinator(restarted).settleSaved("run1"))
+        assertEquals(StoredRunStatus.SAVED, store.session.value?.status)
+        saver.pendingWrites.complete(true)
+        yield()
+        assertNull(store.session.value)
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertEquals(1, saver.saveCount)
+    }
+
+    @Test fun `앱 재시작, 저장 대기 러닝이 반영 뒤 사라짐(서버 거부) → 종료 상태로 되돌림`() = runBlocking {
+        val restarted = restartedAfterSaveStarted()
+        saver.savedOnDevice = true
+        assertTrue(coordinator(restarted).settleSaved("run1"))
+        saver.savedOnDevice = false
+        saver.pendingWrites.complete(true)
+        yield()
+        assertEquals(StoredRunStatus.FINISHED, store.session.value?.status)
+        assertEquals(3, dao.pointsForRun("run1").size)
+    }
+
+    @Test fun `앱 재시작, 저장 대기 러닝이 캐시에 없음 → false, 종료 상태로 되돌려 복구 안내`() = runBlocking {
+        val restarted = restartedAfterSaveStarted()
+        assertFalse(coordinator(restarted).settleSaved("run1"))
+        assertEquals(StoredRunStatus.FINISHED, store.session.value?.status)
+        assertTrue(requireNotNull(restarted.recover()).finished)
     }
 
     @Test fun `앱 재시작, 기기 캐시에 없음 → false, 아무것도 안 함`() = runBlocking {

@@ -47,9 +47,15 @@ class RunSessionManager @Inject constructor(
     // 삽입 실패 또는 취소 시 실제 커밋 여부가 불확실하므로 다음 상태 계산 전에 다시 읽는다.
     private var pointsNeedReload = false
 
+    /**
+     * 새 러닝의 카운트다운을 시작한다. 기기에 끝나지 않은 러닝이 있으면 시작하지 않는다.
+     * 저장을 시작하고 서버 확인을 기다리는 러닝([StoredRunStatus.SAVED])은 막지 않는다(#99).
+     * 이때 그 러닝의 진행 상태는 새 러닝이 시작될 때 덮어쓰고, 위치점은 서버 확인 뒤 [completeSave]가 runId로 지운다.
+     */
     suspend fun beginCountdown(runId: String, nowMs: Long): Boolean = mutex.withLock {
         require(runId.isNotBlank()) { "러닝 ID가 비어 있다" }
-        if (mutableState.value.phase != RunPhase.IDLE || store.session.first() != null) return@withLock false
+        if (mutableState.value.phase != RunPhase.IDLE) return@withLock false
+        if (store.session.first()?.let { it.status != StoredRunStatus.SAVED } == true) return@withLock false
         resetInMemory()
         countdownStartedMs = nowMs
         mutableState.value = RunState(phase = RunPhase.COUNTDOWN, runId = runId, countdownSec = 3)
@@ -213,15 +219,70 @@ class RunSessionManager @Inject constructor(
     }
 
     /**
-     * REC-01 저장이 서버에 반영된 것을 확인한 뒤 호출한다(#23). 기기에 남긴 위치점과 진행 상태를 지우고 IDLE로 돌아간다.
-     * 내용은 [discard]와 같지만, 저장한 러닝과 버린 러닝을 호출부에서 구분하려고 이름을 나눴다.
+     * REC-01 저장 배치를 시작한 직후 호출한다(#99). 진행 상태를 [StoredRunStatus.SAVED]로 바꾸고 메모리 상태는 IDLE로 돌려
+     * 서버 확인 전(오프라인)에도 새 러닝을 시작할 수 있게 한다. 위치점은 서버 확인 뒤 [completeSave]가 지운다.
      *
      * @return 지금 종료된 러닝이 [runId]가 아니면 false (이미 정리했거나 다른 러닝이 진행 중)
      */
-    suspend fun completeSave(runId: String): Boolean = mutex.withLock {
-        if (session?.runId != runId || mutableState.value.phase != RunPhase.FINISHED) return@withLock false
-        clearLocal(runId)
+    suspend fun markSaveStarted(runId: String): Boolean = mutex.withLock {
+        val current = session
+        if (current?.runId != runId || mutableState.value.phase != RunPhase.FINISHED) return@withLock false
+        withContext(NonCancellable) {
+            store.save(current.copy(status = StoredRunStatus.SAVED))
+            resetInMemory()
+            mutableState.value = RunState()
+        }
         true
+    }
+
+    /**
+     * REC-01 저장이 서버에 반영된 것을 확인한 뒤 호출한다(#23). 기기에 남긴 위치점과 진행 상태를 지운다.
+     * - 아직 종료 화면에 있는 러닝이면 [discard]처럼 메모리 상태까지 지우고 IDLE로 돌아간다.
+     * - [markSaveStarted]로 넘긴 러닝이면 위치점과(새 러닝이 덮어쓰지 않았다면) 진행 상태만 지운다. 새 러닝은 건드리지 않는다.
+     *
+     * @return 진행 상태를 지웠으면 true. 지금 측정 중인 러닝이 [runId]이거나 이미 정리했으면 false
+     */
+    suspend fun completeSave(runId: String): Boolean = mutex.withLock {
+        if (session?.runId == runId) {
+            if (mutableState.value.phase != RunPhase.FINISHED) return@withLock false
+            clearLocal(runId)
+            return@withLock true
+        }
+        withContext(NonCancellable) {
+            val stored = store.session.first()
+            pointDao.deleteForRun(runId)
+            if (stored?.runId == runId) {
+                store.clearIfRunIdMatches(runId)
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /**
+     * 서버가 저장을 받아들이지 않은 러닝([StoredRunStatus.SAVED])을 종료 상태로 되돌린다(#99).
+     * 다음에 앱을 열면 복구 안내에서 다시 저장하거나 버릴 수 있다. 새 러닝이 진행 상태를 덮어썼으면 아무것도 하지 않는다.
+     *
+     * @return 되돌렸으면 true
+     */
+    suspend fun revertSaveStarted(runId: String): Boolean = mutex.withLock {
+        val stored = store.session.first()
+        if (stored?.runId != runId || stored.status != StoredRunStatus.SAVED) return@withLock false
+        withContext(NonCancellable) { store.save(stored.copy(status = StoredRunStatus.FINISHED)) }
+        true
+    }
+
+    /**
+     * 진행 상태에 남지 않은 러닝의 위치점을 지운다(#99). 저장을 시작한 러닝을 새 러닝이 덮어쓴 뒤 서버 확인 전에 앱이 꺼지면
+     * 그 위치점은 어디에서도 지우지 않으므로, 앱을 열 때 한 번 부른다. 측정 중(IDLE이 아님)이면 아무것도 하지 않는다.
+     */
+    suspend fun pruneOrphanPoints(): Unit = mutex.withLock {
+        if (mutableState.value.phase != RunPhase.IDLE) return@withLock
+        val stored = store.session.first()
+        withContext(NonCancellable) {
+            if (stored == null) pointDao.deleteAll() else pointDao.deleteOtherRuns(stored.runId)
+        }
     }
 
     /** 앱 프로세스가 살아 있는 동안에는 메모리 상태가 기준이라, IDLE일 때만 기기에 남은 러닝을 본다. */
@@ -232,12 +293,14 @@ class RunSessionManager @Inject constructor(
 
     /**
      * RUN-07 강제 종료 후 복구. 기기에 남은 위치점으로 거리를 다시 계산하고 일시정지(또는 종료) 상태로 올린다.
+     * 저장을 시작한 러닝([StoredRunStatus.SAVED])은 복구하지 않는다(null). 정리는 `RunSaveCoordinator.settleSaved`가 한다.
      * 앱이 꺼져 있던 시간은 일시정지로 본다: 마지막으로 살아 있던 시각(생존 시각·마지막 점 중 늦은 것)에 멈춘 것으로 둔다.
      * 이후 사용자 선택에 따라 [resume](이어하기), [finish]에 [RecoveredRun.endMs](지금까지 저장), [discard](버리기)를 부른다.
      */
     suspend fun recover(): RecoveredRun? = mutex.withLock {
         if (mutableState.value.phase != RunPhase.IDLE) return@withLock null
         val stored = store.session.first() ?: return@withLock null
+        if (stored.status == StoredRunStatus.SAVED) return@withLock null
         resetInMemory()
         session = stored
         rebuildFromPoints(pointDao.pointsForRun(stored.runId))
@@ -249,6 +312,7 @@ class RunSessionManager @Inject constructor(
                 lastHeartbeatMs = lastAliveMs,
             )
             StoredRunStatus.PAUSED, StoredRunStatus.FINISHED -> stored
+            StoredRunStatus.SAVED -> error("저장을 시작한 러닝은 복구하지 않는다")
         }
         val endMs = recovered.pausedAtMs ?: lastAliveMs
         trackingResumedMs = recovered.startedAtMs

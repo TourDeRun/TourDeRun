@@ -23,4 +23,12 @@ interface RunPointDao {
     /** 서버 저장 후 정리할 때는 서버 반영 성공을 확인한 뒤 호출한다. */
     @Query("DELETE FROM run_points WHERE runId = :runId")
     suspend fun deleteForRun(runId: String)
+
+    /** [runId]가 아닌 러닝의 위치점을 지운다. 진행 상태(DataStore)에 남지 않은 러닝의 점만 남은 경우 정리용(#99). */
+    @Query("DELETE FROM run_points WHERE runId != :runId")
+    suspend fun deleteOtherRuns(runId: String)
+
+    /** 모든 위치점을 지운다. 진행 상태가 없을 때 남은 점 정리용(#99). */
+    @Query("DELETE FROM run_points")
+    suspend fun deleteAll()
 }

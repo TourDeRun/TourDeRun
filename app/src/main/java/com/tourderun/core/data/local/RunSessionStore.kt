@@ -11,7 +11,11 @@ import kotlinx.coroutines.flow.map
 
 private val Context.runSessionDataStore by preferencesDataStore(name = "active_run")
 
-enum class StoredRunStatus { RUNNING, PAUSED, FINISHED }
+/**
+ * 기기에 남긴 러닝 상태. 이름으로 저장하므로 순서를 바꿔도 되지만, 이름은 바꾸지 않는다.
+ * - [SAVED]: 종료 후 REC-01 저장 배치를 시작했고 서버 확인을 기다리는 중(#99). 새 러닝 시작을 막지 않는다.
+ */
+enum class StoredRunStatus { RUNNING, PAUSED, FINISHED, SAVED }
 
 data class StoredRunSession(
     val runId: String,

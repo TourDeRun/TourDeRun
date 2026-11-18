@@ -215,6 +215,7 @@
     <string name="run_recovery_title">종료되지 않은 러닝이 있어요</string>
     <string name="run_recovery_body">%1$skm · %2$s까지 측정됐어요. 앱이 꺼져 있던 시간은 일시정지로 계산해요.</string>
     <string name="run_recovery_resume">이어하기</string>
+    <string name="run_recovery_save">지금까지 저장</string>
     <string name="run_recovery_discard">버리기</string>
 
     <!-- S10 러닝 결과 -->
