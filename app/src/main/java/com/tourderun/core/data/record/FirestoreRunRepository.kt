@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.RunFields
 import com.tourderun.core.data.firestore.runListOf
@@ -16,13 +17,10 @@ import com.tourderun.domain.record.RunRecord
 import com.tourderun.domain.record.RunTextCheck
 import com.tourderun.domain.record.checkRunText
 import javax.inject.Inject
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 
 /**
  * 내 러닝 기록의 Firestore 구현 (REC-02·03). 규칙은 [RunRepository] 참고.
@@ -30,8 +28,7 @@ import kotlinx.coroutines.flow.mapNotNull
  * - 목록: `runs`에서 `uid ==` + `startedAt` 내림차순 + `limit`. 인덱스 runs(uid↑, startedAt↓).
  *   보안 규칙은 필터가 아니라서 `uid` 조건이 없으면 쿼리 전체가 거부된다.
  * - 수정·삭제는 오프라인 대기 쓰기라 `await()`하지 않는다. 커밋을 시작하면 성공을 돌려주고, 서버 거부는 로그만 남긴다.
- * - 리스너 오류는 로그를 남기고 Flow를 끝낸다(받는 쪽은 마지막 값을 유지).
- *   TODO(REC-02): #32에서 리스너 오류를 값으로 내보내는 방식이 정해지면 이 Repository도 같이 바꾼다.
+ * - 리스너는 공용 `snapshotFlow`([Loaded])를 쓴다. 메타데이터 변경도 받지만 값·출처가 같으면 `distinctUntilChanged()`로 거른다.
  */
 class FirestoreRunRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -39,23 +36,21 @@ class FirestoreRunRepository @Inject constructor(
 
     private val runs get() = firestore.collection(Collections.RUNS)
 
-    override fun observeRuns(uid: String, limit: Long): Flow<List<RunRecord>> {
-        if (limit <= 0) return flowOf(emptyList())
+    override fun observeRuns(uid: String, limit: Long): Flow<Loaded<List<RunRecord>>> {
+        if (limit <= 0) return flowOf(Loaded.Ready(emptyList(), isFromCache = false))
         return runs
             .whereEqualTo(RunFields.UID, uid)
             .orderBy(RunFields.STARTED_AT, Query.Direction.DESCENDING)
             .limit(limit)
-            .listFlow()
-            .map { it.toRunList() }
+            .snapshotFlow(TAG)
+            .map { loaded -> loaded.mapReady { it.toRunList() } }
             .distinctUntilChanged()
     }
 
-    override fun observeRun(runId: String): Flow<RunRecord?> =
+    override fun observeRun(runId: String): Flow<Loaded<RunRecord?>> =
         runs.document(runId)
             .snapshotFlow(TAG)
-            // TODO(REC-02): 실패를 화면에 알리기(#32 2/2). 지금은 전처럼 실패하면 값 없이 끝난다.
-            .mapNotNull { (it as? Loaded.Ready)?.value }
-            .map { it.toRunDto()?.toRunRecord() }
+            .map { loaded -> loaded.mapReady { it.toRunDto()?.toRunRecord() } }
             .distinctUntilChanged()
 
     override fun updateTitleMemo(runId: String, title: String, memo: String?): Result<Unit> =
@@ -82,22 +77,6 @@ class FirestoreRunRepository @Inject constructor(
             Log.w(TAG, "$what 시작 실패", e)
             Result.failure(e)
         }
-
-    /**
-     * 쿼리 실시간 리스너. 목록은 오프라인 배지를 쓰지 않아 메타데이터 변경은 받지 않는다.
-     * 쿼리 리스너 공용 확장 함수는 #29(`Query.snapshotFlow`)에 있어서, 머지 전까지 여기서만 쓴다.
-     */
-    private fun Query.listFlow(): Flow<QuerySnapshot> = callbackFlow {
-        val registration = addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                Log.w(TAG, "기록 목록 리스너 오류: ${error.code}", error)
-                close()
-                return@addSnapshotListener
-            }
-            if (snapshot != null) trySend(snapshot)
-        }
-        awaitClose { registration.remove() }
-    }
 
     private fun QuerySnapshot.toRunList(): List<RunRecord> =
         runListOf(documents.map { it.id to it.data.orEmpty() })

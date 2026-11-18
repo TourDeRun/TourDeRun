@@ -87,6 +87,11 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.location)
 
+    // AUTH-01 구글 로그인 (Credential Manager)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
 }
