@@ -2,6 +2,7 @@ package com.tourderun.feature.record.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -10,7 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -26,7 +27,12 @@ class RecordsViewModel @Inject constructor(
     private val limit = MutableStateFlow(RunRepository.PAGE_SIZE)
 
     val uiState: StateFlow<RecordsUiState> = limit
-        .flatMapLatest { limit -> runRepository.observeRuns(MY_UID, limit).map { recordsUiState(it, limit) } }
+        .flatMapLatest { limit ->
+            runRepository.observeRuns(MY_UID, limit).mapNotNull { loaded ->
+                // TODO(REC-02): 불러오기 실패 화면. 지금은 실패를 건너뛰어 직전 상태(처음이면 불러오는 중)를 유지한다.
+                (loaded as? Loaded.Ready)?.let { recordsUiState(it.value, limit) }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordsUiState.Loading)
 
     /** 지금 보이는 개수 기준이라 여러 번 불려도 한 쪽만 늘어난다. */
