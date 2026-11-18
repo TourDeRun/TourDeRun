@@ -55,15 +55,18 @@
 - `runs` 목록 조회는 반드시 `whereEqualTo(uid)`를 넣는다(규칙은 필터가 아니다). 러닝 ID는 기기에서 `collection("runs").document().id`로 미리 만든다.
 - 팀 참여(TEAM-03)는 트랜잭션(온라인 필수), 팀 만들기는 배치(`teams`·`members`·`inviteCodes`·`users`를 한 배치에).
 - 실시간 리스너는 `callbackFlow` + `awaitClose { remove() }`, ViewModel에서 `stateIn(viewModelScope, WhileSubscribed(5_000), 초기값)`. 같은 스테이지 리스너는 스테이지 번호가 바뀔 때만 다시 연결.
+- 리스너는 `core/data/firestore/SnapshotFlows`의 공용 함수를 쓰고 실패는 `Loaded.Failed(DataError)`로 전달한다.
 - `firestore.rules`·인덱스 배포는 권민찬만 한다. 규칙·`Fields.kt`를 바꾸는 PR의 리뷰어는 권민찬 + 오영훈.
+- 배치 쓰기를 바꾸면 `firebase/test/rules.test.mjs`에 시나리오를 추가하고 `firebase/`에서 `npm test`로 확인한다.
 
 ## 코드 컨벤션
 
 - 화면: ViewModel이 붙기 전에는 `XxxScreen(uiState, 콜백)`(상태 없음, Preview 대상)도 허용한다. 화면 주인이 ViewModel을 붙일 때 `XxxScreen(viewModel)`(상태 수집·이벤트 처리만) / `XxxContent(uiState, 콜백 또는 onAction)`(상태 없음, Preview 대상)로 나눈다. `XxxViewModel`, `XxxUiState`(불변 data class 또는 sealed `Loading/Content/Error`), `XxxAction`, 일회성 이벤트는 `Channel<XxxEvent>`.
 - Repository: 인터페이스 `XxxRepository`, 구현 `FirestoreXxxRepository`. 실패는 예외로 던지지 않고 `Result<T>` 또는 `sealed interface DataError`로. 예외를 잡는 곳은 Repository 한 층.
+- Repository는 uid를 인자로 받고 ViewModel이 `SessionRepository`에서 읽어 넘긴다. `FirebaseAuth`를 직접 부르지 않는다.
 - Compose: 상태 수집은 `collectAsStateWithLifecycle()`. 공개 컴포저블은 `modifier: Modifier = Modifier`를 첫 번째 선택 인자로. 화면은 `TdrTheme { }` 안에서 그리고, 색은 `TdrTheme.colors`(`brand`, `ink`, `inkMuted`, `bgCanvas`, `bgSurface`, `border` …), 글자는 `TdrTheme.typography`(`titleLg`, `subtitle`, `body`, `caption` …), 간격은 `TdrSpacing.s1~s8`·`screenHorizontal`, 모서리는 `TdrShapes.sm~xl·full`, 고정 크기는 `TdrSize`. 팀 색은 `TeamColor.color`·`textColor`. 화면 코드(`feature/`)에 `Color(0xFF…)`·숫자 `dp`·`sp` 직접 사용 금지(필요한 값은 `core/designsystem/theme`에 토큰으로 추가. PR #2 화면에 남아 있는 숫자 값은 그 화면을 고칠 때 토큰으로 바꾼다). 문자열은 `strings.xml`(feature 접두어 `run_`, `team_` …). 숫자 표시는 `core/ui/Format.kt`에서만. 화면마다 `@Preview`(기본 + 빈 상태).
 - ViewModel은 `Context`·Activity·Compose 타입을 받지 않는다.
-- 코루틴: `GlobalScope`·`runBlocking` 금지(테스트 제외). 디스패처는 Hilt 주입(`@IoDispatcher`), `Dispatchers.IO` 직접 사용 금지. Firebase `Task` 대기는 `kotlinx-coroutines-play-services`의 `await()`(읽기·온라인 필수 트랜잭션만, 위 오프라인 쓰기 규칙 참고). `core/data/firestore/TaskAwait.kt`의 `awaitResult()`는 #32에서 `await()`로 바꾼다.
+- 코루틴: `GlobalScope`·`runBlocking` 금지(테스트 제외). 디스패처는 Hilt 주입(`@IoDispatcher`), `Dispatchers.IO` 직접 사용 금지. Firebase `Task` 대기는 `kotlinx.coroutines.tasks.await()`만 쓴다(읽기·온라인 필수 트랜잭션). 오프라인 대기 쓰기는 `await()`하지 않는다.
 - 금지: `!!`(테스트 제외, 대신 `requireNotNull(x) { "이유" }`), 위치 좌표·uid 로그, 주석 처리된 코드 커밋. 로그 태그 `TDR/<feature>`. TODO는 `// TODO(RUN-07): …`처럼 기능 ID를 붙인다.
 - 버전은 `gradle/libs.versions.toml`에서만. 버전 변경은 `chore` PR 단독으로. **AGP·Kotlin 업그레이드 제안은 따르지 않는다**(팀이 정할 때까지 고정).
 
