@@ -1,6 +1,8 @@
 package com.tourderun.core.data.stats
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.DataError
+import com.tourderun.core.data.Loaded
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -13,6 +15,8 @@ import kotlinx.coroutines.flow.flowOf
  * Hilt는 기본값으로 만든다. 다른 경우는 Preview·테스트에서 직접 만든다:
  * - 빈 주: `FakeStatsRepository(weekly = WeeklyStats.EMPTY)` → 상위 %도 null
  * - 오프라인: `FakeStatsRepository(DEFAULT_WEEKLY, topPercent = null, fromCache = true)`
+ * - 실패: `FakeStatsRepository(DEFAULT_WEEKLY, failure = DataError.Unavailable)` → **처음 한 번** 구독은 [Loaded.Failed],
+ *   그다음 구독(다시 시도)부터는 [weekly]
  *
  * 가짜 구현은 teamId·nowMs를 보지 않는다(기간 계산은 [FirestoreStatsRepository]).
  */
@@ -21,12 +25,19 @@ class FakeStatsRepository(
     private val weekly: WeeklyStats,
     private val topPercent: TopPercent? = DEFAULT_TOP_PERCENT,
     private val fromCache: Boolean = false,
+    private val failure: DataError? = null,
 ) : StatsRepository {
+
+    private val failed = AtomicBoolean(false)
 
     @Inject constructor() : this(DEFAULT_WEEKLY)
 
-    override fun observeWeekly(teamId: String, nowMs: Long): Flow<Cached<WeeklyStats>> =
-        flowOf(Cached(weekly, isFromCache = fromCache))
+    override fun observeWeekly(teamId: String, nowMs: Long): Flow<Loaded<WeeklyStats>> =
+        if (failure != null && failed.compareAndSet(false, true)) {
+            flowOf(Loaded.Failed(failure))
+        } else {
+            flowOf(Loaded.Ready(weekly, isFromCache = fromCache))
+        }
 
     // 이번 주 0km면 숨김(null)은 실제 구현과 같게 맞춘다.
     override suspend fun topPercent(teamId: String, nowMs: Long): TopPercent? =

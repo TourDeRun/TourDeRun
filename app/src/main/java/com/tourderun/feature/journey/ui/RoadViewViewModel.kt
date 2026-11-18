@@ -2,6 +2,7 @@ package com.tourderun.feature.journey.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.race.RaceRepository
 import com.tourderun.core.data.race.observeMyRace
 import com.tourderun.core.data.team.MyTeamSource
@@ -29,6 +30,8 @@ class RoadViewViewModel @Inject constructor(
         .scan<_, RoadViewUiState?>(null) { previous, myRace ->
             when {
                 myRace == null -> null
+                // TODO(JRN-03): 불러오기 실패 화면. 지금은 못 받았을 때처럼 비워 둔다.
+                myRace.race is Loaded.Failed -> null
                 else -> myRaceUi(myRace)?.let { roadViewUiState(it, myRace.team.season) } ?: previous
             }
         }

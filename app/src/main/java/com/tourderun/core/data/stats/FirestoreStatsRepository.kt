@@ -6,11 +6,11 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.TeamStatFields
-import com.tourderun.core.data.firestore.awaitResult
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.data.firestore.toTeamStatDto
 import com.tourderun.domain.stats.lastWeekId
@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import com.tourderun.domain.stats.topPercent as calcTopPercent
 
 /**
@@ -36,22 +37,27 @@ class FirestoreStatsRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
 ) : StatsRepository {
 
-    override fun observeWeekly(teamId: String, nowMs: Long): Flow<Cached<WeeklyStats>> {
-        val thisWeek = weekDoc(teamId, weekId(nowMs)).snapshotFlow(TAG)
-            .map { Cached(it.toTeamStatDto(), it.metadata.isFromCache) }
-        val lastWeek = weekDoc(teamId, lastWeekId(nowMs)).snapshotFlow(TAG)
-            .map { Cached(it.toTeamStatDto(), it.metadata.isFromCache) }
+    override fun observeWeekly(teamId: String, nowMs: Long): Flow<Loaded<WeeklyStats>> {
+        val thisWeek = weekDoc(teamId, weekId(nowMs)).snapshotFlow(TAG).map { it.mapReady { doc -> doc.toTeamStatDto() } }
+        val lastWeek = weekDoc(teamId, lastWeekId(nowMs)).snapshotFlow(TAG).map { it.mapReady { doc -> doc.toTeamStatDto() } }
         return combine(thisWeek, lastWeek) { now, last ->
-            Cached(
-                value = WeeklyStats(
-                    thisWeekM = now.value.distanceM,
-                    thisWeekRuns = now.value.runCount,
-                    lastWeekM = last.value.distanceM,
-                    lastWeekRuns = last.value.runCount,
-                    memberM = now.value.memberM,
-                ),
-                isFromCache = now.isFromCache || last.isFromCache,
-            )
+            // 두 문서 중 하나라도 첫 값 전에 실패하면 화면에 실패를 알린다.
+            when (now) {
+                is Loaded.Failed -> now
+                is Loaded.Ready -> when (last) {
+                    is Loaded.Failed -> last
+                    is Loaded.Ready -> Loaded.Ready(
+                        value = WeeklyStats(
+                            thisWeekM = now.value.distanceM,
+                            thisWeekRuns = now.value.runCount,
+                            lastWeekM = last.value.distanceM,
+                            lastWeekRuns = last.value.runCount,
+                            memberM = now.value.memberM,
+                        ),
+                        isFromCache = now.isFromCache || last.isFromCache,
+                    )
+                }
+            }
         }.distinctUntilChanged()
     }
 
@@ -59,7 +65,7 @@ class FirestoreStatsRepository @Inject constructor(
         val periodId = weekId(nowMs)
         return try {
             // count 집계는 서버에서만 되므로 우리 거리도 서버 값으로 맞춘다. 오프라인이면 예외 → null.
-            val ourM = weekDoc(teamId, periodId).get(Source.SERVER).awaitResult().toTeamStatDto().distanceM
+            val ourM = weekDoc(teamId, periodId).get(Source.SERVER).await().toTeamStatDto().distanceM
             if (ourM <= 0) return null
             coroutineScope {
                 val moreCount = async {
@@ -92,7 +98,7 @@ class FirestoreStatsRepository @Inject constructor(
     private fun weekDoc(teamId: String, periodId: String): DocumentReference =
         firestore.collection(Collections.TEAM_STATS).document(TeamStatFields.docId(teamId, periodId))
 
-    private suspend fun Query.serverCount(): Long = count().get(AggregateSource.SERVER).awaitResult().count
+    private suspend fun Query.serverCount(): Long = count().get(AggregateSource.SERVER).await().count
 
     private companion object {
         const val TAG = "TDR/stats"

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.data.SystemClock
 import com.tourderun.core.data.stats.FakeStatsRepository
 import com.tourderun.core.data.team.FixedMyTeamSource
@@ -34,7 +35,8 @@ import dagger.hilt.android.AndroidEntryPoint
 /**
  * S16 주간 통계 확인용(STAT-01·02). 디버그 빌드에만 있고, 내비게이션(AppNavHost)이 생기기 전까지 adb로 연다.
  *
- * 아래 칩으로 가짜 통계를 고른다(기본 = 42.5km·상위 11%, 이번 주 0km, 오프라인 = 기본 + 캐시 출처).
+ * 아래 칩으로 가짜 통계를 고른다(기본 = 42.5km·상위 11%, 이번 주 0km, 오프라인 = 기본 + 캐시 출처,
+ * 실패 = 처음 한 번 연결 불가 → "다시 시도"를 누르면 기본 통계).
  * Hilt 바인딩은 바꾸지 않고, 고른 상황마다 [FakeStatsRepository]로 ViewModel을 따로 만든다. Firebase를 쓰지 않는다.
  */
 @AndroidEntryPoint
@@ -76,6 +78,7 @@ private enum class DebugWeeklyMode(@StringRes val labelRes: Int) {
     DEFAULT(R.string.debug_mode_default),
     ZERO(R.string.debug_weekly_zero),
     OFFLINE(R.string.debug_mode_offline),
+    FAILED(R.string.debug_mode_failed),
     ;
 
     fun repository(): FakeStatsRepository = when (this) {
@@ -85,5 +88,6 @@ private enum class DebugWeeklyMode(@StringRes val labelRes: Int) {
             FakeStatsRepository.DEFAULT_WEEKLY.copy(thisWeekM = 0, thisWeekRuns = 0, memberM = emptyMap<String, Long>()),
         )
         OFFLINE -> FakeStatsRepository(FakeStatsRepository.DEFAULT_WEEKLY, topPercent = null, fromCache = true)
+        FAILED -> FakeStatsRepository(FakeStatsRepository.DEFAULT_WEEKLY, failure = DataError.Unavailable)
     }
 }

@@ -1,22 +1,29 @@
 package com.tourderun.core.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.tourderun.R
 import com.tourderun.core.designsystem.component.TeamAppearance
+import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.auth.ui.LoginScreen
-import com.tourderun.feature.auth.ui.LoginUiState
 import com.tourderun.feature.auth.ui.NicknameScreen
-import com.tourderun.feature.auth.ui.NicknameUiState
 import com.tourderun.feature.auth.ui.TermsItem
 import com.tourderun.feature.auth.ui.TermsScreen
 import com.tourderun.feature.auth.ui.TermsUiState
@@ -29,12 +36,43 @@ import com.tourderun.feature.team.ui.JoinTeamPreviewUi
 import com.tourderun.feature.team.ui.JoinTeamUiState
 import com.tourderun.feature.team.ui.TeamStartScreen
 
-/** 앱을 열었을 때의 시작 화면. 닉네임이 없으면 S02부터 다시 한다(AUTH-02). */
+/** 앱을 열었을 때의 시작 화면. 닉네임이 없으면 약관(S01-1)부터 다시 한다(AUTH-02, D-08). */
 internal fun EntryStage.startRoute(): Any = when (this) {
     EntryStage.SIGNED_OUT -> LoginRoute
-    EntryStage.NEEDS_NICKNAME -> NicknameRoute
+    // 약관 동의 시각은 닉네임과 같이 저장되므로(D-08), 닉네임 전에 앱을 껐으면 약관부터 다시 한다.
+    EntryStage.NEEDS_NICKNAME -> TermsRoute
     EntryStage.NEEDS_TEAM -> TeamStartRoute
     EntryStage.READY -> HomeRoute
+}
+
+/**
+ * 세션 단계가 바뀌었을 때 진입 화면에서 다음 화면으로 옮긴다. 이미 맞는 화면에 있으면 그대로 둔다.
+ * 로그아웃(SIGNED_OUT)만 어느 화면에서든 로그인으로 보낸다.
+ */
+internal fun NavController.followEntryStage(stage: EntryStage) {
+    val destination = currentDestination ?: return
+    val onLogin = destination.hasRoute<LoginRoute>()
+    val inSignUp = destination.hasRoute<TermsRoute>() || destination.hasRoute<NicknameRoute>()
+    val onTeamStart = destination.hasRoute<TeamStartRoute>()
+    when (stage) {
+        EntryStage.SIGNED_OUT -> if (!onLogin) resetTo(LoginRoute)
+        EntryStage.NEEDS_NICKNAME -> if (onLogin) resetTo(TermsRoute)
+        EntryStage.NEEDS_TEAM -> if (onLogin || inSignUp) resetTo(TeamStartRoute)
+        EntryStage.READY -> if (onLogin || inSignUp || onTeamStart) resetTo(HomeRoute)
+    }
+}
+
+/** 세션 첫 값을 기다리는 동안 보이는 화면 (앱 시작 직후, 보통 1초 안). */
+@Composable
+internal fun EntryLoadingScreen(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgSurface),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = TdrTheme.colors.brand)
+    }
 }
 
 /** 백스택을 전부 비우고 [route]만 남긴다. 로그인·로그아웃·팀 가입·탈퇴 뒤에 뒤로 가기로 이전 화면에 못 돌아가게 한다. */
@@ -43,32 +81,25 @@ internal fun NavController.resetTo(route: Any) {
 }
 
 /**
- * 최초 진입 화면 S01~S06 (#52). 입력값은 화면 안에서만 들고, 결과만 [session](목)에 남긴다.
+ * 최초 진입 화면 S01~S06 (#52). S01·S02는 ViewModel이 세션에 쓰고, 다음 화면 이동은 [followEntryStage]가 한다.
+ * 팀(S03~S06)은 아직 목([session])이다.
  *
- * TODO(AUTH-01): 화면 주인(권민찬)이 ViewModel을 붙이면 각 `composable { }` 안의 상태와 [session] 호출을 바꾼다.
+ * TODO(TEAM-01): TeamRepository가 생기면 팀 화면의 [session] 호출을 바꾼다.
  */
-internal fun NavGraphBuilder.entryGraph(navController: NavController, session: MockSession) {
+internal fun NavGraphBuilder.entryGraph(
+    navController: NavController,
+    session: MockSession,
+    onSignOut: () -> Unit,
+) {
     composable<LoginRoute> {
-        LoginScreen(
-            uiState = LoginUiState(),
-            onGoogleSignIn = {
-                session.signIn()
-                // 처음 온 사용자(닉네임 없음)만 약관을 거친다.
-                navController.resetTo(
-                    if (session.stage == EntryStage.NEEDS_NICKNAME) TermsRoute else session.stage.startRoute(),
-                )
-            },
-        )
+        LoginScreen()
     }
 
     composable<TermsRoute> {
         var agreed by remember { mutableStateOf(emptySet<TermsItem>()) }
         TermsScreen(
             uiState = TermsUiState(agreed),
-            onBack = {
-                session.signOut()
-                navController.resetTo(LoginRoute)
-            },
+            onBack = onSignOut,
             onToggleAll = { agreed = if (agreed.size == TermsItem.entries.size) emptySet() else TermsItem.entries.toSet() },
             onToggle = { agreed = if (it in agreed) agreed - it else agreed + it },
             onViewTerms = {}, // TODO(AUTH-01): 약관 전문 보기
@@ -77,19 +108,8 @@ internal fun NavGraphBuilder.entryGraph(navController: NavController, session: M
     }
 
     composable<NicknameRoute> {
-        var state by remember { mutableStateOf(NicknameUiState()) }
-        NicknameScreen(
-            uiState = state,
-            // 앱을 다시 켜서 S02부터 시작한 경우에는 돌아갈 화면이 없어 아무 일도 없다.
-            onBack = { navController.popBackStack() },
-            onNicknameChange = { state = state.copy(nickname = it) },
-            onSubmit = {
-                if (state.isValid) {
-                    session.saveNickname(state.nickname)
-                    navController.resetTo(TeamStartRoute)
-                }
-            },
-        )
+        // 앱을 다시 켜서 약관부터 시작한 경우에도 뒤로 가기는 약관으로 돌아간다.
+        NicknameScreen(onBack = { navController.popBackStack() })
     }
 
     composable<TeamStartRoute> {

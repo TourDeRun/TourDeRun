@@ -1,11 +1,14 @@
 package com.tourderun.feature.record.data
 
 import com.tourderun.core.data.firestore.Collections
+import com.tourderun.core.data.firestore.DocWrite
+import com.tourderun.core.data.firestore.FieldOp
 import com.tourderun.core.data.firestore.MemberFields
 import com.tourderun.core.data.firestore.RunFields
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.TeamStatFields
 import com.tourderun.core.data.firestore.UserFields
+import com.tourderun.core.data.firestore.WriteMode
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.domain.model.LatLngValue
 import com.tourderun.domain.model.RunResult
@@ -13,48 +16,6 @@ import com.tourderun.domain.record.thinEvenly
 import com.tourderun.domain.run.averagePaceSecPerKm
 import com.tourderun.domain.stats.weekId
 import kotlin.math.roundToLong
-
-/** 배치 안 문서 하나를 쓰는 방식. */
-enum class WriteMode {
-    /** 새 문서 생성(`set`). */
-    SET,
-
-    /** 있는 문서의 필드만 바꾼다(`update`). 문서가 없으면 배치 전체가 실패한다. */
-    UPDATE,
-
-    /** 없으면 만들고 있으면 합친다(`set(merge)`). 중첩 Map은 안쪽 키만 합쳐진다. */
-    SET_MERGE,
-}
-
-/**
- * Firebase 타입을 쓰지 않는 필드 값. `FirestoreRunSaver`가 Firestore 값으로 바꾼다.
- * 그래서 배치 내용을 Firestore 없이 테스트할 수 있다.
- */
-sealed interface FieldOp {
-    /** `FieldValue.increment(by)` */
-    data class Increment(val by: Long) : FieldOp
-
-    /** `FieldValue.serverTimestamp()` */
-    data object ServerTime : FieldOp
-
-    /** `Timestamp` (epoch ms) */
-    data class Time(val epochMs: Long) : FieldOp
-
-    /** `List<GeoPoint>` */
-    data class Points(val points: List<LatLngValue>) : FieldOp
-}
-
-/**
- * 배치에 들어갈 문서 하나.
- *
- * @property path `runs/{runId}`처럼 컬렉션부터 시작하는 문서 경로
- * @property fields 키는 최상위 필드 이름(점 표기 없음). 값은 일반 값·[FieldOp]·중첩 Map
- */
-data class DocWrite(
-    val path: String,
-    val mode: WriteMode,
-    val fields: Map<String, Any?>,
-)
 
 /** 저장할 거리(정수 m). 측정 중 Double을 저장 직전에 한 번만 반올림한다. 5개 문서가 모두 이 값을 쓴다. */
 fun savedDistanceM(result: RunResult): Long = result.distanceM.roundToLong()

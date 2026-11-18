@@ -13,6 +13,7 @@
     <!-- 디버그 화면 공용 상태 칩 (S15·S16) -->
     <string name="debug_mode_default">기본</string>
     <string name="debug_mode_offline">오프라인</string>
+    <string name="debug_mode_failed">실패</string>
 
     <!-- S15 스테이지 순위 -->
     <string name="debug_stage_rank_title">[디버그] S15 스테이지 순위</string>

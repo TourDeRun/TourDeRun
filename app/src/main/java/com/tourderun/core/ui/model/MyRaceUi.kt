@@ -1,5 +1,6 @@
 package com.tourderun.core.ui.model
 
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.race.MyRace
 import com.tourderun.core.data.race.RaceTeam
 import com.tourderun.core.designsystem.component.TeamAppearance
@@ -45,10 +46,12 @@ fun RaceTeam.toRivalUi(): RivalTeamUi =
 /**
  * [MyRace] → 화면용 값. 팀 거리는 리스너가 준 목록의 우리 팀 거리를 쓴다(연결할 때의 [MyRace.team] 거리는 옛 값일 수 있다).
  *
- * @return 스테이지가 바뀌는 순간처럼 목록에 우리 팀이 없거나 순위가 없으면 null. 호출하는 쪽은 직전 값을 그대로 둔다
+ * @return 스테이지가 바뀌는 순간처럼 목록에 우리 팀이 없거나 순위가 없으면 null. 호출하는 쪽은 직전 값을 그대로 둔다.
+ *   불러오기 실패([Loaded.Failed])도 null이다. 실패 처리는 호출하는 쪽에서 [MyRace.race]를 먼저 본다
  */
 fun myRaceUi(myRace: MyRace): MyRaceUi? {
-    val summary = myRace.race.value
+    val race = myRace.race as? Loaded.Ready ?: return null
+    val summary = race.value
     val ranking = summary.ranking ?: return null
     val myId = myRace.team.standing.teamId
     val ours = summary.stageTeams.firstOrNull { it.standing.teamId == myId } ?: return null
@@ -68,6 +71,6 @@ fun myRaceUi(myRace: MyRace): MyRaceUi? {
         aheadIsOtherStage = summary.aheadIsOtherStage,
         behind = summary.behind?.toRivalUi(),
         behindIsOtherStage = summary.behindIsOtherStage,
-        isOffline = myRace.race.isFromCache,
+        isOffline = race.isFromCache,
     )
 }

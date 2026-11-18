@@ -1,6 +1,6 @@
 package com.tourderun.core.data.stats
 
-import com.tourderun.core.data.Cached
+import com.tourderun.core.data.Loaded
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -10,11 +10,13 @@ import kotlinx.coroutines.flow.Flow
  * - 주간은 한국 시간 월요일 0시 시작, ISO 주차 연도. 이번 주 = `weekId(nowMs)`, 지난주 = `weekId(nowMs - 7일)`.
  *   문서는 `teamStats/{teamId}_{periodId}`. 러닝은 **시작 시각**의 주에 쌓인다(REC-01).
  * - 현재 시각은 읽지 않고 [nowMs]로 받는다.
- * - 오류를 던지지 않는다. 연결이 끊기면 캐시 값을 [Cached.isFromCache] = true로 낸다.
+ * - 오류를 던지지 않는다. 연결이 끊기면 캐시 값을 [Loaded.Ready.isFromCache] = true로 낸다.
+ *   [observeWeekly]가 첫 값 전에 실패하면 [Loaded.Failed]를 한 번 내고 끝난다(다시 시도는 다시 부른다).
+ *   [topPercent]는 실패하면 null(숨김).
  */
 interface StatsRepository {
     /** 이번 주·지난주 팀 통계. 문서가 없는 주는 0으로 채운다. */
-    fun observeWeekly(teamId: String, nowMs: Long): Flow<Cached<WeeklyStats>>
+    fun observeWeekly(teamId: String, nowMs: Long): Flow<Loaded<WeeklyStats>>
 
     /**
      * 이번 주 상위 % (STAT-02) = `topPercent(이번 주 우리 팀보다 더 달린 팀 수, 시즌 1 팀 전부)`.

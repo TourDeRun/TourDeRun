@@ -31,7 +31,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.Pill
+import com.tourderun.core.designsystem.component.TdrButton
+import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.component.TeamAppearance
@@ -53,7 +56,7 @@ fun StageRankScreen(
     viewModel: StageRankViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    StageRankContent(uiState, onBack, modifier)
+    StageRankContent(uiState, onBack, viewModel::retry, modifier)
 }
 
 /** S15 화면 내용. 상태 없음(Preview 대상). */
@@ -61,6 +64,7 @@ fun StageRankScreen(
 fun StageRankContent(
     uiState: StageRankUiState,
     onBack: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
@@ -100,8 +104,30 @@ fun StageRankContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
             )
 
+            is StageRankUiState.Failed -> FailedBody(uiState.error, onRetry)
+
             is StageRankUiState.Content -> RankBody(uiState)
         }
+    }
+}
+
+/** 불러오기 실패: 실패 종류에 맞는 문구와 다시 시도 버튼. */
+@Composable
+private fun FailedBody(error: DataError, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
+    ) {
+        Text(
+            stringResource(
+                if (error == DataError.Unavailable) R.string.rank_failed_unavailable else R.string.rank_failed_other,
+            ),
+            style = TdrTheme.typography.body,
+            color = TdrTheme.colors.inkMuted,
+            textAlign = TextAlign.Center,
+        )
+        TdrButton(text = stringResource(R.string.rank_retry), onClick = onRetry, style = TdrButtonStyle.Outline)
     }
 }
 
@@ -215,6 +241,7 @@ private fun StageRankContentPreview() {
                 ),
             ),
             onBack = {},
+            onRetry = {},
         )
     }
 }
@@ -226,6 +253,7 @@ private fun StageRankContentAlonePreview() {
         StageRankContent(
             previewContent(listOf(previewRow(1, "뛰뛰크루", 0, 4, 66_800, null, ours = true)), isOffline = true),
             onBack = {},
+            onRetry = {},
         )
     }
 }
@@ -234,6 +262,14 @@ private fun StageRankContentAlonePreview() {
 @Composable
 private fun StageRankContentLoadingPreview() {
     TdrTheme {
-        StageRankContent(StageRankUiState.Loading, onBack = {})
+        StageRankContent(StageRankUiState.Loading, onBack = {}, onRetry = {})
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun StageRankContentFailedPreview() {
+    TdrTheme {
+        StageRankContent(StageRankUiState.Failed(DataError.Unavailable), onBack = {}, onRetry = {})
     }
 }
