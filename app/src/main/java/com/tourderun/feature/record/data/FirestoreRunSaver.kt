@@ -1,20 +1,14 @@
 package com.tourderun.feature.record.data
 
 import android.util.Log
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.GeoPoint
-import com.google.firebase.firestore.SetOptions
 import com.tourderun.core.data.firestore.Collections
-import com.tourderun.core.data.firestore.FieldOp
-import com.tourderun.core.data.firestore.WriteMode
+import com.tourderun.core.data.firestore.batchOf
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.SaveOutcome
 import com.tourderun.domain.record.saveOutcome
 import com.tourderun.domain.route.routeFor
-import java.util.Date
 import javax.inject.Inject
 
 class FirestoreRunSaver @Inject constructor(
@@ -30,16 +24,7 @@ class FirestoreRunSaver @Inject constructor(
             return Result.failure(IllegalArgumentException("거리가 0m인 러닝은 저장하지 않는다"))
         }
         return try {
-            val batch = firestore.batch()
-            runSavePlan(result, distanceM, uid, team, title).forEach { write ->
-                val ref = firestore.document(write.path)
-                val fields = write.fields.toFirestore()
-                when (write.mode) {
-                    WriteMode.SET -> batch.set(ref, fields)
-                    WriteMode.UPDATE -> batch.update(ref, fields)
-                    WriteMode.SET_MERGE -> batch.set(ref, fields, SetOptions.merge())
-                }
-            }
+            val batch = firestore.batchOf(runSavePlan(result, distanceM, uid, team, title))
             // 오프라인이면 기기에 대기했다가 온라인이 되면 올라간다. 기다리지 않는다.
             batch.commit()
                 .addOnSuccessListener {
@@ -51,18 +36,6 @@ class FirestoreRunSaver @Inject constructor(
             Log.w(TAG, "러닝 저장 배치 만들기 실패", e)
             Result.failure(e)
         }
-    }
-
-    /** [FieldOp]·중첩 Map을 Firestore 값으로 바꾼다. */
-    private fun Map<String, Any?>.toFirestore(): Map<String, Any?> = mapValues { (_, v) -> firestoreValue(v) }
-
-    private fun firestoreValue(value: Any?): Any? = when (value) {
-        is FieldOp.Increment -> FieldValue.increment(value.by)
-        FieldOp.ServerTime -> FieldValue.serverTimestamp()
-        is FieldOp.Time -> Timestamp(Date(value.epochMs))
-        is FieldOp.Points -> value.points.map { GeoPoint(it.lat, it.lng) }
-        is Map<*, *> -> value.entries.associate { (k, v) -> k.toString() to firestoreValue(v) }
-        else -> value
     }
 
     private companion object {
