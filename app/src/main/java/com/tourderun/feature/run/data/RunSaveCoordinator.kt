@@ -92,53 +92,47 @@ class RunSaveCoordinator @Inject constructor(
     }
 
     /**
-     * 앱을 다시 켰을 때 `RunSessionManager.recover()`로 올린 종료 러닝이 이미 저장을 시작한 러닝인지 본다.
-     * `runs/{runId}`가 기기 캐시에 있으면 다시 저장하지 않고, 대기 중인 쓰기가 서버에 반영되길 기다렸다가
-     * [RunSessionManager.completeSave]를 부른다(기다리는 동안 이 함수는 바로 돌아온다).
+     * 앱을 다시 켰을 때 `RunSessionManager.recover()`로 올린 종료 러닝이 이미 저장을 시작한 러닝인지 본다
+     * (저장 배치를 시작한 직후, 저장 대기로 옮기기 전에 앱이 꺼진 경우).
+     * `runs/{runId}`가 기기 캐시에 있으면 다시 저장하지 않고 저장 대기로 옮긴 뒤 [settleSaved]로 정리한다.
      *
      * @return 이미 저장을 시작한 러닝이면 true(복구 안내를 띄우지 않는다)
      */
     suspend fun settleIfSavedOnDevice(runId: String): Boolean {
         val saver = runCatching { runSaver.get() }.getOrNull() ?: return false
         if (!saver.isSavedOnDevice(runId)) return false
-        mutex.withLock {
-            val result = manager.state.value.result?.takeIf { it.runId == runId }
-            if (result != null && runId !in started) {
-                // 이전 실행에서 저장한 러닝. 결과 화면을 다시 열면 이 값으로 그린다(팀 값은 모름).
-                started[runId] = SavedRun(defaultRunTitle(result.startedAtMs, SEOUL), result, savedDistanceM(result), null, null)
-            }
+        if (!manager.markSaveStarted(runId)) return false
+        settleSaved(runId)
+        return true
+    }
+
+    /**
+     * 앱을 다시 켰을 때 저장 대기 러닝을 정리한다(#99). 대기 중인 쓰기가 서버에 반영되면 [RunSessionManager.completeSave]를 부른다
+     * (기다리는 동안 이 함수는 바로 돌아온다). 기기 캐시에 문서가 없거나 서버가 거부했으면 [reject]로 보존한다.
+     *
+     * @return 서버 반영을 기다리기 시작했으면 true. 캐시에 없어 바로 거부로 처리했으면 false
+     */
+    suspend fun settleSaved(runId: String): Boolean {
+        val saver = runCatching { runSaver.get() }.getOrNull()
+        if (saver == null || !saver.isSavedOnDevice(runId)) {
+            reject(runId)
+            return false
         }
         appScope.launch {
             if (!saver.awaitPendingWrites()) return@launch
             // 거부된 쓰기도 반영 완료로 끝날 수 있어, 기기 캐시에 문서가 남아 있는지 다시 본다(거부되면 캐시에서 되돌려진다).
-            if (saver.isSavedOnDevice(runId)) {
-                manager.completeSave(runId)
-            } else {
-                // 결과 보기에서 다시 저장할 수 있게 저장 기록을 지운다.
-                mutex.withLock { started.remove(runId) }
-            }
+            if (saver.isSavedOnDevice(runId)) manager.completeSave(runId) else reject(runId)
         }
         return true
     }
 
     /**
-     * 앱을 다시 켰을 때 저장을 시작한 러닝([com.tourderun.core.data.local.StoredRunStatus.SAVED])을 정리한다(#99).
-     * 대기 중인 쓰기가 서버에 반영되면 [RunSessionManager.completeSave]를 부른다(기다리는 동안 이 함수는 바로 돌아온다).
-     * 기기 캐시에 문서가 없거나 서버가 거부했으면 종료 상태로 되돌려([RunSessionManager.revertSaveStarted]) 복구 안내에서 다시 저장할 수 있게 한다.
-     *
-     * @return 서버 반영을 기다리기 시작했으면 true. 캐시에 없어 바로 되돌렸으면 false(호출부가 복구 안내를 띄운다)
+     * 서버가 받아들이지 않은 러닝을 거부 상태로 보존한다. 같은 runId로 다시 저장할 수 있게 저장 기록도 지운다.
+     * 화면에 알리는 일은 `RunRecoveryController`가 [RunSessionManager.pendingSaves]를 보고 한다.
      */
-    suspend fun settleSaved(runId: String): Boolean {
-        val saver = runCatching { runSaver.get() }.getOrNull()
-        if (saver == null || !saver.isSavedOnDevice(runId)) {
-            manager.revertSaveStarted(runId)
-            return false
-        }
-        appScope.launch {
-            if (!saver.awaitPendingWrites()) return@launch
-            if (saver.isSavedOnDevice(runId)) manager.completeSave(runId) else manager.revertSaveStarted(runId)
-        }
-        return true
+    private suspend fun reject(runId: String) {
+        mutex.withLock { started.remove(runId) }
+        manager.rejectPendingSave(runId)
     }
 
     /** 세션 상태가 정해질 때까지 잠깐 기다린다. Firebase가 없거나 시간이 지나면 null. */

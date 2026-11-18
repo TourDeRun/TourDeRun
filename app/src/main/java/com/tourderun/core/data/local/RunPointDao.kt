@@ -24,11 +24,11 @@ interface RunPointDao {
     @Query("DELETE FROM run_points WHERE runId = :runId")
     suspend fun deleteForRun(runId: String)
 
-    /** [runId]가 아닌 러닝의 위치점을 지운다. 진행 상태(DataStore)에 남지 않은 러닝의 점만 남은 경우 정리용(#99). */
-    @Query("DELETE FROM run_points WHERE runId != :runId")
-    suspend fun deleteOtherRuns(runId: String)
+    /** [runIds]에 없는 러닝의 위치점을 지운다. 진행 중·저장 대기 어디에도 없는 러닝의 점 정리용(#99). 빈 목록이면 [deleteAll]. */
+    @Query("DELETE FROM run_points WHERE runId NOT IN (:runIds)")
+    suspend fun deleteExcept(runIds: List<String>)
 
-    /** 모든 위치점을 지운다. 진행 상태가 없을 때 남은 점 정리용(#99). */
+    /** 모든 위치점을 지운다. 진행 중·저장 대기 러닝이 하나도 없을 때 정리용(#99). */
     @Query("DELETE FROM run_points")
     suspend fun deleteAll()
 }

@@ -1,6 +1,7 @@
 package com.tourderun.feature.run.session
 
 import com.tourderun.core.data.local.ActiveRunStore
+import com.tourderun.core.data.local.PendingSaveState
 import com.tourderun.core.data.local.RunPointDao
 import com.tourderun.core.data.local.RunPointEntity
 import com.tourderun.core.data.local.StoredRunSession
@@ -203,7 +204,7 @@ class RunSessionManagerTest {
         assertTrue(manager.beginCountdown("run2", 20_000))
     }
 
-    /** run1을 달리고 종료한 뒤 저장 시작 표시까지 한 매니저. */
+    /** run1(러닝 A)을 달리고 종료한 뒤 저장을 시작(저장 대기)한 매니저. */
     private suspend fun savedRun1(dao: FakeDao, store: FakeStore): RunSessionManager {
         val manager = RunSessionManager(dao, store)
         manager.beginCountdown("run1", 0)
@@ -214,12 +215,22 @@ class RunSessionManagerTest {
         return manager
     }
 
-    @Test fun `저장 시작 표시 → IDLE, 위치점과 SAVED 상태는 남는다`() = runBlocking {
+    /** [savedRun1] 뒤 run2(러닝 B)를 시작해 점 하나를 받은 상태. */
+    private suspend fun RunSessionManager.startRun2() {
+        assertTrue(beginCountdown("run2", 20_000))
+        tick(23_000)
+        onLocation(point(1.0, 24_000), 24_000)
+    }
+
+    @Test fun `저장 시작 → IDLE, 진행 상태는 비고 저장 대기 목록에 A와 위치점이 남는다`() = runBlocking {
         val dao = FakeDao()
         val store = FakeStore()
         val manager = savedRun1(dao, store)
         assertEquals(RunPhase.IDLE, manager.state.value.phase)
-        assertEquals(StoredRunStatus.SAVED, store.session.value?.status)
+        assertNull(store.session.value)
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run1"))
+        // 복구에 필요한 시각도 같이 보존한다.
+        assertEquals(10_000L, store.pendingSaves.value.single().session.pausedAtMs)
         assertEquals(1, dao.pointsForRun("run1").size)
         assertFalse(manager.markSaveStarted("run1"))
     }
@@ -233,6 +244,7 @@ class RunSessionManagerTest {
         manager.finish(10_000)
         assertFalse(manager.markSaveStarted("run2"))
         assertEquals(StoredRunStatus.FINISHED, store.session.value?.status)
+        assertTrue(store.pendingSaves.value.isEmpty())
     }
 
     @Test fun `저장하지 않은 종료 러닝이 있으면 새 러닝을 시작할 수 없다`() = runBlocking {
@@ -250,74 +262,134 @@ class RunSessionManagerTest {
         val dao = FakeDao()
         val store = FakeStore()
         val manager = savedRun1(dao, store)
-        assertTrue(manager.beginCountdown("run2", 20_000))
-        manager.tick(23_000)
+        manager.startRun2()
         assertEquals("run2", store.session.value?.runId)
         assertEquals(RunPhase.RUNNING, manager.state.value.phase)
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run1"))
         assertEquals(1, dao.pointsForRun("run1").size)
     }
 
-    @Test fun `새 러닝 중 이전 러닝 서버 확인 → 이전 러닝 점만 지우고 새 러닝은 그대로`() = runBlocking {
+    @Test fun `B 측정 중 A 서버 확인 → A만 지우고 B의 상태와 경로는 그대로`() = runBlocking {
         val dao = FakeDao()
         val store = FakeStore()
         val manager = savedRun1(dao, store)
-        manager.beginCountdown("run2", 20_000)
-        manager.tick(23_000)
-        manager.onLocation(point(1.0, 24_000), 24_000)
-        assertFalse(manager.completeSave("run1"))
+        manager.startRun2()
+        assertTrue(manager.completeSave("run1"))
         assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertTrue(store.pendingSaves.value.isEmpty())
         assertEquals(1, dao.pointsForRun("run2").size)
         assertEquals("run2", store.session.value?.runId)
         assertEquals(RunPhase.RUNNING, manager.state.value.phase)
+        assertFalse(manager.completeSave("run1"))
     }
 
-    @Test fun `저장 대기 중 서버 확인 → 위치점과 진행 상태를 지운다`() = runBlocking {
+    @Test fun `저장 대기 중 서버 확인 → 위치점과 대기 기록을 지운다`() = runBlocking {
         val dao = FakeDao()
         val store = FakeStore()
         val manager = savedRun1(dao, store)
         assertTrue(manager.completeSave("run1"))
         assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertTrue(store.pendingSaves.value.isEmpty())
         assertNull(store.session.value)
         assertEquals(RunPhase.IDLE, manager.state.value.phase)
     }
 
-    @Test fun `저장 대기 러닝은 복구하지 않고, 되돌리면 종료 러닝으로 복구된다`() = runBlocking {
-        val dao = FakeDao()
-        val store = FakeStore()
-        savedRun1(dao, store)
-        val restarted = RunSessionManager(dao, store)
-        assertEquals(StoredRunStatus.SAVED, restarted.pendingRecovery()?.status)
-        assertNull(restarted.recover())
-        assertTrue(restarted.revertSaveStarted("run1"))
-        assertFalse(restarted.revertSaveStarted("run1"))
-        assertTrue(requireNotNull(restarted.recover()).finished)
-        assertEquals(RunPhase.FINISHED, restarted.state.value.phase)
-    }
-
-    @Test fun `진행 상태에 없는 러닝의 위치점만 정리한다`() = runBlocking {
+    @Test fun `A 오프라인 저장 → B 측정 시작 → 앱 재시작 → A·B 위치점 모두 남고, A 서버 확인 뒤 A만 지운다`() = runBlocking {
         val dao = FakeDao()
         val store = FakeStore()
         val manager = savedRun1(dao, store)
-        manager.beginCountdown("run2", 20_000)
-        manager.tick(23_000)
-        manager.onLocation(point(1.0, 24_000), 24_000)
-        manager.pause(25_000)
+        manager.startRun2()
         // 측정 중(IDLE 아님)에는 정리하지 않는다.
         manager.pruneOrphanPoints()
-        assertEquals(1, dao.pointsForRun("run1").size)
 
-        // 앱이 꺼졌다가 다시 켜짐: run1은 서버 확인을 받지 못해 점만 남았다.
+        // 앱이 꺼졌다가 다시 켜짐: A는 아직 서버 확인을 받지 못했다.
         val restarted = RunSessionManager(dao, store)
         restarted.pruneOrphanPoints()
+        assertEquals(1, dao.pointsForRun("run1").size)
+        assertEquals(1, dao.pointsForRun("run2").size)
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run1"))
+        assertEquals("run2", store.session.value?.runId)
+
+        assertEquals("run2", requireNotNull(restarted.recover()).runId)
+        assertTrue(restarted.completeSave("run1"))
         assertTrue(dao.pointsForRun("run1").isEmpty())
         assertEquals(1, dao.pointsForRun("run2").size)
+        assertEquals("run2", store.session.value?.runId)
+        assertEquals(RunPhase.PAUSED, restarted.state.value.phase)
     }
 
-    @Test fun `진행 상태가 없으면 남은 위치점을 모두 정리한다`() = runBlocking {
+    @Test fun `진행 중·저장 대기 어디에도 없는 러닝의 위치점만 정리한다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        savedRun1(dao, store)
+        dao.insert(RunPointEntity(runId = "old", segment = 0, lat = 0.0, lng = 0.0, timeMs = 1, accuracyM = 5f, accepted = true))
+        RunSessionManager(dao, store).pruneOrphanPoints()
+        assertTrue(dao.pointsForRun("old").isEmpty())
+        assertEquals(1, dao.pointsForRun("run1").size)
+    }
+
+    @Test fun `진행 상태와 저장 대기가 모두 없으면 남은 위치점을 모두 정리한다`() = runBlocking {
         val dao = FakeDao()
         dao.insert(RunPointEntity(runId = "old", segment = 0, lat = 0.0, lng = 0.0, timeMs = 1, accuracyM = 5f, accepted = true))
         RunSessionManager(dao, FakeStore()).pruneOrphanPoints()
         assertTrue(dao.pointsForRun("old").isEmpty())
+    }
+
+    @Test fun `거부된 A는 IDLE일 때 원래 runId·시각으로 종료 상태에 올린다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        savedRun1(dao, store)
+        val restarted = RunSessionManager(dao, store)
+        assertNull(restarted.pendingRecovery())
+        assertNull(restarted.recoverRejected())
+        assertTrue(restarted.rejectPendingSave("run1"))
+
+        val run = requireNotNull(restarted.recoverRejected())
+        assertEquals("run1", run.runId)
+        assertTrue(run.finished)
+        assertTrue(run.saveRejected)
+        assertEquals(RunPhase.FINISHED, restarted.state.value.phase)
+        assertEquals(10_000L, restarted.state.value.result?.endedAtMs)
+        assertEquals(StoredRunStatus.FINISHED, store.session.value?.status)
+        assertEquals("run1", store.session.value?.runId)
+        assertTrue(store.pendingSaves.value.isEmpty())
+        // 올린 러닝을 저장하거나 버리기 전에는 새 러닝을 시작할 수 없다.
+        assertFalse(restarted.beginCountdown("run3", 30_000))
+    }
+
+    @Test fun `B 측정 중 A 거부 → B는 계속, A는 거부로 보존했다가 B를 끝낸 뒤 올린다`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        val manager = savedRun1(dao, store)
+        manager.startRun2()
+        assertTrue(manager.rejectPendingSave("run1"))
+        assertNull(manager.recoverRejected())
+        assertEquals(RunPhase.RUNNING, manager.state.value.phase)
+        assertEquals(PendingSaveState.REJECTED, store.pendingState("run1"))
+        assertEquals(1, dao.pointsForRun("run1").size)
+
+        // B를 끝내고 저장을 시작하면(대기) IDLE이 되어 A를 올릴 수 있다. B의 대기 기록은 그대로다.
+        manager.finish(30_000)
+        assertTrue(manager.markSaveStarted("run2"))
+        assertEquals("run1", requireNotNull(manager.recoverRejected()).runId)
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run2"))
+    }
+
+    @Test fun `올린 A를 버리면 A만 지우고 저장 대기 B는 그대로`() = runBlocking {
+        val dao = FakeDao()
+        val store = FakeStore()
+        val manager = savedRun1(dao, store)
+        manager.startRun2()
+        manager.finish(30_000)
+        manager.markSaveStarted("run2")
+        manager.rejectPendingSave("run1")
+        requireNotNull(manager.recoverRejected())
+
+        assertTrue(manager.discard("run1"))
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertNull(store.session.value)
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run2"))
+        assertEquals(1, dao.pointsForRun("run2").size)
     }
 
     @Test fun `종료 전에는 completeSave가 동작하지 않는다`() = runBlocking {
