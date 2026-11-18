@@ -21,6 +21,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.firebase.FirebaseApp
 import com.tourderun.R
+import com.tourderun.core.data.record.RunSaver
+import com.tourderun.core.data.record.saveTeamOf
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
 import com.tourderun.core.data.team.MyTeam
@@ -29,8 +31,6 @@ import com.tourderun.domain.model.GpsPoint
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.defaultRunTitle
 import com.tourderun.domain.stats.SEOUL
-import com.tourderun.feature.record.data.RunSaver
-import com.tourderun.feature.record.data.saveTeamOf
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * REC-01 저장 확인용. 디버그 빌드에만 있고 런처·앱 시작 경로에 연결되지 않는다.
  * uid·팀 여부는 [SessionRepository]에서 읽는다(FirebaseAuth를 직접 부르지 않는다).
  * - 팀이 없으면(`NoTeam`) `team = null`로 `runs`·`users`만 쓴다.
- * - 팀이 있으면 `MyTeamSource` 값으로 문서 5개를 쓴다([saveTeamOf]의 TODO 참고).
+ * - 팀이 있고 세션의 팀이 `MyTeamSource` 팀과 같으면 문서 5개를 쓴다. 다르면 팀 없이 두 문서만([saveTeamOf] 참고).
  * - 로그인 전·닉네임 전(`users/{uid}` 문서 없음)이면 저장을 막는다. users 문서가 없으면 배치 전체가 거부된다.
  * google-services.json이 없으면 Firebase를 건드리지 않고 안내만 보여준다.
  */

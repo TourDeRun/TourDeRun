@@ -1,5 +1,6 @@
 package com.tourderun.feature.record.data
 
+import com.tourderun.core.data.record.RunSaver
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
