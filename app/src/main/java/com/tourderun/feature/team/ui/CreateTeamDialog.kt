@@ -1,5 +1,6 @@
 package com.tourderun.feature.team.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +26,7 @@ data class CreateTeamUiState(
     val name: String = "",
     val color: TeamColor = TeamColor.BLUE,
     val icon: TeamIcon = TeamIcon.RUNNER,
-    val errorMessage: String? = null,
+    @StringRes val errorRes: Int? = null,
     val isSubmitting: Boolean = false,
 ) {
     /** 앞뒤 공백을 뺀 2~12자. */
@@ -75,7 +76,7 @@ internal fun CreateTeamContent(
             onValueChange = onNameChange,
             label = stringResource(R.string.team_name_label),
             placeholder = stringResource(R.string.create_team_name_placeholder),
-            error = uiState.errorMessage,
+            error = uiState.errorRes?.let { stringResource(it) },
             maxLength = CreateTeamUiState.TEAM_NAME_MAX,
         )
         Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {

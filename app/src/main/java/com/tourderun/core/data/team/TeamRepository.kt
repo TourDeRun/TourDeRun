@@ -24,6 +24,12 @@ interface TeamRepository {
      * @return 새 팀 ID와 초대 코드 (S06에 바로 보여 준다)
      */
     suspend fun createTeam(uid: String, nickname: String, name: String, icon: Int, color: Int): Result<CreatedTeam>
+
+    /**
+     * TEAM-02 내 팀의 초대 코드. `teams/{teamId}/members/{uid}`의 `inviteCode`(팀장은 만든 코드, 팀원은 참여한 코드)를
+     * 실시간으로 읽는다. 코드는 팀원만 볼 수 있다(보안 규칙). 문서가 없으면 `Ready(null)`.
+     */
+    fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>>
 }
 
 /** 방금 만든 팀. */

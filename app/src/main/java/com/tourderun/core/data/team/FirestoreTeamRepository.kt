@@ -4,6 +4,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.Collections
+import com.tourderun.core.data.firestore.MemberFields
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.batchOf
 import com.tourderun.core.data.firestore.snapshotFlow
@@ -37,6 +38,13 @@ class FirestoreTeamRepository @Inject constructor(
         firestore.collection(Collections.TEAMS).document(teamId)
             .snapshotFlow(TAG)
             .map { loaded -> loaded.mapReady { it.toTeamDto() } }
+            .distinctUntilChanged()
+
+    override fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>> =
+        firestore.collection(Collections.TEAMS).document(teamId)
+            .collection(Collections.MEMBERS).document(uid)
+            .snapshotFlow(TAG)
+            .map { loaded -> loaded.mapReady { it.getString(MemberFields.INVITE_CODE) } }
             .distinctUntilChanged()
 
     override suspend fun createTeam(

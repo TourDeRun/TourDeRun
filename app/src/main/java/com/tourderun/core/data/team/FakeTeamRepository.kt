@@ -26,6 +26,9 @@ class FakeTeamRepository @Inject constructor() : TeamRepository {
         return Result.success(CreatedTeam(teamId, inviteCode = FAKE_INVITE_CODE))
     }
 
+    override fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>> =
+        teams.map { Loaded.Ready(if (teamId in it) FAKE_INVITE_CODE else null, isFromCache = false) }
+
     companion object {
         const val FAKE_INVITE_CODE = "ABC234"
     }
