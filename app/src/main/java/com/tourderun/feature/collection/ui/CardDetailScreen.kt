@@ -53,7 +53,8 @@ data class CardDetailUiState(
     val distanceFromStartKm: Int,
     val description: String,
     val landmarks: List<LandmarkUi>,
-    val photoCredit: String,
+    /** 사진 출처 표기. 사진이 정해지기 전에는 null이고, 그때는 출처 줄을 그리지 않는다. */
+    val photoCredit: String?,
     /** "11월 4일" */
     val acquiredDateText: String,
     val teamName: String,
@@ -92,12 +93,14 @@ fun CardDetailScreen(
             ) {
                 Icon(TdrIcons.Back, contentDescription = stringResource(R.string.action_back), tint = colors.ink, modifier = Modifier.size(22.dp))
             }
-            Text(
-                stringResource(R.string.card_photo_credit, uiState.photoCredit),
-                style = type.micro.copy(fontSize = 10.sp, lineHeight = 12.sp),
-                color = colors.inkMuted,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = TdrSpacing.s3, bottom = 10.dp),
-            )
+            uiState.photoCredit?.let { credit ->
+                Text(
+                    stringResource(R.string.card_photo_credit, credit),
+                    style = type.micro.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                    color = colors.inkMuted,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = TdrSpacing.s3, bottom = 10.dp),
+                )
+            }
         }
         Column(
             Modifier
