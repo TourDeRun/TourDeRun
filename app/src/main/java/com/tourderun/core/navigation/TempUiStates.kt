@@ -3,7 +3,6 @@ package com.tourderun.core.navigation
 import com.tourderun.core.data.record.FakeRunRepository
 import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
-import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.card.RegionCards
 import com.tourderun.feature.collection.ui.CardDetailUiState
@@ -15,8 +14,6 @@ import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.profile.ui.CollectionSummaryUi
 import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
-import com.tourderun.feature.run.ui.OvertakeUi
-import com.tourderun.feature.run.ui.RunResultUiState
 import com.tourderun.feature.team.ui.TeamEditUiState
 import com.tourderun.feature.team.ui.TeamUiState
 
@@ -26,8 +23,6 @@ import com.tourderun.feature.team.ui.TeamUiState
  * 화면 주인이 ViewModel을 붙이면 그 화면의 항목을 지운다. 전부 지워지면 이 파일도 지운다.
  */
 internal object TempUiStates {
-    private val stageAfterRun = stageProgressUi(70_040, routeFor(1))
-
     // TODO(AUTH-03): 프로필 ViewModel로 바꾼다.
     val profile = ProfileUiState(
         nickname = "민지",
@@ -38,17 +33,6 @@ internal object TempUiStates {
         // 누르면 S12가 열리므로 가짜 Repository에 실제로 있는 기록이어야 한다.
         latestRun = FakeRunRepository.SAMPLE_RUNS.first().toRowUi(),
         collection = CollectionSummaryUi(3, 8, "천안"),
-    )
-
-    // TODO(REC-06): 결과 화면 ViewModel(#51)로 바꾼다.
-    val runResult = RunResultUiState(
-        title = "11월 6일 저녁 러닝",
-        distanceM = 3_240,
-        movingSec = 1_122,
-        paceSecPerKm = 346,
-        teamBeforeM = 66_800,
-        stageAfter = stageAfterRun,
-        overtake = OvertakeUi("주황이들", 2, 1, 2_400, 840),
     )
 
     // TODO(TEAM-04): 팀 ViewModel로 바꾼다.

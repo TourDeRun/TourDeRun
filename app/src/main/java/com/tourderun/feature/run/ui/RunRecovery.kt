@@ -29,6 +29,7 @@ import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.feature.run.data.RunSaveCoordinator
 import com.tourderun.feature.run.service.RunTrackingService
 import com.tourderun.feature.run.session.RecoveredRun
 import com.tourderun.feature.run.session.RunSessionManager
@@ -61,6 +62,7 @@ enum class RecoveryOutcome {
 class RunRecoveryViewModel @Inject constructor(
     private val manager: RunSessionManager,
     private val clock: Clock,
+    private val saveCoordinator: RunSaveCoordinator,
 ) : ViewModel() {
     private val mutableRecovered = MutableStateFlow<RecoveredRun?>(null)
     val recovered: StateFlow<RecoveredRun?> = mutableRecovered.asStateFlow()
@@ -70,7 +72,11 @@ class RunRecoveryViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            if (manager.pendingRecovery() != null) mutableRecovered.value = manager.recover()
+            if (manager.pendingRecovery() == null) return@launch
+            val run = manager.recover()
+            // 저장을 시작한 뒤 서버 확인 전에 앱이 꺼진 러닝은 안내 없이, 서버에 반영되면 기기 데이터를 지운다(#23).
+            if (run != null && run.finished && saveCoordinator.settleIfSavedOnDevice(run.runId)) return@launch
+            mutableRecovered.value = run
         }
     }
 

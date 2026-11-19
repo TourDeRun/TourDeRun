@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tourderun.core.data.Clock
+import com.tourderun.core.data.record.RunSaver
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.core.data.team.MyTeamSource
 import com.tourderun.core.ui.model.stageProgressUi
@@ -11,7 +12,6 @@ import com.tourderun.domain.model.LatLngValue
 import com.tourderun.domain.model.TeamStanding
 import com.tourderun.domain.route.routeFor
 import com.tourderun.domain.run.isTooShortToSave
-import com.tourderun.feature.record.data.RunSaver
 import com.tourderun.feature.run.session.RunPhase
 import com.tourderun.feature.run.session.RunSessionManager
 import dagger.Lazy
