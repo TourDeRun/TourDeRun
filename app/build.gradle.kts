@@ -85,6 +85,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.maps.compose)
+    implementation(libs.play.services.location)
 
     // AUTH-01 구글 로그인 (Credential Manager)
     implementation(libs.androidx.credentials)

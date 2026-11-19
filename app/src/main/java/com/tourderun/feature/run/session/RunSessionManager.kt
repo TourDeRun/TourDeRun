@@ -13,6 +13,7 @@ import com.tourderun.domain.run.FilterDecision
 import com.tourderun.domain.run.GpsDistanceFilter
 import com.tourderun.domain.run.averagePaceSecPerKm
 import com.tourderun.domain.run.currentPaceSecPerKm
+import com.tourderun.domain.run.isGpsWeak
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.NonCancellable
@@ -41,6 +42,8 @@ class RunSessionManager @Inject constructor(
     private var countdownStartedMs = 0L
     private var trackingResumedMs = 0L
     private var lastPointMs: Long? = null
+    // RUN-08: 이번 구간(재개 이후)에 마지막으로 채택된 점의 시각
+    private var lastAcceptedMs: Long? = null
     // 삽입 실패 또는 취소 시 실제 커밋 여부가 불확실하므로 다음 상태 계산 전에 다시 읽는다.
     private var pointsNeedReload = false
 
@@ -108,6 +111,7 @@ class RunSessionManager @Inject constructor(
         if (isAccepted) {
             // FirstPoint도 경로의 시작점이므로 REC-01에 함께 전달한다.
             accepted.add(point)
+            lastAcceptedMs = point.timeMs
         }
         recent.add(point)
         updateSnapshot(RunPhase.RUNNING, current, nowMs)
@@ -156,6 +160,7 @@ class RunSessionManager @Inject constructor(
             recent.clear()
             trackingResumedMs = nowMs
             lastPointMs = null
+            lastAcceptedMs = null
             updateSnapshot(RunPhase.RUNNING, resumed, nowMs)
         }
         true
@@ -182,14 +187,96 @@ class RunSessionManager @Inject constructor(
         result
     }
 
-    /** 사용자가 종료된 러닝을 저장하지 않고 버리기로 선택한 경우에만 호출한다. */
+    /**
+     * 측정 서비스를 시작하지 못했거나 위치 요청이 실패했을 때 부른다. 위치를 받을 수 없으므로
+     * 측정 중이면 일시정지(RUNNING → PAUSED), 카운트다운 중이면 취소(COUNTDOWN → IDLE)한다.
+     * 일시정지·종료 상태는 그대로 둔다(종료 결과도 유지).
+     *
+     * @return 상태를 바꿨으면 true
+     */
+    suspend fun stopForServiceFailure(nowMs: Long): Boolean = when (state.value.phase) {
+        RunPhase.RUNNING -> pause(nowMs)
+        RunPhase.COUNTDOWN -> cancelCountdown()
+        RunPhase.IDLE, RunPhase.PAUSED, RunPhase.FINISHED -> false
+    }
+
+    /**
+     * 사용자가 러닝을 저장하지 않고 버리기로 선택한 경우에만 호출한다.
+     * 종료 후(짧은 러닝의 "저장 없이 종료")와 복구 안내의 "버리기"(일시정지 상태)에서 쓴다.
+     */
     suspend fun discard(runId: String): Boolean = mutex.withLock {
-        if (session?.runId != runId || mutableState.value.phase != RunPhase.FINISHED) return@withLock false
-        pointDao.deleteForRun(runId)
-        store.clearIfRunIdMatches(runId)
-        resetInMemory()
-        mutableState.value = RunState()
+        if (session?.runId != runId || mutableState.value.phase !in setOf(RunPhase.PAUSED, RunPhase.FINISHED)) {
+            return@withLock false
+        }
+        clearLocal(runId)
         true
+    }
+
+    /**
+     * REC-01 저장이 서버에 반영된 것을 확인한 뒤 호출한다(#23). 기기에 남긴 위치점과 진행 상태를 지우고 IDLE로 돌아간다.
+     * 내용은 [discard]와 같지만, 저장한 러닝과 버린 러닝을 호출부에서 구분하려고 이름을 나눴다.
+     *
+     * @return 지금 종료된 러닝이 [runId]가 아니면 false (이미 정리했거나 다른 러닝이 진행 중)
+     */
+    suspend fun completeSave(runId: String): Boolean = mutex.withLock {
+        if (session?.runId != runId || mutableState.value.phase != RunPhase.FINISHED) return@withLock false
+        clearLocal(runId)
+        true
+    }
+
+    /** 앱 프로세스가 살아 있는 동안에는 메모리 상태가 기준이라, IDLE일 때만 기기에 남은 러닝을 본다. */
+    suspend fun pendingRecovery(): StoredRunSession? = mutex.withLock {
+        if (mutableState.value.phase != RunPhase.IDLE) return@withLock null
+        store.session.first()
+    }
+
+    /**
+     * RUN-07 강제 종료 후 복구. 기기에 남은 위치점으로 거리를 다시 계산하고 일시정지(또는 종료) 상태로 올린다.
+     * 앱이 꺼져 있던 시간은 일시정지로 본다: 마지막으로 살아 있던 시각(생존 시각·마지막 점 중 늦은 것)에 멈춘 것으로 둔다.
+     * 이후 사용자 선택에 따라 [resume](이어하기), [finish]에 [RecoveredRun.endMs](지금까지 저장), [discard](버리기)를 부른다.
+     */
+    suspend fun recover(): RecoveredRun? = mutex.withLock {
+        if (mutableState.value.phase != RunPhase.IDLE) return@withLock null
+        val stored = store.session.first() ?: return@withLock null
+        resetInMemory()
+        session = stored
+        rebuildFromPoints(pointDao.pointsForRun(stored.runId))
+        val lastAliveMs = maxOf(stored.lastHeartbeatMs, lastPointMs ?: stored.startedAtMs)
+        val recovered = when (stored.status) {
+            StoredRunStatus.RUNNING -> stored.copy(
+                status = StoredRunStatus.PAUSED,
+                pausedAtMs = lastAliveMs,
+                lastHeartbeatMs = lastAliveMs,
+            )
+            StoredRunStatus.PAUSED, StoredRunStatus.FINISHED -> stored
+        }
+        val endMs = recovered.pausedAtMs ?: lastAliveMs
+        trackingResumedMs = recovered.startedAtMs
+        withContext(NonCancellable) {
+            if (recovered != stored) store.save(recovered)
+            session = recovered
+            mutableState.value = if (recovered.status == StoredRunStatus.FINISHED) {
+                snapshot(RunPhase.FINISHED, recovered, endMs).copy(result = resultAt(recovered, endMs))
+            } else {
+                snapshot(RunPhase.PAUSED, recovered, endMs)
+            }
+        }
+        RecoveredRun(
+            runId = recovered.runId,
+            distanceM = filter.totalM,
+            movingSec = movingSecAt(recovered, endMs),
+            endMs = endMs,
+            finished = recovered.status == StoredRunStatus.FINISHED,
+        )
+    }
+
+    private suspend fun clearLocal(runId: String) {
+        withContext(NonCancellable) {
+            pointDao.deleteForRun(runId)
+            store.clearIfRunIdMatches(runId)
+            resetInMemory()
+            mutableState.value = RunState()
+        }
     }
 
     private fun resultAt(current: StoredRunSession, end: Long) = RunResult(
@@ -220,6 +307,7 @@ class RunSessionManager @Inject constructor(
             movingSec = movingSec,
             averagePaceSecPerKm = averagePaceSecPerKm(movingSec, filter.totalM),
             currentPaceSecPerKm = if (phase == RunPhase.RUNNING) currentPaceSecPerKm(recent) else null,
+            gpsWeak = phase == RunPhase.RUNNING && isGpsWeak(lastAcceptedMs, trackingResumedMs, nowMs),
             acceptedPoints = accepted.toList(),
         )
     }
@@ -235,6 +323,7 @@ class RunSessionManager @Inject constructor(
         accepted.clear()
         recent.clear()
         lastPointMs = null
+        lastAcceptedMs = null
         var lastSegment: Int? = null
         for (row in rows) {
             if (row.segment != lastSegment) {
@@ -247,6 +336,7 @@ class RunSessionManager @Inject constructor(
             when (decision) {
                 FilterDecision.FirstPoint, is FilterDecision.Accepted -> {
                     accepted.add(point)
+                    lastAcceptedMs = point.timeMs
                 }
                 else -> Unit
             }
@@ -259,6 +349,7 @@ class RunSessionManager @Inject constructor(
             filter.resetAnchor()
             recent.clear()
             lastPointMs = null
+            lastAcceptedMs = null
         }
     }
 
@@ -268,6 +359,7 @@ class RunSessionManager @Inject constructor(
         recent.clear()
         session = null
         lastPointMs = null
+        lastAcceptedMs = null
         pointsNeedReload = false
         trackingResumedMs = 0
     }

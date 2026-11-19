@@ -1,5 +1,7 @@
 package com.tourderun.feature.record.data
 
+import com.tourderun.core.data.session.SessionState
+import com.tourderun.core.data.session.teamId
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.domain.model.RunResult
 import com.tourderun.domain.record.SaveOutcome
@@ -25,3 +27,13 @@ interface RunSaver {
      */
     fun save(result: RunResult, uid: String, team: MyTeam?, title: String): Result<SaveOutcome?>
 }
+
+/**
+ * 저장에 넘길 팀. 세션에 팀이 없으면(`NoTeam` 등) null이라 `runs`·`users` 두 문서만 쓴다.
+ * 팀이 있으면 [myTeam](`MyTeamSource`의 값)을 그대로 쓴다.
+ *
+ * TODO(REC-01): `TeamRepository`(권민찬)가 생기면 세션의 teamId로 읽은 팀으로 바꾼다. 지금 [myTeam]은 고정값이라
+ *  Firestore에 없는 `fake-my-team`으로 저장하게 되어 배치가 거부된다.
+ */
+fun saveTeamOf(session: SessionState, myTeam: MyTeam?): MyTeam? =
+    if (session.teamId == null) null else myTeam

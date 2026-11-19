@@ -1,12 +1,11 @@
 package com.tourderun.core.navigation
 
 import com.tourderun.core.data.record.FakeRunRepository
-import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.core.ui.preview.PreviewSamples
-import com.tourderun.domain.route.routeFor
+import com.tourderun.domain.card.RegionCards
 import com.tourderun.feature.collection.ui.CardDetailUiState
 import com.tourderun.feature.collection.ui.CollectionUiState
 import com.tourderun.feature.collection.ui.LandmarkUi
@@ -18,7 +17,6 @@ import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
 import com.tourderun.feature.run.ui.OvertakeUi
 import com.tourderun.feature.run.ui.RunResultUiState
-import com.tourderun.feature.run.ui.RunningUiState
 import com.tourderun.feature.team.ui.TeamEditUiState
 import com.tourderun.feature.team.ui.TeamUiState
 
@@ -40,16 +38,6 @@ internal object TempUiStates {
         // 누르면 S12가 열리므로 가짜 Repository에 실제로 있는 기록이어야 한다.
         latestRun = FakeRunRepository.SAMPLE_RUNS.first().toRowUi(),
         collection = CollectionSummaryUi(3, 8, "천안"),
-    )
-
-    // TODO(RUN-03): 러닝 ViewModel(RunSessionManager)로 바꾼다.
-    val running = RunningUiState(
-        distanceM = 3_240.0,
-        movingSec = 1_122,
-        avgPaceSecPerKm = 346,
-        currentPaceSecPerKm = 331,
-        stageWithRun = stageAfterRun,
-        path = SampleRoutePoints,
     )
 
     // TODO(REC-06): 결과 화면 ViewModel(#51)로 바꾼다.
@@ -85,18 +73,21 @@ internal object TempUiStates {
         ),
     )
 
-    // TODO(EXT-01): 카드 콘텐츠(M-07)가 준비되면 cityId로 실제 카드를 찾는다.
+    // 글 콘텐츠는 M-07(RegionCards). 획득 날짜·팀 이름은 TODO(EXT-01): 도감 ViewModel에서 users.cards로 바꾼다.
     fun cardDetail(cityId: String): CardDetailUiState {
         val card = collection.cards.firstOrNull { it.cityId == cityId } ?: collection.cards.first()
+        val content = RegionCards.of(card.cityId)
+        val index = collection.cards.indexOf(card)
         return CardDetailUiState(
             name = card.name,
-            nameEn = card.cityId.replaceFirstChar { it.uppercase() },
-            stageNumber = collection.cards.indexOf(card).takeIf { it > 0 },
+            nameEn = content?.nameEn ?: card.cityId.replaceFirstChar { it.uppercase() },
+            stageNumber = index.takeIf { it > 0 },
             startCity = collection.routeFrom,
-            distanceFromStartKm = 0,
-            description = "[지역 소개 준비 중]",
-            landmarks = listOf(LandmarkUi("[랜드마크]", "[설명 준비 중]")),
-            photoCredit = "[출처]",
+            distanceFromStartKm = routeFor(1).stages.take(index).sumOf { it.lengthKm },
+            description = content?.intro.orEmpty(),
+            landmarks = content?.landmarks.orEmpty().map { LandmarkUi(it.name, it.description) },
+            // 사진이 정해지기 전에는 null이라 S18이 출처 줄을 숨긴다. TODO(EXT-01): 사진과 출처를 채운다.
+            photoCredit = content?.photoCredit,
             acquiredDateText = (card.status as? RegionCardStatus.Collected)?.dateText.orEmpty(),
             teamName = PreviewSamples.team.name,
         )
