@@ -5,12 +5,12 @@ import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.card.RegionCards
-import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.collection.ui.CardDetailUiState
 import com.tourderun.feature.collection.ui.CollectionUiState
 import com.tourderun.feature.collection.ui.LandmarkUi
 import com.tourderun.feature.collection.ui.RegionCardStatus
 import com.tourderun.feature.collection.ui.RegionCardUi
+import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.profile.ui.CollectionSummaryUi
 import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
