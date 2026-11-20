@@ -33,6 +33,7 @@ import com.tourderun.feature.collection.ui.CardDetailScreen
 import com.tourderun.feature.collection.ui.CollectionScreen
 import com.tourderun.feature.home.ui.HomeScreen
 import com.tourderun.feature.journey.ui.RoadViewScreen
+import com.tourderun.feature.journey.ui.StageClearHost
 import com.tourderun.feature.profile.ui.ProfileScreen
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
@@ -96,6 +97,7 @@ fun AppNavHost(
                     onStageRankClick = { navController.navigate(StageRankRoute) },
                     onWeeklyStatsClick = { navController.navigate(WeeklyStatsRoute) },
                 )
+                StageClearHost()
             }
             composable<RoadViewRoute> {
                 RoadViewScreen()
@@ -141,6 +143,7 @@ fun AppNavHost(
             composable<RunResultRoute> {
                 // 종료된 러닝을 저장하고 결과를 보인다(REC-01). 저장할 러닝이 없으면 바로 홈으로 간다.
                 RunResultHost(onDone = { navController.popBackStack(HomeRoute, inclusive = false) })
+                StageClearHost()
             }
 
             composable<RecordsRoute> {
