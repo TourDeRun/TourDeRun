@@ -37,8 +37,9 @@ import com.tourderun.feature.profile.ui.ProfileScreen
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
 import com.tourderun.feature.record.ui.RecordsScreen
-import com.tourderun.feature.run.ui.RunResultScreen
-import com.tourderun.feature.run.ui.RunningScreen
+import com.tourderun.feature.run.ui.RunResultHost
+import com.tourderun.feature.run.ui.RunRecoveryHost
+import com.tourderun.feature.run.ui.RunRoute
 import com.tourderun.feature.stat.ui.WeeklyStatsScreen
 import com.tourderun.feature.team.ui.TeamEditScreen
 import com.tourderun.feature.team.ui.TeamScreen
@@ -129,20 +130,17 @@ fun AppNavHost(
             }
 
             composable<RunningRoute> {
-                // TODO(RUN-02): 일시정지·종료는 RunSessionManager가 처리하고, 종료 결과로 결과 화면을 연다.
-                RunningScreen(
-                    uiState = TempUiStates.running,
-                    onPauseToggle = {},
-                    onStopLongPress = {
+                // 권한·카운트다운·측정·종료는 RunRoute 안에서 바뀐다. 종료 결과는 RunSessionManager.state.value.result.
+                RunRoute(
+                    onOpenResult = {
                         navController.navigate(RunResultRoute) { popUpTo<RunningRoute> { inclusive = true } }
                     },
+                    onClose = back,
                 )
             }
             composable<RunResultRoute> {
-                RunResultScreen(
-                    uiState = TempUiStates.runResult,
-                    onConfirm = { navController.popBackStack(HomeRoute, inclusive = false) },
-                )
+                // 종료된 러닝을 저장하고 결과를 보인다(REC-01). 저장할 러닝이 없으면 바로 홈으로 간다.
+                RunResultHost(onDone = { navController.popBackStack(HomeRoute, inclusive = false) })
             }
 
             composable<RecordsRoute> {
@@ -205,6 +203,9 @@ fun AppNavHost(
             TdrTabBar(selected = currentTab, onSelect = { navController.selectTab(it) })
         }
     }
+
+    // RUN-07: 앱을 열 때 끝나지 않은 러닝이 있으면 어느 화면 위에서든 복구 안내를 먼저 띄운다.
+    RunRecoveryHost(onOpenRun = { navController.navigate(RunningRoute) { launchSingleTop = true } })
 }
 
 /** 이 화면이 탭 화면이면 그 탭, 아니면 null(하단 탭을 숨긴다). */
@@ -223,7 +224,7 @@ private fun NavController.selectTab(tab: TdrTab) {
         TdrTab.Profile -> ProfileRoute
         TdrTab.Run -> {
             // 러닝은 탭이 아니라 화면 전체를 덮는 화면이라 그냥 위에 쌓는다.
-            // TODO(RUN-01): 팀 확인·권한 요청·카운트다운은 러닝 담당이 이 앞에 붙인다.
+            // 팀 확인·권한 요청·카운트다운은 RunRoute(S09) 안에서 한다.
             navigate(RunningRoute) { launchSingleTop = true }
             return
         }

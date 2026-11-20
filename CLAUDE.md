@@ -11,10 +11,11 @@
 ./gradlew :domain:test                                             # 핵심 로직 단위 테스트 (PR 전에 반드시)
 ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug # CI app-build와 같은 검사 (:app 단위 테스트 포함)
 ./gradlew signingReport                                            # 디버그 SHA-1 확인
+cd firebase && npm test                                            # 보안 규칙 테스트 (CI rules-test와 같음, 에뮬레이터에 Java 필요)
 ```
 
-- CI(`.github/workflows/ci.yml`)는 `domain-test`(`:domain:test`), `app-build`(`:app:testDebugUnitTest` → `assembleDebug` → `lintDebug`) 두 작업. 둘 다 통과해야 `main`에 합칠 수 있다. 작업 이름은 `main` 보호 규칙의 필수 체크 이름이라 바꾸지 않는다.
-- `google-services.json`이 없으면 Firebase 플러그인이 꺼진 채로 빌드된다. 이 상태에서 Firebase를 호출하는 코드가 실행되면 앱이 꺼지므로, 파일 없이 Firebase 코드를 시작 경로에 연결하지 않는다.
+- CI(`.github/workflows/ci.yml`)는 `domain-test`(`:domain:test`), `app-build`(`:app:testDebugUnitTest` → `assembleDebug` → `lintDebug`), `rules-test`(`firebase/`에서 `npm ci` → `npm test`) 세 작업. 셋 다 통과해야 `main`에 합칠 수 있다. 작업 이름은 `main` 보호 규칙의 필수 체크 이름이라 바꾸지 않는다.
+- `google-services.json`이 없으면 Firebase 플러그인이 꺼진 채로 빌드된다. 빌드는 되지만, **실행하면 시작할 때 꺼질 수 있다**: 세션(`SessionModule` → `FirestoreSessionRepository`)이 Firebase를 바로 쓰고 앱 진입(`EntryViewModel`)이 세션을 받는다. 실행해 보려면 `app/google-services.json`이 필요하다. 그 밖의 Firebase 코드는 시작 경로에 새로 연결하지 않는다(필요하면 `dagger.Lazy`).
 
 ## 구조
 
@@ -25,9 +26,9 @@
 
 - 의존은 `ui → data → domain` 한 방향. **`:domain`에 `android.*`, Firebase, Compose import 금지.**
 - `:domain` 패키지: `model/`, `route/`(`routeFor(season)`, `Season1Route`), `run/`, `journey/`(`locate`·`arrivals`·`newArrivals`·`mapPosition`·`haversineM`), `race/`, `stats/`, `record/`(기본 제목·경로 줄이기 등 기록 관련), `team/`, `card/`
-- `:app` 패키지: `core/di`, `core/data/firestore`(`Fields.kt`, DTO, `callbackFlow` 확장), `core/data/<영역>`(공유 Repository), `core/data/local`, `core/designsystem/theme|component`(테마 토큰, 공용 컴포저블), `core/ui`(`Format.kt`, `model/` 여러 화면 공용 UI 모델, `preview/` Preview 데이터), `core/navigation`, `feature/<영역>/{ui,data}`
+- `:app` 패키지: `core/di`, `core/data/firestore`(`Fields.kt`, DTO, `SnapshotFlows`(리스너 공용 함수), `DocWrite`(쓰기 계획: 경로·모드·필드), `BatchWrites`(`DocWrite` 목록 → 배치)), `core/data/<영역>`(공유 Repository), `core/data/local`, `core/designsystem/theme|component`(테마 토큰, 공용 컴포저블), `core/ui`(`Format.kt`, `model/` 여러 화면 공용 UI 모델, `preview/` Preview 데이터), `core/navigation`, `feature/<영역>/{ui,data}`
 - 다른 feature의 `ui`·`data` 내부 클래스를 import하지 않는다. 여러 feature가 쓰는 Repository는 `core/data`로 올린다.
-- 공유 Repository: `SessionRepository`·`TeamRepository`(권민찬), `RaceRepository`·`StatsRepository`·`RunRepository`·`RunSaver`(오영훈), `RunSessionManager`(최한솔)
+- 공유 Repository: `SessionRepository`·`TeamRepository`(권민찬), `RaceRepository`·`StatsRepository`·`RunRepository`·`RunSaver`·`ArrivalRepository`(오영훈), `RunSessionManager`(최한솔). `core/data/team/MyTeamSource`(내 팀 고정값)는 `TeamRepository`로 바꿀 때까지의 임시(#45)
 
 ## 도메인 규칙 (자주 틀리는 것)
 
@@ -41,7 +42,7 @@
 - **상위 %** = `ceil((더 많이 달린 팀 수 + 1) / 전체 팀 수 × 100)`. 전체 팀 수는 시즌 1 팀 전부(이번 주 0km 팀 포함). 우리 팀이 0km면 숨긴다.
 - **주간 ID**: 한국 시간, 월요일 0시 시작, ISO 주차 연도(`IsoFields`). 러닝 **시작 시각** 기준. 2027-01-01 → `2026-W53`.
 - **팀 거리는 한 번 쌓이면 줄지 않는다**(M-01·M-02 기본안): 기록 삭제·팀 탈퇴·내보내기 때 팀 거리와 통계를 빼지 않는다. 나간 팀원 몫은 "이전 팀원"으로 표시.
-- **팀 icon·color는 0~7 번호**(M-06, `teams.icon`·`teams.color`). `TeamColor`·`TeamIcon`의 선언 순서가 곧 번호라서 **순서 변경·중간 삽입 금지**, 새 값은 끝에만 추가한다. 번호 → enum은 `entries.getOrNull(n)`(범위 밖이면 기본값). 지금 순서: color `blue 0, navy 1, teal 2, green 3, purple 4, orange 5, pink 6, gray 7` / icon `runner 0, bolt 1, mountain 2, star 3, flame 4, wave 5, heart 6, flag 7`.
+- **팀 icon·color는 0~7 번호**(M-06, `teams.icon`·`teams.color`). `TeamColor`·`TeamIcon`의 선언 순서가 곧 번호라서 **순서 변경·중간 삽입 금지**, 새 값은 끝에만 추가한다. 번호 → enum은 `TeamColor.entries.getOrNull(n) ?: TeamColor.BLUE`(아이콘은 `?: TeamIcon.RUNNER`), enum → 번호는 `ordinal`. 문자열 `id`·`fromId()`는 Firestore 저장에 쓰지 않는다. 지금 순서: color `blue 0, navy 1, teal 2, green 3, purple 4, orange 5, pink 6, gray 7` / icon `runner 0, bolt 1, mountain 2, star 3, flame 4, wave 5, heart 6, flag 7`.
 - 팀은 1~4명, 팀이 있어야 러닝 가능. 팀장 승계는 가장 먼저 가입한 팀원(M-04 기본안). 최소 저장 기준 100m 또는 1분(M-05).
 
 ## Firestore
@@ -49,21 +50,23 @@
 - 컬렉션: `users/{uid}`, `teams/{teamId}`, `teams/{teamId}/members/{uid}`, `inviteCodes/{code}`, `runs/{runId}`, `teamStats/{teamId}_{periodId}`. 필드 이름은 **`core/data/firestore/Fields.kt` 상수만** 쓴다(문자열 직접 입력 금지).
 - 현재 스테이지는 저장하지 않는다(팀 거리로 계산).
 - **REC-01 저장은 배치 쓰기 한 번**: `runs` 생성 → `teams`(`distanceM` increment, `reachedAt` serverTimestamp, `lastRunId`) → 내 `members`(`contributionM`, `lastRunId`) → `teamStats` 이번 주 문서(set merge: `distanceM`, `runCount`, `memberM.{uid}`, `lastRunId`, `teamId`, `season`, `periodId`) → 내 `users`(`totalM`, `runCount`). 숫자는 모두 `FieldValue.increment`.
-- **오프라인 대기 쓰기는 `await()`하지 않는다**(REC-01, 제목·메모 수정, 기록 삭제). 커밋을 시작하고 바로 화면을 넘긴다. 결과 화면 값은 기기에서 계산(`before = 캐시된 팀 거리`, `after = before + distanceM`).
+- **오프라인 대기 쓰기는 `await()`하지 않는다**(REC-01, 제목·메모 수정, 기록 삭제, 도착 확인). 커밋을 시작하고 바로 화면을 넘긴다. 결과 화면 값은 기기에서 계산(`before = 캐시된 팀 거리`, `after = before + distanceM`).
 - 보안 규칙이 `lastRunId`로 증가량을 같은 배치의 새 러닝과 대조한다. 거리 증가 쓰기에는 항상 `lastRunId`를 함께 쓴다.
 - 문서를 만들 때 null 필드도 명시한다(`teamId: null`, `lastRunId: null`).
 - `runs` 목록 조회는 반드시 `whereEqualTo(uid)`를 넣는다(규칙은 필터가 아니다). 러닝 ID는 기기에서 `collection("runs").document().id`로 미리 만든다.
 - 팀 참여(TEAM-03)는 트랜잭션(온라인 필수), 팀 만들기는 배치(`teams`·`members`·`inviteCodes`·`users`를 한 배치에).
-- 실시간 리스너는 `callbackFlow` + `awaitClose { remove() }`, ViewModel에서 `stateIn(viewModelScope, WhileSubscribed(5_000), 초기값)`. 같은 스테이지 리스너는 스테이지 번호가 바뀔 때만 다시 연결.
+- 실시간 리스너는 `core/data/firestore/SnapshotFlows`의 `snapshotFlow`만 쓴다(`callbackFlow` + `awaitClose`는 그 안에만). 실패는 `Loaded.Failed(DataError)`로 전달한다. ViewModel에서 `stateIn(viewModelScope, WhileSubscribed(5_000), 초기값)`. 같은 스테이지 리스너는 스테이지 번호가 바뀔 때만 다시 연결.
 - `firestore.rules`·인덱스 배포는 권민찬만 한다. 규칙·`Fields.kt`를 바꾸는 PR의 리뷰어는 권민찬 + 오영훈.
+- 배치 쓰기를 바꾸면 `firebase/test/rules.test.mjs`에 시나리오를 추가하고 `firebase/`에서 `npm test`로 확인한다.
 
 ## 코드 컨벤션
 
-- 화면: ViewModel이 붙기 전에는 `XxxScreen(uiState, 콜백)`(상태 없음, Preview 대상)도 허용한다. 화면 주인이 ViewModel을 붙일 때 `XxxScreen(viewModel)`(상태 수집·이벤트 처리만) / `XxxContent(uiState, 콜백 또는 onAction)`(상태 없음, Preview 대상)로 나눈다. `XxxViewModel`, `XxxUiState`(불변 data class 또는 sealed `Loading/Content/Error`), `XxxAction`, 일회성 이벤트는 `Channel<XxxEvent>`.
-- Repository: 인터페이스 `XxxRepository`, 구현 `FirestoreXxxRepository`. 실패는 예외로 던지지 않고 `Result<T>` 또는 `sealed interface DataError`로. 예외를 잡는 곳은 Repository 한 층.
+- 화면: ViewModel이 붙기 전에는 `XxxScreen(uiState, 콜백)`(상태 없음, Preview 대상)도 허용한다. 화면 주인이 ViewModel을 붙일 때 `XxxScreen(viewModel)`(상태 수집·이벤트 처리만) / `XxxContent(uiState, 콜백 또는 onAction)`(상태 없음, Preview 대상)로 나눈다. `XxxViewModel`, `XxxUiState`(불변 data class 또는 sealed. 기본은 `Loading/Content`이고 화면에 따라 `Failed(error: DataError)`(불러오기 실패 + 다시 시도), `NoTeam`(팀 없음) 같은 상태를 더한다. 예: S15 `StageRankUiState`, S16 `WeeklyStatsUiState`), `XxxAction`, 일회성 이벤트는 `Channel<XxxEvent>`.
+- Repository: 인터페이스 `XxxRepository`, 구현 `FirestoreXxxRepository`. 실패는 예외로 던지지 않는다. 한 번 쓰기·조회는 `Result<T>`, 리스너(`Flow`)는 `Loaded<T>`(`Ready(value, isFromCache)` / `Failed(DataError)`)로 전달한다. 예외를 잡는 곳은 Repository 한 층.
+- Repository는 uid를 인자로 받고 ViewModel이 `SessionRepository`에서 읽어 넘긴다. `FirebaseAuth`를 직접 부르지 않는다(`SessionRepository` 구현 제외).
 - Compose: 상태 수집은 `collectAsStateWithLifecycle()`. 공개 컴포저블은 `modifier: Modifier = Modifier`를 첫 번째 선택 인자로. 화면은 `TdrTheme { }` 안에서 그리고, 색은 `TdrTheme.colors`(`brand`, `ink`, `inkMuted`, `bgCanvas`, `bgSurface`, `border` …), 글자는 `TdrTheme.typography`(`titleLg`, `subtitle`, `body`, `caption` …), 간격은 `TdrSpacing.s1~s8`·`screenHorizontal`, 모서리는 `TdrShapes.sm~xl·full`, 고정 크기는 `TdrSize`. 팀 색은 `TeamColor.color`·`textColor`. 화면 코드(`feature/`)에 `Color(0xFF…)`·숫자 `dp`·`sp` 직접 사용 금지(필요한 값은 `core/designsystem/theme`에 토큰으로 추가. PR #2 화면에 남아 있는 숫자 값은 그 화면을 고칠 때 토큰으로 바꾼다). 문자열은 `strings.xml`(feature 접두어 `run_`, `team_` …). 숫자 표시는 `core/ui/Format.kt`에서만. 화면마다 `@Preview`(기본 + 빈 상태).
 - ViewModel은 `Context`·Activity·Compose 타입을 받지 않는다.
-- 코루틴: `GlobalScope`·`runBlocking` 금지(테스트 제외). 디스패처는 Hilt 주입(`@IoDispatcher`), `Dispatchers.IO` 직접 사용 금지. Firebase `Task` 대기는 `kotlinx-coroutines-play-services`의 `await()`(읽기·온라인 필수 트랜잭션만, 위 오프라인 쓰기 규칙 참고). `core/data/firestore/TaskAwait.kt`의 `awaitResult()`는 #32에서 `await()`로 바꾼다.
+- 코루틴: `GlobalScope`·`runBlocking` 금지(테스트 제외). 디스패처는 Hilt 주입(`@IoDispatcher`), `Dispatchers.IO` 직접 사용 금지. Firebase `Task` 대기는 `kotlinx.coroutines.tasks.await()`만 쓴다. 읽기와 온라인 필수 쓰기(트랜잭션, 팀 만들기 배치)는 `await()`하고 10초 제한을 둔다. 오프라인 대기 쓰기(REC-01, 제목·메모 수정, 기록 삭제, 도착 확인)는 `await()`하지 않는다.
 - 금지: `!!`(테스트 제외, 대신 `requireNotNull(x) { "이유" }`), 위치 좌표·uid 로그, 주석 처리된 코드 커밋. 로그 태그 `TDR/<feature>`. TODO는 `// TODO(RUN-07): …`처럼 기능 ID를 붙인다.
 - 버전은 `gradle/libs.versions.toml`에서만. 버전 변경은 `chore` PR 단독으로. **AGP·Kotlin 업그레이드 제안은 따르지 않는다**(팀이 정할 때까지 고정).
 
@@ -100,3 +103,4 @@
 - Gradle JDK는 21(Settings → Build Tools → Gradle). JDK 25로는 Gradle 8.11.1이 돌지 않는다.
 - Windows 사용자 이름이 한글이면 `GRADLE_USER_HOME`을 영어 경로(예: `C:\Gradle`)로 둬야 `:domain:test`가 돈다. AVD도 `ANDROID_USER_HOME`으로 영어 경로에 둔다.
 - 에뮬레이터가 창 없이 꺼지고 "too many emulator instances"가 나오면 `netsh interface ipv4 show excludedportrange protocol=tcp`로 5554~5585 예약 여부를 확인한다.
+- 구글 로그인은 Google Play 이미지 AVD(예: API 34)에서만 된다. Google APIs 이미지는 "No credentials available"로 실패한다.
