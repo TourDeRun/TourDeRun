@@ -17,7 +17,7 @@ import org.junit.Test
 class ArrivalSeenPlanTest {
     /** 본 것 1, 85,000m → 오산·천안, current 3 */
     private val pending = requireNotNull(pendingArrivals(1, 85_000, routeFor(1)))
-    private val seen = PendingSeen(uid = "uid-1", teamId = "team-1", teamName = "뛰뛰크루", pending = pending)
+    private val seen = PendingSeen(uid = "uid-1", teamId = "team-1", teamName = "뛰뛰크루", pending = pending, season = 1)
 
     @Test fun `카드가 없으면 members 문서 하나, 필드는 seenArrivals 하나`() {
         val plan = arrivalSeenPlan(seen, emptyList())
