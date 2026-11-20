@@ -42,7 +42,7 @@ data class SavedRun(
 )
 
 /**
- * 종료된 러닝 저장과 서버 확인 뒤 기기 데이터 정리 (REC-01, #23, #99).
+ * 종료된 러닝 저장과 서버 확인 뒤 기기 데이터 정리 (REC-01, #23, #99). 서버가 거부하면 앱이 켜진 동안에도 바로 [reject]한다.
  *
  * 결과 화면(S10) ViewModel이 사라져도 서버 확인을 받아 [RunSessionManager.completeSave]를 불러야 해서 앱 범위 객체로 둔다.
  * 한 러닝 ID는 한 번만 저장한다(화면 회전·결과 화면 재진입에서 다시 저장하지 않는다).
@@ -82,9 +82,12 @@ class RunSaveCoordinator @Inject constructor(
         val title = defaultRunTitle(result.startedAtMs, SEOUL)
         val runId = result.runId
         // 실패 로그는 RunSaver가 남긴다.
-        val outcome = saver.save(result, uid, team, title, onServerConfirmed = {
-            appScope.launch { manager.completeSave(runId) }
-        }).getOrElse { return null }
+        // 거부가 markSaveStarted보다 먼저 와도 reject()가 이 mutex를 기다리므로 저장 대기로 옮긴 뒤에 거부로 바뀐다.
+        val outcome = saver.save(
+            result, uid, team, title,
+            onServerConfirmed = { appScope.launch { manager.completeSave(runId) } },
+            onServerRejected = { appScope.launch { reject(runId) } },
+        ).getOrElse { return null }
         val saved = SavedRun(title, result, savedDistanceM(result), team, outcome).also { started[runId] = it }
         // 서버 확인이 먼저 와서 이미 정리했으면 false지만 결과는 같다.
         manager.markSaveStarted(runId)
