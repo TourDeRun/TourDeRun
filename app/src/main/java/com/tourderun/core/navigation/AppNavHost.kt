@@ -205,7 +205,10 @@ fun AppNavHost(
     }
 
     // RUN-07: 앱을 열 때 끝나지 않은 러닝이 있으면 어느 화면 위에서든 복구 안내를 먼저 띄운다.
-    RunRecoveryHost(onOpenRun = { navController.navigate(RunningRoute) { launchSingleTop = true } })
+    RunRecoveryHost(
+        onOpenRun = { navController.navigate(RunningRoute) { launchSingleTop = true } },
+        onOpenResult = { navController.navigate(RunResultRoute) { launchSingleTop = true } },
+    )
 }
 
 /** 이 화면이 탭 화면이면 그 탭, 아니면 null(하단 탭을 숨긴다). */
