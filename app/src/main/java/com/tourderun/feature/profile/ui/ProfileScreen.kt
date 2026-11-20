@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +63,8 @@ data class ProfileUiState(
     val latestRun: RunRowUi?,
     /** 지역 도감(P1). 기능이 꺼져 있으면 null. */
     val collection: CollectionSummaryUi?,
+    /** AUTH-04 로그아웃 확인 창이 열려 있는지. */
+    val showLogoutConfirm: Boolean = false,
 )
 
 data class CollectionSummaryUi(
@@ -81,6 +84,8 @@ fun ProfileScreen(
     onRunClick: (RunRowUi) -> Unit,
     onCollectionClick: () -> Unit,
     onLogout: () -> Unit,
+    onLogoutConfirm: () -> Unit,
+    onLogoutDismiss: () -> Unit,
     onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -193,6 +198,26 @@ fun ProfileScreen(
             modifier = Modifier.padding(horizontal = 4.dp),
         )
     }
+
+    if (uiState.showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = onLogoutDismiss,
+            title = { Text(stringResource(R.string.profile_logout_title), style = type.title) },
+            text = { Text(stringResource(R.string.profile_logout_body), style = type.body, color = colors.inkMuted) },
+            confirmButton = {
+                TextButton(onClick = onLogoutConfirm) {
+                    Text(stringResource(R.string.profile_logout), color = colors.danger, style = type.subtitle)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onLogoutDismiss) {
+                    Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle)
+                }
+            },
+            containerColor = colors.bgSurface,
+            shape = TdrShapes.lg,
+        )
+    }
 }
 
 @Composable
@@ -242,21 +267,28 @@ private fun CardStack() {
     }
 }
 
+private val previewState = ProfileUiState(
+    nickname = "민지",
+    teamName = "뛰뛰크루",
+    isLeader = true,
+    totalDistanceM = 86_400,
+    runCount = 21,
+    latestRun = PreviewSamples.runs.first(),
+    collection = CollectionSummaryUi(3, 8, "천안"),
+)
+
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun ProfileScreenPreview() {
     TabScreenPreview(TdrTab.Profile) {
-        ProfileScreen(
-            ProfileUiState(
-                nickname = "민지",
-                teamName = "뛰뛰크루",
-                isLeader = true,
-                totalDistanceM = 86_400,
-                runCount = 21,
-                latestRun = PreviewSamples.runs.first(),
-                collection = CollectionSummaryUi(3, 8, "천안"),
-            ),
-            {}, {}, {}, {}, {}, {}, {},
-        )
+        ProfileScreen(previewState, {}, {}, {}, {}, {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "로그아웃 확인")
+@Composable
+private fun ProfileLogoutConfirmPreview() {
+    TabScreenPreview(TdrTab.Profile) {
+        ProfileScreen(previewState.copy(showLogoutConfirm = true), {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }

@@ -266,6 +266,8 @@
     <string name="profile_collection_done">모든 카드를 모았어요</string>
     <string name="profile_account">계정</string>
     <string name="profile_logout">로그아웃</string>
+    <string name="profile_logout_title">로그아웃할까요?</string>
+    <string name="profile_logout_body">다시 로그인하면 팀과 기록이 그대로 있어요</string>
     <string name="profile_withdraw">회원 탈퇴</string>
     <string name="profile_account_notice">회원 탈퇴는 구글 재인증 후 진행돼요. 러닝 측정 중에는 로그아웃·탈퇴를 할 수 없어요.</string>
 
