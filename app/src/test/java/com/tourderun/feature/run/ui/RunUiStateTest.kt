@@ -39,4 +39,12 @@ class RunUiStateTest {
         assertEquals(LatLngValue(0.0, 0.0), path.first())
         assertEquals(LatLngValue(0.1199, 0.0), path.last())
     }
+
+    @Test fun `서비스 시작 실패, 권한 없음 → 권한 안내`() {
+        assertEquals(ServiceStartFailureNotice.Permission, serviceStartFailureNotice(hasRunPermissions = false))
+    }
+
+    @Test fun `서비스 시작 실패, 권한 있음 → 다시 시도 안내`() {
+        assertEquals(ServiceStartFailureNotice.Retry, serviceStartFailureNotice(hasRunPermissions = true))
+    }
 }
