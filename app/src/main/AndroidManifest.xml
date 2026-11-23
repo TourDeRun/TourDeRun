@@ -28,11 +28,10 @@
             </intent-filter>
         </activity>
 
-        <!-- RUN-04 서비스는 최한솔이 추가:
+        <!-- RUN-04 러닝 측정. 앱 화면이 보일 때만 시작한다(백그라운드 위치 권한은 쓰지 않음). -->
         <service
             android:name=".feature.run.service.RunTrackingService"
             android:exported="false"
             android:foregroundServiceType="location" />
-        -->
     </application>
 </manifest>

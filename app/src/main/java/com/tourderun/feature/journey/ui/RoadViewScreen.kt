@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.Dot
 import com.google.android.gms.maps.model.Gap
@@ -64,6 +66,7 @@ import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.TeamImage
 import com.tourderun.core.designsystem.component.latLngBoundsOf
+import com.tourderun.core.designsystem.component.rememberTdrMapProperties
 import com.tourderun.core.designsystem.component.toLatLng
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
@@ -216,9 +219,13 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
     }
     val lineWidth = with(density) { 7.dp.toPx() }
 
+    // 타일을 받기 전에 보이는 바탕(기본 베이지)을 지도 바탕색으로 맞춘다.
+    val mapBackground = colors.bgMap.toArgb()
     GoogleMap(
         modifier = modifier,
         cameraPositionState = camera,
+        properties = rememberTdrMapProperties(),
+        googleMapOptionsFactory = { GoogleMapOptions().backgroundColor(mapBackground) },
         uiSettings = RoadMapUiSettings,
         contentPadding = with(density) { PaddingValues(top = topCardPx.toDp(), bottom = bottomCardPx.toDp()) },
         onMapLoaded = { loaded = true },

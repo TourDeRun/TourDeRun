@@ -1,0 +1,86 @@
+package com.tourderun.feature.run.data
+
+import com.tourderun.core.data.record.RunSaver
+import com.tourderun.core.data.session.SessionRepository
+import com.tourderun.core.data.session.SessionState
+import com.tourderun.core.data.session.SessionUser
+import com.tourderun.core.data.team.MyTeam
+import com.tourderun.core.data.team.MyTeamSource
+import com.tourderun.domain.model.RunResult
+import com.tourderun.domain.model.TeamStanding
+import com.tourderun.domain.record.SaveOutcome
+import com.tourderun.feature.run.session.RunSessionManager
+import dagger.Lazy
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
+
+/**
+ * 오프라인 대기 쓰기를 흉내 내는 [RunSaver].
+ * - [savedOnDevice]: `runs/{runId}`가 기기 캐시에 있는지. 서버 거부는 이 값을 false로 바꾸고 [pendingWrites]를 끝내서 흉내 낸다.
+ * - [pendingWrites]: `waitForPendingWrites`. 완료시키기 전까지 기다린다(오프라인).
+ */
+internal class FakeRunSaver : RunSaver {
+    var saveCount = 0
+    var lastUid: String? = null
+    var lastRunId: String? = null
+    var lastTeam: MyTeam? = null
+    var failure: Throwable? = null
+    var confirm: (() -> Unit)? = null
+    var savedOnDevice = false
+    var confirmImmediately = false
+    var pendingWrites = CompletableDeferred<Boolean>()
+
+    override fun newRunId() = "run-new"
+
+    override fun save(
+        result: RunResult,
+        uid: String,
+        team: MyTeam?,
+        title: String,
+        onServerConfirmed: () -> Unit,
+    ): Result<SaveOutcome?> {
+        failure?.let { return Result.failure(it) }
+        saveCount++
+        lastUid = uid
+        lastRunId = result.runId
+        lastTeam = team
+        confirm = onServerConfirmed
+        if (confirmImmediately) onServerConfirmed()
+        return Result.success(null)
+    }
+
+    override suspend fun isSavedOnDevice(runId: String) = savedOnDevice
+    override suspend fun awaitPendingWrites() = pendingWrites.await()
+}
+
+internal class FakeSession(initial: SessionState) : SessionRepository {
+    override val state: StateFlow<SessionState> = MutableStateFlow(initial)
+    override suspend fun signInWithGoogle(idToken: String) = Result.success(Unit)
+    override suspend fun createUser(nickname: String) = Result.success(Unit)
+    override fun signOut() = Unit
+}
+
+internal class FixedTeamSource(private val team: MyTeam?) : MyTeamSource {
+    override fun observeMyTeam(): Flow<MyTeam?> = flowOf(team)
+}
+
+internal val testUser = SessionUser(uid = "u1", nickname = "러너")
+internal val fixedTeam = MyTeam(1, TeamStanding("fake-my-team", "뛰뛰크루", 66_800, 0L))
+
+/** 서버 확인 뒤 정리를 바로 실행해 결과를 확인하는 조정자. */
+internal fun testCoordinator(
+    manager: RunSessionManager,
+    saver: FakeRunSaver,
+    session: SessionState = SessionState.NoTeam(testUser),
+) = RunSaveCoordinator(
+    manager = manager,
+    runSaver = Lazy { saver },
+    session = Lazy { FakeSession(session) },
+    myTeamSource = FixedTeamSource(fixedTeam),
+    appScope = CoroutineScope(Dispatchers.Unconfined),
+)
