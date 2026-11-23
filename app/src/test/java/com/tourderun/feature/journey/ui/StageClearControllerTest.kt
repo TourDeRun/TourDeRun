@@ -1,5 +1,6 @@
 package com.tourderun.feature.journey.ui
 
+import com.tourderun.core.data.session.MyStats
 import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.card.CardRepository
@@ -175,6 +176,8 @@ private class TestSession(initial: SessionState) : SessionRepository {
     override suspend fun signInWithGoogle(idToken: String) = Result.success(Unit)
     override suspend fun createUser(nickname: String) = Result.success(Unit)
     override fun signOut() = Unit
+    override fun updateNickname(uid: String, teamId: String?, nickname: String) = Result.success(Unit)
+    override fun observeMyStats(uid: String) = emptyFlow<Loaded<MyStats>>()
 }
 
 /** 본 수 0, 팀 거리 [distanceM]으로 계산한다. markSeen해도 값을 바꾸지 않는다(연출이 닫히는 건 컨트롤러 몫인지 보려고). */
