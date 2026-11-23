@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RunSessionPreferencesTest {
@@ -76,5 +77,72 @@ class RunSessionPreferencesTest {
 
         assertNull(prefs.readRunSession())
         assertFalse(prefs.asMap().containsKey(oldId))
+    }
+
+    // --- 저장 대기 목록(#99) ---
+
+    private val finished = paused.copy(status = StoredRunStatus.FINISHED)
+
+    @Test fun `저장 대기로 옮기면 진행 중 키는 지우고 복구에 필요한 값은 대기 목록에 남는다`() {
+        val prefs = mutablePreferencesOf()
+        prefs.writeRunSession(finished)
+
+        assertTrue(prefs.moveRunSessionToPendingSave("run-1"))
+
+        assertNull(prefs.readRunSession())
+        assertEquals(listOf(PendingRunSave(finished, PendingSaveState.AWAITING)), prefs.readPendingSaves())
+    }
+
+    @Test fun `진행 중인 러닝이 다르면 저장 대기로 옮기지 않는다`() {
+        val prefs = mutablePreferencesOf()
+        prefs.writeRunSession(finished)
+
+        assertFalse(prefs.moveRunSessionToPendingSave("other"))
+
+        assertEquals(finished, prefs.readRunSession())
+        assertTrue(prefs.readPendingSaves().isEmpty())
+    }
+
+    @Test fun `진행 중 러닝을 지워도 저장 대기 목록은 남는다`() {
+        val prefs = mutablePreferencesOf()
+        prefs.writeRunSession(finished)
+        prefs.moveRunSessionToPendingSave("run-1")
+        prefs.writeRunSession(paused.copy(runId = "run-2", status = StoredRunStatus.RUNNING, pausedAtMs = null))
+
+        prefs.clearRunSessionIfMatching("run-2")
+
+        assertNull(prefs.readRunSession())
+        assertEquals(listOf("run-1"), prefs.readPendingSaves().map { it.runId })
+    }
+
+    @Test fun `거부로 바꾼 뒤 진행 중 러닝이 없을 때만 원래 값으로 되돌린다`() {
+        val prefs = mutablePreferencesOf()
+        prefs.writeRunSession(finished)
+        prefs.moveRunSessionToPendingSave("run-1")
+        assertTrue(prefs.setPendingSaveState("run-1", PendingSaveState.REJECTED))
+        prefs.writeRunSession(paused.copy(runId = "run-2"))
+
+        assertNull(prefs.restorePendingSave("run-1"))
+        assertEquals(PendingSaveState.REJECTED, prefs.readPendingSaves().single().state)
+
+        prefs.clearRunSessionIfMatching("run-2")
+        assertEquals(finished, prefs.restorePendingSave("run-1"))
+        assertEquals(finished, prefs.readRunSession())
+        assertTrue(prefs.readPendingSaves().isEmpty())
+    }
+
+    @Test fun `대기 항목은 일시정지 시각이 없어도 읽고, 형식이 깨진 항목은 건너뛴다`() {
+        val save = PendingRunSave(finished.copy(pausedAtMs = null), PendingSaveState.AWAITING)
+
+        assertEquals(save, decodePendingSave(encodePendingSave(save)))
+        assertNull(decodePendingSave("run-1;AWAITING"))
+        assertNull(decodePendingSave("run-1;UNKNOWN;1;0;;1;0"))
+    }
+
+    @Test fun `없는 대기 항목은 바꾸거나 지우지 않는다`() {
+        val prefs = mutablePreferencesOf()
+
+        assertFalse(prefs.setPendingSaveState("run-1", PendingSaveState.REJECTED))
+        assertFalse(prefs.removePendingSave("run-1"))
     }
 }

@@ -27,4 +27,6 @@ data class RecoveredRun(
     val endMs: Long,
     /** 종료까지 누른 뒤 저장 전에 앱이 꺼진 경우. 이어하기 대신 저장·버리기만 고른다. */
     val finished: Boolean,
+    /** 저장을 시작했지만 서버가 받아들이지 않은 러닝(#99). [finished]도 true다. */
+    val saveRejected: Boolean = false,
 )
