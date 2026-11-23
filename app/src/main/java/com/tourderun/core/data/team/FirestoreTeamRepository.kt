@@ -1,5 +1,6 @@
 package com.tourderun.core.data.team
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.tourderun.core.data.Loaded
@@ -71,6 +72,8 @@ class FirestoreTeamRepository @Inject constructor(
 
         // 2. 배치 시작. 이 순간 기기 캐시에 반영된다
         val commit = firestore.batchOf(teamCreatePlan(uid, nickname, teamId, name.trim(), icon, color, code)).commit()
+            // 3초가 지난 뒤 늦게 오는 실패(규칙 거절 등)는 화면에 알릴 수 없어 로그로만 남긴다 (#91 리뷰)
+            .addOnFailureListener { e -> Log.w(TAG, "팀 만들기 배치 실패", e) }
 
         // 3. 규칙 거절처럼 바로 오는 실패만 잡으려고 잠깐 기다린다. 시간이 넘으면 null(예외 아님) → 성공으로 본다
         withTimeoutOrNull(COMMIT_WAIT_MS) { commit.await() }
