@@ -1,16 +1,23 @@
 package com.tourderun.core.data.team
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.Collections
+import com.tourderun.core.data.firestore.InviteCodeFields
+import com.tourderun.core.data.firestore.UserFields
+import com.tourderun.core.data.firestore.applyWrites
 import com.tourderun.core.data.firestore.MemberFields
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.batchOf
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.data.firestore.toTeamDto
 import com.tourderun.core.data.mapReady
+import com.tourderun.domain.journey.arrivals
+import com.tourderun.domain.route.routeFor
 import com.tourderun.domain.team.generateInviteCode
+import com.tourderun.domain.team.joinRejection
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
@@ -65,6 +72,8 @@ class FirestoreTeamRepository @Inject constructor(
 
         // 2. 배치 시작. 이 순간 기기 캐시에 반영된다
         val commit = firestore.batchOf(teamCreatePlan(uid, nickname, teamId, name.trim(), icon, color, code)).commit()
+            // 3초가 지난 뒤 늦게 오는 실패(규칙 거절 등)는 화면에 알릴 수 없어 로그로만 남긴다 (#91 리뷰)
+            .addOnFailureListener { e -> Log.w(TAG, "팀 만들기 배치 실패", e) }
 
         // 3. 규칙 거절처럼 바로 오는 실패만 잡으려고 잠깐 기다린다. 시간이 넘으면 null(예외 아님) → 성공으로 본다
         withTimeoutOrNull(COMMIT_WAIT_MS) { commit.await() }
@@ -74,6 +83,61 @@ class FirestoreTeamRepository @Inject constructor(
         Result.failure(e)
     } catch (e: CancellationException) {
         // 화면을 나가 viewModelScope가 취소된 것. 삼키지 않고 위로 보낸다
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    override suspend fun findTeamByCode(code: String): Result<TeamDto?> = try {
+        val team = withTimeout(CODE_CHECK_TIMEOUT_MS) {
+            val teamId = firestore.collection(Collections.INVITE_CODES).document(code)
+                .get(Source.SERVER).await()
+                .getString(InviteCodeFields.TEAM_ID)
+            teamId?.let {
+                firestore.collection(Collections.TEAMS).document(it).get(Source.SERVER).await().toTeamDto()
+            }
+        }
+        Result.success(team)
+    } catch (e: TimeoutCancellationException) {
+        Result.failure(e)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    override suspend fun joinTeam(uid: String, nickname: String, code: String): Result<JoinOutcome> = try {
+        val outcome = withTimeout(CODE_CHECK_TIMEOUT_MS) {
+            firestore.runTransaction { tx ->
+                // 1. 읽기를 먼저 모두 끝낸다 (트랜잭션은 쓰기 뒤에 읽을 수 없다)
+                val teamId = tx.get(firestore.collection(Collections.INVITE_CODES).document(code))
+                    .getString(InviteCodeFields.TEAM_ID)
+                    ?: return@runTransaction JoinOutcome.NotFound
+                val team = tx.get(firestore.collection(Collections.TEAMS).document(teamId)).toTeamDto()
+                    ?: return@runTransaction JoinOutcome.NotFound
+                val myTeamId = tx.get(firestore.collection(Collections.USERS).document(uid))
+                    .getString(UserFields.TEAM_ID)
+
+                // 2. 참여할 수 있는지 (이미 팀 있음 → 가득 참 순서)
+                joinRejection(myTeamId, team.memberCount)?.let { return@runTransaction JoinOutcome.Rejected(it) }
+
+                // 3. 쓰기. 가입 전에 지나온 도시는 클리어 연출 대상이 아니라 seenArrivals를 지금 도착 수로 둔다
+                val plan = teamJoinPlan(
+                    uid = uid,
+                    nickname = nickname,
+                    teamId = teamId,
+                    inviteCode = code,
+                    newMemberCount = team.memberCount + 1,
+                    seenArrivals = arrivals(team.distanceM, routeFor(NEW_TEAM_SEASON)),
+                )
+                tx.applyWrites(firestore, plan)
+                JoinOutcome.Joined(teamId)
+            }.await()
+        }
+        Result.success(outcome)
+    } catch (e: TimeoutCancellationException) {
+        Result.failure(e)
+    } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Result.failure(e)
