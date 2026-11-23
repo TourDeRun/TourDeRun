@@ -53,10 +53,13 @@ interface RunSaver {
 }
 
 /**
- * 저장에 넘길 팀. 세션에 팀이 없으면(`NoTeam` 등) null이라 `runs`·`users` 두 문서만 쓴다.
- * 팀이 있고 [myTeam](`MyTeamSource`의 값, 세션 teamId로 읽은 `teams` 문서)이 세션의 팀과 같은 팀이면 [myTeam]을 쓴다.
- * 둘이 다르면(팀을 막 바꿔 팀 문서를 아직 못 읽은 순간 등) 다른 팀 문서에 거리를 더하게 되므로 null로 둔다.
- * 이때 `runs.teamId`(null)가 `users.teamId`와 달라 보안 규칙이 배치를 거부한다(거부된 러닝은 복구 안내로 남는다).
+ * 저장에 넘길 팀. [myTeam](`MyTeamSource`의 값, 세션 teamId로 읽은 `teams` 문서)이 세션의 팀과 같으면 [myTeam], 아니면 null.
+ *
+ * null의 뜻은 세션에 따라 다르다.
+ * - 세션에 팀이 없음(`NoTeam` 등): 팀 없이 `runs`·`users` 두 문서만 저장한다
+ * - 세션에 팀이 있음(팀 문서 없음, 다른 팀 문서): **저장하지 않는다**(`RunSaveCoordinator`).
+ *   팀 없이 저장하면 `runs.teamId`(null)가 `users.teamId`와 달라 보안 규칙이 배치를 거부하고,
+ *   다른 팀 문서로 저장하면 남의 팀 거리에 더하게 된다
  */
 fun saveTeamOf(session: SessionState, myTeam: MyTeam?): MyTeam? {
     val teamId = session.teamId ?: return null

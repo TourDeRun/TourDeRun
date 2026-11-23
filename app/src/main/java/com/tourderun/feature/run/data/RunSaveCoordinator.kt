@@ -5,6 +5,7 @@ import com.tourderun.core.data.record.RunSaver
 import com.tourderun.core.data.record.saveTeamOf
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
+import com.tourderun.core.data.session.teamId
 import com.tourderun.core.data.session.uid
 import com.tourderun.core.data.team.MyTeam
 import com.tourderun.core.data.team.MyTeamSource
@@ -21,6 +22,8 @@ import javax.inject.Singleton
 import kotlin.math.roundToLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,14 +52,26 @@ data class SavedRun(
  * 저장 배치를 시작하면 바로 [RunSessionManager.markSaveStarted]로 넘겨, 서버 확인 전(오프라인)에도 새 러닝을 시작할 수 있다.
  */
 @Singleton
-class RunSaveCoordinator @Inject constructor(
+class RunSaveCoordinator internal constructor(
     private val manager: RunSessionManager,
     // Firestore·FirebaseAuth는 google-services.json이 없으면 만들 수 없어서 필요할 때만 꺼낸다.
     private val runSaver: Lazy<RunSaver>,
     private val session: Lazy<SessionRepository>,
     private val myTeamSource: MyTeamSource,
-    @ApplicationScope private val appScope: CoroutineScope,
+    private val appScope: CoroutineScope,
+    /** 팀 문서를 기다리는 최대 시간. 테스트는 짧게 준다. */
+    private val teamWaitMs: Long,
+    /** 경고 로그. JVM 테스트에서는 `android.util.Log`를 부를 수 없어서 바꿔 넣는다. */
+    private val warn: (String) -> Unit,
 ) {
+    @Inject constructor(
+        manager: RunSessionManager,
+        runSaver: Lazy<RunSaver>,
+        session: Lazy<SessionRepository>,
+        myTeamSource: MyTeamSource,
+        @ApplicationScope appScope: CoroutineScope,
+    ) : this(manager, runSaver, session, myTeamSource, appScope, TEAM_WAIT_MS, { Log.w(TAG, it) })
+
     private val mutex = Mutex()
     private val started = mutableMapOf<String, SavedRun>()
 
@@ -65,12 +80,17 @@ class RunSaveCoordinator @Inject constructor(
      * 저장을 시작하면 러닝 상태를 IDLE로 넘기고([RunSessionManager.markSaveStarted]),
      * 서버가 배치를 받아들이면 [RunSessionManager.completeSave]로 기기에 남긴 위치점·진행 상태를 지운다.
      *
-     * @return 저장할 러닝이 없거나(종료 상태가 아님) 로그인 전이거나 저장을 시작하지 못하면(거리 0 등) null
+     * 팀 없이(`team = null`) 저장하는 것은 세션에 팀이 없을 때뿐이다. 세션에 팀이 있는데 팀 문서를 [teamWaitMs] 안에
+     * 못 얻었거나 다른 팀 문서가 오면 저장을 시작하지 않는다(팀 없이 저장하면 `runs.teamId`가 `users.teamId`와 달라
+     * 규칙에 거부된다). 러닝은 FINISHED로 남아 "결과 보기"나 복구 안내의 저장으로 다시 시도할 수 있다.
+     *
+     * 세션·팀을 기다리는 동안은 잠금을 쥐지 않는다([reject]가 그동안 막히지 않게). 잠근 뒤 러닝이 그대로인지 다시 본다.
+     *
+     * @return 저장할 러닝이 없거나(종료 상태가 아님) 로그인 전이거나 팀을 못 얻었거나 저장을 시작하지 못하면(거리 0 등) null
      */
-    suspend fun saveFinished(): SavedRun? = mutex.withLock {
-        val state = manager.state.value
-        val result = state.result?.takeIf { state.phase == RunPhase.FINISHED } ?: return null
-        started[result.runId]?.let { return it }
+    suspend fun saveFinished(): SavedRun? {
+        val runId = finishedResult()?.runId ?: return null
+        mutex.withLock { started[runId] }?.let { return it }
 
         val saver = runCatching { runSaver.get() }.getOrElse { e ->
             Log.w(TAG, "Firestore 없이 저장할 수 없음", e)
@@ -78,21 +98,53 @@ class RunSaveCoordinator @Inject constructor(
         }
         val sessionState = currentSession() ?: return null
         val uid = sessionState.uid ?: return null
-        val team = saveTeamOf(sessionState, myTeamSource.observeMyTeam().first())
-        val title = defaultRunTitle(result.startedAtMs, SEOUL)
-        val runId = result.runId
-        // 실패 로그는 RunSaver가 남긴다.
-        // 거부가 markSaveStarted보다 먼저 와도 reject()가 이 mutex를 기다리므로 저장 대기로 옮긴 뒤에 거부로 바뀐다.
-        val outcome = saver.save(
-            result, uid, team, title,
-            onServerConfirmed = { appScope.launch { manager.completeSave(runId) } },
-            onServerRejected = { appScope.launch { reject(runId) } },
-        ).getOrElse { return null }
-        val saved = SavedRun(title, result, savedDistanceM(result), team, outcome).also { started[runId] = it }
-        // 서버 확인이 먼저 와서 이미 정리했으면 false지만 결과는 같다.
-        manager.markSaveStarted(runId)
-        saved
+        val team = if (sessionState.teamId == null) null else teamToSave(sessionState) ?: return null
+
+        return mutex.withLock {
+            // 기다리는 동안 다른 호출이 저장을 시작했거나 러닝이 바뀌었을 수 있다.
+            started[runId]?.let { return@withLock it }
+            val result = finishedResult()?.takeIf { it.runId == runId } ?: return@withLock null
+            val title = defaultRunTitle(result.startedAtMs, SEOUL)
+            // 실패 로그는 RunSaver가 남긴다.
+            // 거부가 markSaveStarted보다 먼저 와도 reject()가 이 mutex를 기다리므로 저장 대기로 옮긴 뒤에 거부로 바뀐다.
+            val outcome = saver.save(
+                result, uid, team, title,
+                onServerConfirmed = { appScope.launch { manager.completeSave(runId) } },
+                onServerRejected = { appScope.launch { reject(runId) } },
+            ).getOrElse { return@withLock null }
+            val saved = SavedRun(title, result, savedDistanceM(result), team, outcome).also { started[runId] = it }
+            // 서버 확인이 먼저 와서 이미 정리했으면 false지만 결과는 같다.
+            manager.markSaveStarted(runId)
+            saved
+        }
     }
+
+    private fun finishedResult(): RunResult? {
+        val state = manager.state.value
+        return state.result?.takeIf { state.phase == RunPhase.FINISHED }
+    }
+
+    /**
+     * 세션에 팀이 있을 때 저장에 넘길 팀. [teamWaitMs] 안에 팀 문서를 못 얻었거나(값 없음·문서 없음) 세션의 팀과 다르면
+     * 로그를 남기고 null(저장하지 않음).
+     */
+    private suspend fun teamToSave(sessionState: SessionState): MyTeam? {
+        val read = withTimeoutOrNull(teamWaitMs) {
+            myTeamSource.observeMyTeam().map { TeamRead(it) }.firstOrNull()
+        }
+        if (read == null) {
+            warn("팀 문서를 ${teamWaitMs}ms 안에 못 읽어 저장하지 않음(시간 초과)")
+            return null
+        }
+        val team = saveTeamOf(sessionState, read.team)
+        if (team == null) {
+            warn(if (read.team == null) "팀 문서가 없어 저장하지 않음" else "세션 팀과 팀 문서가 달라 저장하지 않음(팀 불일치)")
+        }
+        return team
+    }
+
+    /** 팀 Flow가 낸 값 하나(null = 팀 문서 없음). 값이 오지 않은 것과 구분한다. */
+    private class TeamRead(val team: MyTeam?)
 
     /**
      * 앱을 다시 켰을 때 `RunSessionManager.recover()`로 올린 종료 러닝이 이미 저장을 시작한 러닝인지 본다
@@ -150,6 +202,9 @@ class RunSaveCoordinator @Inject constructor(
     private companion object {
         const val TAG = "TDR/run"
         const val SESSION_WAIT_MS = 5_000L
+
+        /** 팀 문서(`teams/{teamId}`)를 기다리는 시간. 홈이 이미 듣고 있어 보통 캐시에서 바로 온다. */
+        const val TEAM_WAIT_MS = 3_000L
 
         /** `feature/record/data/RunSavePlan.kt`의 `savedDistanceM()`과 같은 규칙(다른 feature라 import하지 않는다). */
         fun savedDistanceM(result: RunResult): Long = result.distanceM.roundToLong()

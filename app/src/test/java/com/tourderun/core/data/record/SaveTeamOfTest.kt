@@ -8,7 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** 저장에 넘길 팀: 세션에 팀이 없거나 세션의 팀과 다르면 null(문서 2개만 쓰는 경로). */
+/** 저장에 넘길 팀: 세션에 팀이 없거나 세션의 팀과 다르면 null. 세션에 팀이 있을 때의 null은 저장하지 않는다(RunSaveCoordinator). */
 class SaveTeamOfTest {
 
     private val user = SessionUser(uid = "u1", nickname = "러너")
