@@ -183,15 +183,7 @@ fun AppNavHost(
                 )
             }
             composable<TeamEditRoute> {
-                // TODO(TEAM-05): 이름·색·아이콘 입력과 저장
-                TeamEditScreen(
-                    uiState = TempUiStates.teamEdit,
-                    onBack = back,
-                    onSave = back,
-                    onNameChange = {},
-                    onColorSelect = {},
-                    onIconSelect = {},
-                )
+                TeamEditScreen(onBack = back, onSaved = back)
             }
 
             composable<StageRankRoute> { StageRankScreen(onBack = back) }

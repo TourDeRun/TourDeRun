@@ -430,6 +430,21 @@ describe('초대 코드·팀 관리 (TEAM-02·05·06·07)', () => {
     await assertSucceeds(updateDoc(doc(db('u2'), 'users', 'u2'), { teamId: null }));
   });
 
+  test('TEAM-05 팀장이 이름을 1자로 수정 → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1'), { name: '뛰' }));
+  });
+
+  test('TEAM-05 팀장이 색·아이콘을 범위 밖(8)으로 → 거절', async () => {
+    await seedTeam(['u1']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1'), { color: 8 }));
+  });
+
+  test('TEAM-05 팀장이 이름과 함께 거리를 고치기 → 거절', async () => {
+    await seedTeam(['u1']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1'), { name: '새이름', distanceM: 999999 }));
+  });
+
   test('팀원이 아닌 사람의 members 읽기 → 거절', async () => {
     await seedTeam(['u1']);
     await seedUser('u9');

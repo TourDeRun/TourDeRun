@@ -1,8 +1,6 @@
 package com.tourderun.core.navigation
 
 import com.tourderun.core.data.record.FakeRunRepository
-import com.tourderun.core.designsystem.component.TeamColor
-import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.domain.card.RegionCards
 import com.tourderun.feature.collection.ui.CardDetailUiState
@@ -14,7 +12,6 @@ import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.profile.ui.CollectionSummaryUi
 import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
-import com.tourderun.feature.team.ui.TeamEditUiState
 
 /**
  * ViewModel이 아직 없는 화면을 [AppNavHost]에 띄우기 위한 임시 고정 상태. 값은 와이어프레임([PreviewSamples])과 같다.
@@ -36,7 +33,6 @@ internal object TempUiStates {
 
     // TODO(TEAM-04): 팀 ViewModel로 바꾼다.
     // TODO(TEAM-05): 팀 수정 ViewModel로 바꾼다.
-    val teamEdit = TeamEditUiState(PreviewSamples.team.name, TeamColor.BLUE, TeamIcon.RUNNER)
 
     // TODO(EXT-01): 도감 ViewModel로 바꾼다.
     val collection = CollectionUiState(

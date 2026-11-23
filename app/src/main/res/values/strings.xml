@@ -312,6 +312,7 @@
 
     <!-- S14 팀 정보 수정 -->
     <string name="team_edit_title">팀 정보 수정</string>
+    <string name="team_edit_error_failed">저장하지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="team_edit_preview_desc">선택한 팀 이미지 미리보기</string>
     <string name="team_edit_notice">팀장만 바꿀 수 있어요. 사진 업로드 없이 아이콘 8개 × 색 8개 중에서 골라요.</string>
 

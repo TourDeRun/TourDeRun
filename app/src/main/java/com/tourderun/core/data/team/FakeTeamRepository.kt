@@ -60,6 +60,14 @@ class FakeTeamRepository @Inject constructor() : TeamRepository {
         return Result.success(Unit)
     }
 
+    override fun updateTeam(teamId: String, name: String, icon: Int, color: Int): Result<Unit> {
+        teams.update { all ->
+            val team = all[teamId] ?: return@update all
+            all + (teamId to team.copy(name = name, icon = icon, color = color))
+        }
+        return Result.success(Unit)
+    }
+
     companion object {
         const val FAKE_INVITE_CODE = "ABC234"
     }
