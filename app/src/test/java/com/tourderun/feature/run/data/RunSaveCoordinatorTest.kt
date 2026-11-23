@@ -187,4 +187,47 @@ class RunSaveCoordinatorTest {
         assertEquals(PendingSaveState.REJECTED, store.pendingState("run1"))
         assertEquals(3, dao.pointsForRun("run1").size)
     }
+
+    @Test fun `저장 뒤 서버 거부 → 거부로 보존하고 같은 runId로 다시 저장을 시작한다`() = runBlocking {
+        val manager = finishedManager()
+        val coordinator = coordinator(manager)
+        coordinator.saveFinished()
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run1"))
+
+        requireNotNull(saver.reject).invoke()
+        yield()
+        assertEquals(PendingSaveState.REJECTED, store.pendingState("run1"))
+        assertEquals(3, dao.pointsForRun("run1").size)
+
+        requireNotNull(manager.recoverRejected())
+        assertNotNull(coordinator.saveFinished())
+        assertEquals(2, saver.saveCount)
+        assertEquals("run1", saver.lastRunId)
+        assertEquals(PendingSaveState.AWAITING, store.pendingState("run1"))
+    }
+
+    @Test fun `서버 거부가 저장 대기 표시보다 먼저 와도 거부로 보존된다`() = runBlocking {
+        val manager = finishedManager()
+        saver.rejectImmediately = true
+        assertNotNull(coordinator(manager).saveFinished())
+        yield()
+        assertEquals(RunPhase.IDLE, manager.state.value.phase)
+        assertEquals(PendingSaveState.REJECTED, store.pendingState("run1"))
+        assertEquals(3, dao.pointsForRun("run1").size)
+    }
+
+    @Test fun `서버 확인이 온 러닝은 거부로 바뀌지 않는다`() = runBlocking {
+        val manager = finishedManager()
+        coordinator(manager).saveFinished()
+        requireNotNull(saver.confirm).invoke()
+        yield()
+        // Task는 성공·실패 중 하나만 부르지만, 늦은 거부가 와도 정리한 러닝을 되살리지 않는지 본다.
+        requireNotNull(saver.reject).invoke()
+        yield()
+        assertTrue(store.pendingSaves.value.isEmpty())
+        assertNull(store.pendingState("run1"))
+        assertTrue(dao.pointsForRun("run1").isEmpty())
+        assertNull(manager.recoverRejected())
+        assertEquals(1, saver.saveCount)
+    }
 }

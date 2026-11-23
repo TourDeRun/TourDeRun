@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
  * 오프라인 대기 쓰기를 흉내 내는 [RunSaver].
  * - [savedOnDevice]: `runs/{runId}`가 기기 캐시에 있는지. 서버 거부는 이 값을 false로 바꾸고 [pendingWrites]를 끝내서 흉내 낸다.
  * - [pendingWrites]: `waitForPendingWrites`. 완료시키기 전까지 기다린다(오프라인).
+ * - [reject]: 마지막 저장의 `onServerRejected`. 부르면 앱이 켜진 동안 서버 거부가 온 것. [rejectImmediately]면 저장 중에 바로 부른다.
  */
 internal class FakeRunSaver : RunSaver {
     var saveCount = 0
@@ -33,6 +34,8 @@ internal class FakeRunSaver : RunSaver {
     var confirm: (() -> Unit)? = null
     var savedOnDevice = false
     var confirmImmediately = false
+    var reject: (() -> Unit)? = null
+    var rejectImmediately = false
     var pendingWrites = CompletableDeferred<Boolean>()
 
     override fun newRunId() = "run-new"
@@ -43,6 +46,7 @@ internal class FakeRunSaver : RunSaver {
         team: MyTeam?,
         title: String,
         onServerConfirmed: () -> Unit,
+        onServerRejected: () -> Unit,
     ): Result<SaveOutcome?> {
         failure?.let { return Result.failure(it) }
         saveCount++
@@ -50,7 +54,9 @@ internal class FakeRunSaver : RunSaver {
         lastRunId = result.runId
         lastTeam = team
         confirm = onServerConfirmed
+        reject = onServerRejected
         if (confirmImmediately) onServerConfirmed()
+        if (rejectImmediately) onServerRejected()
         return Result.success(null)
     }
 
