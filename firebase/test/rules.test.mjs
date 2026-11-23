@@ -410,6 +410,26 @@ describe('초대 코드·팀 관리 (TEAM-02·05·06·07)', () => {
     await assertFails(b.commit());
   });
 
+  test('TEAM-06 팀원이 다른 팀원 내보내기 → 거절', async () => {
+    await seedTeam(['u1', 'u2', 'u3']);
+    const d = db('u2');
+    const b = writeBatch(d);
+    b.delete(doc(d, 'teams', 't1', 'members', 'u3'));
+    b.update(doc(d, 'teams', 't1'), { memberCount: 2 });
+    await assertFails(b.commit());
+  });
+
+  test('TEAM-06 팀장이 내보낸 사람의 users를 쓰기 → 거절 (D-05)', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u1'), 'users', 'u2'), { teamId: null }));
+  });
+
+  test('TEAM-06 내보내진 사람이 자기 users.teamId 비우기 → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    await seed((s) => deleteDoc(doc(s, 'teams', 't1', 'members', 'u2')));
+    await assertSucceeds(updateDoc(doc(db('u2'), 'users', 'u2'), { teamId: null }));
+  });
+
   test('팀원이 아닌 사람의 members 읽기 → 거절', async () => {
     await seedTeam(['u1']);
     await seedUser('u9');

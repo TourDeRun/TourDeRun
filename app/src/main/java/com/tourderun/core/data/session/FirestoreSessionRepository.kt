@@ -10,6 +10,8 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.batchOf
@@ -20,6 +22,7 @@ import com.tourderun.core.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -93,6 +97,47 @@ class FirestoreSessionRepository @Inject constructor(
             }
         }
         .stateIn(appScope, SharingStarted.Eagerly, SessionState.Loading)
+
+    // ── 3-1. TEAM-06 내보내졌는지 확인 (D-05) ─────────────────
+    init {
+        // 팀장은 남의 users를 쓸 수 없다. 그래서 팀이 있는 상태(Ready)가 되면 한 번, 내 members 문서가
+        // 서버에 아직 있는지 본다. 없으면(또는 팀원이 아니라 읽기가 거절되면) 내보내진 것이므로
+        // 내 기기가 users.teamId를 비운다 → 세션이 NoTeam이 되고 화면은 S03으로 간다.
+        appScope.launch {
+            state
+                .map { (it as? SessionState.Ready)?.let { ready -> ready.user.uid to ready.teamId } }
+                .distinctUntilChanged()
+                .collectLatest { key ->
+                    val (uid, teamId) = key ?: return@collectLatest
+                    if (wasKicked(uid, teamId)) {
+                        Log.i(TAG, "팀에서 내보내져 팀 정보를 비운다")
+                        firestore.collection(Collections.USERS).document(uid)
+                            .update(UserFields.TEAM_ID, null)
+                            .addOnFailureListener { e -> Log.w(TAG, "팀 정보 비우기 실패", e) }
+                    }
+                }
+        }
+    }
+
+    /**
+     * 내 members 문서가 서버에 없는지. 내 쓰기(팀 만들기·참여)가 아직 서버에 안 올라갔으면 잘못 판단하므로
+     * 먼저 대기 쓰기를 모두 기다린다(오프라인이면 연결될 때까지). 연결 문제 등 다른 실패는 "모름"(false).
+     */
+    private suspend fun wasKicked(uid: String, teamId: String): Boolean {
+        firestore.waitForPendingWrites().await()
+        return try {
+            !firestore.collection(Collections.TEAMS).document(teamId)
+                .collection(Collections.MEMBERS).document(uid)
+                .get(Source.SERVER).await()
+                .exists()
+        } catch (e: FirebaseFirestoreException) {
+            e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     // ── 4. S01 로그인 ────────────────────────────────────────
     override suspend fun signInWithGoogle(idToken: String): Result<Unit> = runCatching {
