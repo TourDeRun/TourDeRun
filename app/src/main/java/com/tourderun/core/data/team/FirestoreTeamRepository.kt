@@ -13,19 +13,24 @@ import com.tourderun.core.data.mapReady
 import com.tourderun.domain.team.generateInviteCode
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 팀의 Firestore 구현 (TEAM-01~). 규칙은 [TeamRepository] 참고.
  *
- * - 팀 만들기는 서버 확인이 필요한 일(초대 코드 중복 확인, 만든 직후 S06에 코드 표시)이라 온라인 필수.
- *   초대 코드를 서버에서 확인하는 단계가 먼저라서, 오프라인이면 배치를 시작하기 전에 실패한다
- *   (배치가 기기에 대기했다가 나중에 몰래 올라가는 일이 없다).
+ * - 팀 만들기는 초대 코드 중복을 서버에서 확인해야 해서 온라인 필수. 시간 제한은 **그 확인 단계에만** 건다.
+ *   오프라인·느린 네트워크면 여기서 실패하고 배치는 시작하지 않는다.
+ * - 배치는 시작하면 성공으로 본다. 시작하는 순간 기기 캐시에 반영되고(세션이 Ready, S06은 캐시로 코드 표시)
+ *   연결되면 서버에 올라간다. 커밋이 늦다고 실패를 띄우면 사용자가 다시 만들어 배치가 두 번 대기하기 때문이다
+ *   (오프라인 대기 쓰기 규칙, REC-01과 같다).
  */
 @Singleton
 class FirestoreTeamRepository @Inject constructor(
@@ -53,16 +58,25 @@ class FirestoreTeamRepository @Inject constructor(
         name: String,
         icon: Int,
         color: Int,
-    ): Result<CreatedTeam> = runCatching {
-        withTimeout(TIMEOUT_MS) {
-            val code = newUniqueCode()
+    ): Result<CreatedTeam> = try {
+        // 1. 초대 코드 서버 확인. 시간 초과면 배치를 시작하지 않고 끝난다
+        val code = withTimeout(CODE_CHECK_TIMEOUT_MS) { newUniqueCode() }
+        val teamId = firestore.collection(Collections.TEAMS).document().id
 
-            val teamId = firestore.collection(Collections.TEAMS).document().id
+        // 2. 배치 시작. 이 순간 기기 캐시에 반영된다
+        val commit = firestore.batchOf(teamCreatePlan(uid, nickname, teamId, name.trim(), icon, color, code)).commit()
 
-            firestore.batchOf(teamCreatePlan(uid, nickname, teamId, name.trim(), icon, color, code)).commit().await()
-
-            CreatedTeam(teamId, code)
-        }
+        // 3. 규칙 거절처럼 바로 오는 실패만 잡으려고 잠깐 기다린다. 시간이 넘으면 null(예외 아님) → 성공으로 본다
+        withTimeoutOrNull(COMMIT_WAIT_MS) { commit.await() }
+        Result.success(CreatedTeam(teamId, code))
+    } catch (e: TimeoutCancellationException) {
+        // 1번 단계에서 우리가 건 시간 제한 = 연결 문제. CancellationException의 하위라 먼저 잡는다
+        Result.failure(e)
+    } catch (e: CancellationException) {
+        // 화면을 나가 viewModelScope가 취소된 것. 삼키지 않고 위로 보낸다
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     /**
@@ -82,7 +96,8 @@ class FirestoreTeamRepository @Inject constructor(
 
     private companion object {
         const val TAG = "TDR/team"
-        const val TIMEOUT_MS = 10_000L
+        const val CODE_CHECK_TIMEOUT_MS = 10_000L
+        const val COMMIT_WAIT_MS = 3_000L
         const val MAX_CODE_TRIES = 5
     }
 }
