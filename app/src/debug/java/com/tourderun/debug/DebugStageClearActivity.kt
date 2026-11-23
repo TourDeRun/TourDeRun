@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tourderun.R
+import com.tourderun.core.data.card.FakeCardRepository
+import com.tourderun.core.data.card.OwnedCard
 import com.tourderun.core.data.journey.ArrivalScenario
 import com.tourderun.core.data.journey.FakeArrivalRepository
 import com.tourderun.core.data.session.FakeSessionRepository
@@ -36,10 +38,13 @@ import dagger.Lazy
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * JRN-05 스테이지 클리어 연출 확인용. 디버그 빌드에만 있고 adb로 연다.
+ * JRN-05 스테이지 클리어 연출과 EXT-01 지역 카드 확인용. 디버그 빌드에만 있고 adb로 연다.
  *
- * 아래 칩으로 가짜 도착을 고른다(안양 도착 / 오산·천안 두 도시 / 부산 완주). "확인"(또는 뒤로 가기)을 누르면 연출이 닫힌다.
- * 칩을 다시 누르면 처음부터. 고를 때마다 [FakeArrivalRepository]·[FakeSessionRepository]로 ViewModel을 따로 만든다.
+ * 아래 칩으로 가짜 도착을 고른다(안양 도착 / 오산·천안 두 도시 / 부산 완주 / 안양 카드를 이미 가짐).
+ * 앞의 셋은 가진 카드가 없어 연출에 카드가 보인다(두 도시는 마지막 도시 천안). "이미 가진 카드"는 카드 없이 뜬다.
+ * "확인"(또는 뒤로 가기)·"카드 보기"를 누르면 연출이 닫힌다(카드 보기는 이 화면에서는 이동하지 않는다).
+ * 칩을 다시 누르면 처음부터. 고를 때마다 [FakeArrivalRepository]·[FakeCardRepository]·[FakeSessionRepository]로
+ * ViewModel을 따로 만든다.
  * Hilt 바인딩은 바꾸지 않고 Firebase를 쓰지 않는다.
  */
 @AndroidEntryPoint
@@ -56,8 +61,9 @@ class DebugStageClearActivity : ComponentActivity() {
                         Text(stringResource(R.string.debug_clear_closed))
                         // 상황·횟수마다 key가 달라서 ViewModel도 새로 만들어진다.
                         val viewModel = viewModel(key = "${mode.name}-$round") {
-                            val repository = FakeArrivalRepository(mode.scenario)
-                            StageClearViewModel(FakeSessionRepository(), Lazy { repository })
+                            val arrivals = FakeArrivalRepository(mode.scenario)
+                            val cards = FakeCardRepository(mode.ownedCityIds.map { OwnedCard(it, 0L, "뛰뛰크루") })
+                            StageClearViewModel(FakeSessionRepository(), Lazy { arrivals }, Lazy { cards })
                         }
                         StageClearHost(viewModel = viewModel)
                     }
@@ -85,8 +91,15 @@ class DebugStageClearActivity : ComponentActivity() {
     }
 }
 
-private enum class DebugClearMode(@StringRes val labelRes: Int, val scenario: ArrivalScenario) {
+private enum class DebugClearMode(
+    @StringRes val labelRes: Int,
+    val scenario: ArrivalScenario,
+    val ownedCityIds: List<String> = emptyList(),
+) {
     ONE_CITY(R.string.debug_clear_one_city, ArrivalScenario.ONE_CITY),
     TWO_CITIES(R.string.debug_clear_two_cities, ArrivalScenario.TWO_CITIES),
     FINISH(R.string.debug_clear_finish, ArrivalScenario.FINISH),
+
+    /** 안양 도착인데 안양 카드를 이미 가짐(팀을 옮겨 다시 도착) → 카드 없이 연출 */
+    OWNED(R.string.debug_clear_owned, ArrivalScenario.ONE_CITY, ownedCityIds = listOf("seoul", "anyang")),
 }

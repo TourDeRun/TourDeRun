@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.stateIn
  * - [observePending]: 받은 uid, 내 팀([MyTeamSource]의 팀 ID·**캐시된 팀 거리**·시즌), 내 `teams/{teamId}/members/{uid}`의
  *   `seenArrivals`를 합쳐 `pendingArrivals()`로 계산한다. members 리스너는 팀 ID가 바뀔 때만 다시 연결한다
  *   (팀 거리만 바뀌면 그대로). 리스너 오류·문서 없음·uid 없음·팀 없음이면 null(연출을 띄우지 않는다).
- * - [markSeen]: 받은 [PendingSeen]으로 [arrivalSeenPlan]을 배치 commit. 오프라인 대기 쓰기라 `await()`하지 않는다.
+ * - [markSeen]: 받은 [PendingSeen]과 새 카드로 [arrivalSeenPlan]을 배치 commit(`seenArrivals`와 `users.cards`를 같은 배치에). 오프라인 대기 쓰기라 `await()`하지 않는다.
  *   서버 거부는 로그만. 쓰면 기기 캐시가 바로 바뀌어 members 리스너가 새 `seenArrivals`를 내고, [observePending]은 null이 된다.
  */
 @Singleton
@@ -56,10 +56,8 @@ class FirestoreArrivalRepository @Inject constructor(
     }
 
     override fun markSeen(seen: PendingSeen, newCardCityIds: List<String>): Result<Unit> {
-        if (newCardCityIds.isNotEmpty()) Log.w(TAG, "지역 카드 쓰기는 아직 없음(#21), 카드 ${newCardCityIds.size}장 무시")
         return try {
-            // TODO(EXT-01): #21에서 newCardCityIds를 넘겨 seenArrivals와 같은 배치로 카드를 쓴다.
-            firestore.batchOf(arrivalSeenPlan(seen, newCardCityIds = emptyList())).commit()
+            firestore.batchOf(arrivalSeenPlan(seen, newCardCityIds)).commit()
                 .addOnFailureListener { Log.w(TAG, "도착 확인 쓰기 거부", it) }
             Result.success(Unit)
         } catch (e: RuntimeException) {
