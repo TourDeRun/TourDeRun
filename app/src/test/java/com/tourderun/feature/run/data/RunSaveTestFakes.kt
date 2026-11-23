@@ -1,5 +1,8 @@
 package com.tourderun.feature.run.data
 
+import kotlinx.coroutines.flow.emptyFlow
+import com.tourderun.core.data.session.MyStats
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunSaver
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
@@ -71,6 +74,8 @@ internal class FakeSession(initial: SessionState) : SessionRepository {
     override suspend fun signInWithGoogle(idToken: String) = Result.success(Unit)
     override suspend fun createUser(nickname: String) = Result.success(Unit)
     override fun signOut() = Unit
+    override fun updateNickname(uid: String, teamId: String?, nickname: String) = Result.success(Unit)
+    override fun observeMyStats(uid: String) = emptyFlow<Loaded<MyStats>>()
 }
 
 internal class FixedTeamSource(private val team: MyTeam?) : MyTeamSource {

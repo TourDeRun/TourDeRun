@@ -1,5 +1,8 @@
 package com.tourderun.core.data.session
 
+import com.tourderun.core.data.Loaded
+import kotlinx.coroutines.flow.Flow
+
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -22,4 +25,21 @@ interface SessionRepository {
 
     /** AUTH-04 로그아웃. */
     fun signOut()
+
+    /**
+     * AUTH-03 닉네임 바꾸기([nicknameUpdatePlan]). 검사는 부르는 쪽이 `validateNickname`으로 먼저 한다.
+     * 오프라인 대기 쓰기라 끝날 때까지 기다리지 않는다. 기기 캐시에 바로 반영돼 [state]의 닉네임이 바뀐다.
+     * 배치를 시작하지 못하면(잘못된 경로 등) failure.
+     */
+    fun updateNickname(uid: String, teamId: String?, nickname: String): Result<Unit>
+
+    /** S13 내 누적 거리·러닝 횟수 (`users.totalM`·`runCount`) 실시간. */
+    fun observeMyStats(uid: String): Flow<Loaded<MyStats>>
+}
+
+/** S13 위쪽 숫자. */
+data class MyStats(val totalM: Long, val runCount: Long) {
+    companion object {
+        val EMPTY = MyStats(totalM = 0, runCount = 0)
+    }
 }

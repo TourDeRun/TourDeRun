@@ -33,6 +33,8 @@ import com.tourderun.feature.collection.ui.CollectionScreen
 import com.tourderun.feature.home.ui.HomeScreen
 import com.tourderun.feature.journey.ui.RoadViewScreen
 import com.tourderun.feature.journey.ui.StageClearHost
+import com.tourderun.feature.profile.ui.NicknameEditDialog
+import com.tourderun.feature.profile.ui.ProfileAction
 import com.tourderun.feature.profile.ui.ProfileScreen
 import com.tourderun.feature.profile.ui.ProfileViewModel
 import com.tourderun.feature.race.ui.StageRankScreen
@@ -100,9 +102,10 @@ fun AppNavHost(
                 RoadViewScreen()
             }
             composable<ProfileRoute> {
-                // TODO(AUTH-03): 닉네임 수정.
+                // TODO(AUTH-03): 팀 역할(팀장/팀원)과 최근 기록 한 줄은 다음에 붙인다.
                 val profileViewModel: ProfileViewModel = hiltViewModel()
                 val header by profileViewModel.header.collectAsStateWithLifecycle()
+                val nicknameEdit by profileViewModel.nicknameEdit.collectAsStateWithLifecycle()
                 // AUTH-04: 확인 창이 열렸는지는 화면 회전에도 남게 rememberSaveable로 둔다.
                 var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
                 ProfileScreen(
@@ -110,8 +113,10 @@ fun AppNavHost(
                         nickname = header.nickname ?: TempUiStates.profile.nickname,
                         teamName = header.teamName,
                         showLogoutConfirm = showLogoutConfirm,
+                        totalDistanceM = header.totalM,
+                        runCount = header.runCount.toInt(),
                     ),
-                    onEditNickname = {},
+                    onEditNickname = { profileViewModel.onAction(ProfileAction.EditNickname) },
                     onTeamClick = { navController.navigate(TeamRoute) },
                     onRecordsClick = { navController.navigate(RecordsRoute) },
                     onRunClick = { navController.navigate(RecordDetailRoute(it.runId)) },
@@ -125,6 +130,14 @@ fun AppNavHost(
                     // TODO(AUTH-05): 실제 탈퇴. 지금은 로그아웃만 한다.
                     onWithdraw = entryViewModel::signOut,
                 )
+                nicknameEdit?.let { edit ->
+                    NicknameEditDialog(
+                        state = edit,
+                        onValueChange = { profileViewModel.onAction(ProfileAction.NicknameChanged(it)) },
+                        onSave = { profileViewModel.onAction(ProfileAction.SaveNickname) },
+                        onDismiss = { profileViewModel.onAction(ProfileAction.DismissNickname) },
+                    )
+                }
             }
 
             composable<RunningRoute> {

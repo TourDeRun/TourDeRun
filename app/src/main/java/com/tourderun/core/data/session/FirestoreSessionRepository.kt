@@ -11,6 +11,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.mapReady
+import com.tourderun.core.data.firestore.batchOf
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.UserFields
 import com.tourderun.core.data.firestore.snapshotFlow
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -119,6 +122,29 @@ class FirestoreSessionRepository @Inject constructor(
             }.await()
         }
     }
+
+    // ── 7. AUTH-03 닉네임 바꾸기 ─────────────────────────────
+    override fun updateNickname(uid: String, teamId: String?, nickname: String): Result<Unit> = try {
+        firestore.batchOf(nicknameUpdatePlan(uid, teamId, nickname)).commit()
+            .addOnFailureListener { e -> Log.w(TAG, "닉네임 바꾸기 실패", e) }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    // ── 8. S13 누적 거리·러닝 횟수 ───────────────────────────
+    override fun observeMyStats(uid: String): Flow<Loaded<MyStats>> =
+        firestore.collection(Collections.USERS).document(uid)
+            .snapshotFlow(TAG)
+            .map { loaded ->
+                loaded.mapReady {
+                    MyStats(
+                        totalM = it.getLong(UserFields.TOTAL_M) ?: 0L,
+                        runCount = it.getLong(UserFields.RUN_COUNT) ?: 0L,
+                    )
+                }
+            }
+            .distinctUntilChanged()
 
     // ── 6. 로그아웃 ──────────────────────────────────────────
     override fun signOut() {

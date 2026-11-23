@@ -1,5 +1,9 @@
 package com.tourderun.core.data.session
 
+import com.tourderun.core.data.Loaded
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +41,18 @@ class FakeSessionRepository @Inject constructor() : SessionRepository {
     override fun signOut() {
         _state.value = SessionState.SignedOut
     }
+
+    override fun updateNickname(uid: String, teamId: String?, nickname: String): Result<Unit> {
+        _state.value = when (val current = _state.value) {
+            is SessionState.NoTeam -> current.copy(user = current.user.copy(nickname = nickname))
+            is SessionState.Ready -> current.copy(user = current.user.copy(nickname = nickname))
+            else -> return Result.failure(IllegalStateException("닉네임을 바꿀 수 없는 상태: $current"))
+        }
+        return Result.success(Unit)
+    }
+
+    override fun observeMyStats(uid: String): Flow<Loaded<MyStats>> =
+        flowOf(Loaded.Ready(MyStats(totalM = 86_400, runCount = 21), isFromCache = false))
 
     companion object {
         const val FAKE_UID = "fake-uid"
