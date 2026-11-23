@@ -68,6 +68,12 @@ interface TeamRepository {
      * (기기 캐시에 바로 반영돼 [observeTeam]이 새 값을 낸다). 배치를 시작하지 못하면 failure.
      */
     fun updateTeam(teamId: String, name: String, icon: Int, color: Int): Result<Unit>
+
+    /**
+     * TEAM-08 팀장 넘기기. 온라인 필수 트랜잭션에서 내가 아직 팀장인지·상대가 아직 팀원인지 확인하고
+     * [teamHandOverPlan]을 쓴다.
+     */
+    suspend fun handOverLeader(leaderUid: String, teamId: String, targetUid: String): Result<Unit>
 }
 
 /** TEAM-03 참여 결과. */

@@ -36,6 +36,10 @@ object TdrIcons {
     val TrendUp: ImageVector by lazy { stroke("TrendUp", "M4 17l6-6 4 4 6-8M15 7h5v5") }
     val ArrowRight: ImageVector by lazy { stroke("ArrowRight", "M4 12h16M14 6l6 6-6 6") }
     val Crown: ImageVector by lazy { fill("Crown", "M3 8l5 4 4-7 4 7 5-4-2 11H5z") }
+    /** 세로 점 세 개 (더 보기 메뉴). */
+    val More: ImageVector by lazy {
+        fill("More", "M12 4.25a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5zM12 10.25a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5zM12 16.25a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5z")
+    }
     val Stop: ImageVector by lazy {
         fill("Stop", "M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z")
     }

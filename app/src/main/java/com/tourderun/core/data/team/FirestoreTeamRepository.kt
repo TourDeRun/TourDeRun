@@ -221,6 +221,27 @@ class FirestoreTeamRepository @Inject constructor(
         Result.failure(e)
     }
 
+    override suspend fun handOverLeader(leaderUid: String, teamId: String, targetUid: String): Result<Unit> = try {
+        require(leaderUid != targetUid) { "자기 자신에게는 넘길 수 없다" }
+        withTimeout(CODE_CHECK_TIMEOUT_MS) {
+            val membersRef = firestore.collection(Collections.TEAMS).document(teamId).collection(Collections.MEMBERS)
+            firestore.runTransaction { tx ->
+                val me = tx.get(membersRef.document(leaderUid))
+                val target = tx.get(membersRef.document(targetUid))
+                check(me.getString(MemberFields.ROLE) == MemberFields.ROLE_LEADER) { "팀장이 아니다" }
+                check(target.exists()) { "넘길 팀원이 팀에 없다" }
+                tx.applyWrites(firestore, teamHandOverPlan(teamId, fromUid = leaderUid, toUid = targetUid))
+            }.await()
+        }
+        Result.success(Unit)
+    } catch (e: TimeoutCancellationException) {
+        Result.failure(e)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
     override fun updateTeam(teamId: String, name: String, icon: Int, color: Int): Result<Unit> = try {
         firestore.batchOf(teamEditPlan(teamId, name, icon, color)).commit()
             .addOnFailureListener { e -> Log.w(TAG, "팀 정보 수정 실패", e) }

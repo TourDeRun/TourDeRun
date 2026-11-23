@@ -146,6 +146,10 @@ service cloud.firestore {
           // TEAM-08: 팀장이 다른 팀원을 팀장으로
           || (isLeader(teamId) && uid != me() && onlyChanged(['role'])
               && request.resource.data.role == 'leader')
+          // TEAM-08: 팀장을 넘기며 자신은 팀원으로. 앱은 위 쓰기와 같은 배치로만 보낸다
+          // (규칙은 누가 새 팀장인지 모르므로 그 짝까지는 확인하지 못한다)
+          || (uid == me() && isLeader(teamId) && onlyChanged(['role'])
+              && request.resource.data.role == 'member')
         );
 
         // 내가 나가거나(TEAM-07), 팀장이 내보낸다(TEAM-06)
