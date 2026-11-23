@@ -168,15 +168,11 @@ fun AppNavHost(
             }
 
             composable<TeamRoute> {
-                // TODO(TEAM-02): 초대 코드 공유 시트, TODO(TEAM-06): 내보내기, TODO(TEAM-07): 팀 나가기.
+                // 초대 코드 공유는 S06을 다시 쓴다. 내보내기(TEAM-06)·나가기(TEAM-07)는 TeamScreen 안 TODO
                 TeamScreen(
-                    uiState = TempUiStates.team,
                     onBack = back,
                     onEdit = { navController.navigate(TeamEditRoute) },
-                    onKick = {},
-                    onShareInvite = {},
-                    // 나가기가 되면 users.teamId가 null → NoTeam이 되고, 팀 시작 화면 이동은 그때 정한다
-                    onLeave = {},
+                    onShowInvite = { navController.navigate(InviteCodeRoute) },
                 )
             }
             composable<TeamEditRoute> {

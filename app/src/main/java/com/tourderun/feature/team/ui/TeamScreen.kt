@@ -1,5 +1,11 @@
 package com.tourderun.feature.team.ui
 
+import com.tourderun.core.designsystem.component.TeamColor
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,7 +52,6 @@ import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.preview.PreviewSamples
-import kotlin.math.roundToInt
 
 /** S14 팀 화면 상태. */
 data class TeamUiState(
@@ -57,11 +62,45 @@ data class TeamUiState(
     /** 내가 팀장이면 수정·내보내기를 보인다. */
     val isLeader: Boolean,
     val myUid: String,
+    /** 나간 팀원들이 남긴 거리(M-02: 팀 거리는 줄지 않는다). 0이면 "이전 팀원" 줄을 숨긴다. */
+    val formerM: Long = 0,
+    val formerPercent: Int = 0,
 )
 
-/** S14 팀. 홈의 팀 카드·팀원 기록에서 들어온다. */
+/**
+ * S14 팀 (TEAM-04). 내 팀·팀원·초대 코드를 [TeamViewModel]에서 받는다. 불러오는 중이면 스피너.
+ * 초대 코드 공유는 S06 화면을 다시 쓴다([onShowInvite]).
+ */
 @Composable
 fun TeamScreen(
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onShowInvite: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: TeamViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state = uiState
+    if (state == null) {
+        Box(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = TdrTheme.colors.brand)
+        }
+        return
+    }
+    TeamContent(
+        uiState = state,
+        onBack = onBack,
+        onEdit = onEdit,
+        onKick = {}, // TODO(TEAM-06): 팀원 내보내기
+        onShareInvite = onShowInvite,
+        onLeave = {}, // TODO(TEAM-07): 팀 나가기
+        modifier = modifier,
+    )
+}
+
+/** S14 팀 그리기만 한다 (상태 없음, Preview 대상). 홈의 팀 카드·팀원 기록에서 들어온다. */
+@Composable
+fun TeamContent(
     uiState: TeamUiState,
     onBack: () -> Unit,
     onEdit: () -> Unit,
@@ -98,7 +137,7 @@ fun TeamScreen(
                         color = colors.inkMuted,
                     )
                     Text(
-                        stringResource(R.string.team_distance, Format.km(team.distanceM)),
+                        stringResource(R.string.team_distance, Format.teamKm(team.distanceM)),
                         style = type.subtitle.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 20.sp),
                         color = colors.brand,
                     )
@@ -116,6 +155,7 @@ fun TeamScreen(
                     onKick = { onKick(member) },
                 )
             }
+            if (uiState.formerM > 0) FormerMembersRow(uiState.formerM, uiState.formerPercent)
         }
 
         TdrCard {
@@ -161,7 +201,7 @@ fun TeamScreen(
 private fun MemberRow(member: MemberUi, teamDistanceM: Long, canKick: Boolean, onKick: () -> Unit) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
-    val share = if (teamDistanceM > 0) member.contributionM.toFloat() / teamDistanceM else 0f
+    val share = member.percent / 100f
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MemberAvatar(member.color, size = 40.dp)
@@ -180,7 +220,7 @@ private fun MemberRow(member: MemberUi, teamDistanceM: Long, canKick: Boolean, o
                     }
                 }
                 Text(
-                    stringResource(R.string.team_member_sub, Format.km(member.contributionM), (share * 100).roundToInt()),
+                    stringResource(R.string.team_member_sub, Format.teamKm(member.contributionM), member.percent),
                     style = type.caption,
                     color = colors.inkMuted,
                 )
@@ -204,12 +244,52 @@ private fun MemberRow(member: MemberUi, teamDistanceM: Long, canKick: Boolean, o
     }
 }
 
+/** 나간 팀원들 몫을 묶은 한 줄 (EXT-03). 내보내기 버튼은 없다. */
+@Composable
+private fun FormerMembersRow(distanceM: Long, percent: Int) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MemberAvatar(TeamColor.GRAY, size = 40.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(stringResource(R.string.team_former_members), style = type.subtitle.copy(lineHeight = 20.sp), color = colors.inkMuted)
+                Text(
+                    stringResource(R.string.team_member_sub, Format.teamKm(distanceM), percent),
+                    style = type.caption,
+                    color = colors.inkMuted,
+                )
+            }
+        }
+        TdrProgressBar(progress = percent / 100f, trackColor = colors.bgSubtle, fillColor = TeamColor.GRAY.color)
+    }
+}
+
 @Preview(widthDp = 390, heightDp = 960)
 @Composable
-private fun TeamScreenPreview() {
+private fun TeamContentPreview() {
     TdrTheme {
-        TeamScreen(
+        TeamContent(
             TeamUiState(PreviewSamples.team, PreviewSamples.members, "4K7Q2M", isLeader = true, myUid = "u1"),
+            {}, {}, {}, {}, {},
+        )
+    }
+}
+
+@Preview(widthDp = 390, heightDp = 960, name = "혼자 있는 팀 · 이전 팀원")
+@Composable
+private fun TeamContentAlonePreview() {
+    TdrTheme {
+        TeamContent(
+            TeamUiState(
+                team = PreviewSamples.team.copy(memberCount = 1, distanceM = 12_000),
+                members = listOf(PreviewSamples.members.first().copy(contributionM = 9_000, isMvp = false, percent = 75)),
+                inviteCode = "4K7Q2M",
+                isLeader = true,
+                myUid = "u1",
+                formerM = 3_000,
+                formerPercent = 25,
+            ),
             {}, {}, {}, {}, {},
         )
     }

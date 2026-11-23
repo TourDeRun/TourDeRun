@@ -2,6 +2,7 @@ package com.tourderun.core.data.team
 
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.TeamDto
+import com.tourderun.core.data.firestore.TeamMemberDto
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.tourderun.domain.team.joinRejection
@@ -29,6 +30,9 @@ class FakeTeamRepository @Inject constructor() : TeamRepository {
 
     override fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>> =
         teams.map { Loaded.Ready(if (teamId in it) FAKE_INVITE_CODE else null, isFromCache = false) }
+
+    override fun observeMembers(teamId: String): Flow<Loaded<List<TeamMemberDto>>> =
+        teams.map { Loaded.Ready(emptyList(), isFromCache = false) }
 
     override suspend fun findTeamByCode(code: String): Result<TeamDto?> =
         Result.success(if (code == FAKE_INVITE_CODE) teams.value.values.firstOrNull() else null)

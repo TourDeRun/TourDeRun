@@ -288,6 +288,7 @@
     <string name="team_distance">팀 거리 %1$skm</string>
     <string name="team_members_title">팀원 · 기여 거리 순</string>
     <string name="team_member_sub">%1$skm · %2$d%%</string>
+    <string name="team_former_members">이전 팀원</string>
     <string name="team_kick">내보내기</string>
     <string name="team_kick_desc">%1$s 내보내기</string>
     <string name="team_invite_label">초대 코드 · 팀원에게만 보여요</string>

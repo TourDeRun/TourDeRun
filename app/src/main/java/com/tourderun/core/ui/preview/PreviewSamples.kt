@@ -34,10 +34,10 @@ object PreviewSamples {
     val stage: StageProgressUi = stageProgressUi(66_800, routeFor(1))
 
     val members = listOf(
-        MemberUi("u1", "민지", TeamColor.BLUE, 22_400, isLeader = true, isMvp = true),
-        MemberUi("u2", "준호", TeamColor.NAVY, 19_100),
-        MemberUi("u3", "하은", TeamColor.GREEN, 15_000),
-        MemberUi("u4", "도윤", TeamColor.PURPLE, 10_300),
+        MemberUi("u1", "민지", TeamColor.BLUE, 22_400, isLeader = true, isMvp = true, percent = 33),
+        MemberUi("u2", "준호", TeamColor.NAVY, 19_100, percent = 29),
+        MemberUi("u3", "하은", TeamColor.GREEN, 15_000, percent = 23),
+        MemberUi("u4", "도윤", TeamColor.PURPLE, 10_300, percent = 15),
     )
 
     val rivals = listOf(
