@@ -15,7 +15,6 @@ import com.tourderun.feature.profile.ui.CollectionSummaryUi
 import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.record.ui.toRowUi
 import com.tourderun.feature.team.ui.TeamEditUiState
-import com.tourderun.feature.team.ui.TeamUiState
 
 /**
  * ViewModel이 아직 없는 화면을 [AppNavHost]에 띄우기 위한 임시 고정 상태. 값은 와이어프레임([PreviewSamples])과 같다.
@@ -36,8 +35,6 @@ internal object TempUiStates {
     )
 
     // TODO(TEAM-04): 팀 ViewModel로 바꾼다.
-    val team = TeamUiState(PreviewSamples.team, PreviewSamples.members, "4K7Q2M", isLeader = true, myUid = "u1")
-
     // TODO(TEAM-05): 팀 수정 ViewModel로 바꾼다.
     val teamEdit = TeamEditUiState(PreviewSamples.team.name, TeamColor.BLUE, TeamIcon.RUNNER)
 

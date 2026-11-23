@@ -38,6 +38,8 @@ data class MemberUi(
     val contributionM: Long,
     val isLeader: Boolean = false,
     val isMvp: Boolean = false,
+    /** 팀 거리 중 몫(0~100). 모든 줄(이전 팀원 포함)을 더하면 100 (EXT-03 `contributionShares`). */
+    val percent: Int = 0,
 )
 
 /**
