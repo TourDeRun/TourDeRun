@@ -44,10 +44,12 @@ interface ArrivalRepository {
  * [ArrivalRepository.observePending]이 낸 못 본 도착과, 확인을 쓸 members 문서 자리.
  *
  * @property teamName 카드에 남길 팀 이름(EXT-01)
+ * @property season 내 팀 시즌. 연출이 다음 스테이지·도시를 `routeFor(season)`에서 읽는다
  */
 data class PendingSeen(
     val uid: String,
     val teamId: String,
     val teamName: String,
     val pending: PendingArrivals,
+    val season: Int,
 )
