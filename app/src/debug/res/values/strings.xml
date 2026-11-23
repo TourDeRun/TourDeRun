@@ -31,5 +31,6 @@
     <string name="debug_clear_one_city">안양 도착</string>
     <string name="debug_clear_two_cities">두 도시</string>
     <string name="debug_clear_finish">완주</string>
+    <string name="debug_clear_owned">이미 가진 카드</string>
     <string name="debug_clear_closed">연출을 닫았어요. 칩을 누르면 다시 열려요.</string>
 </resources>
