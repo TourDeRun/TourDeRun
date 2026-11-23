@@ -1,5 +1,6 @@
 package com.tourderun.feature.team.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -47,7 +48,7 @@ data class JoinTeamPreviewUi(
 data class JoinTeamUiState(
     val code: String = "",
     val preview: JoinTeamPreviewUi? = null,
-    val errorMessage: String? = null,
+    @StringRes val errorRes: Int? = null,
     val isSubmitting: Boolean = false,
 ) {
     val canJoin: Boolean get() = code.length == CODE_LENGTH && preview != null && !isSubmitting
@@ -89,10 +90,11 @@ internal fun JoinTeamContent(
     ) {
         TdrTextField(
             value = uiState.code,
-            onValueChange = { onCodeChange(it.uppercase()) },
+            // 대문자·공백 정리와 6자리 자르기는 ViewModel이 한다(normalizeInviteCode).
+            // 여기서 길이를 막으면 "JN2345 "처럼 공백이 붙은 붙여넣기가 통째로 거절된다.
+            onValueChange = onCodeChange,
             label = stringResource(R.string.join_code_label),
-            error = uiState.errorMessage,
-            maxLength = JoinTeamUiState.CODE_LENGTH,
+            error = uiState.errorRes?.let { stringResource(it) },
             minHeight = 56.dp,
             textStyle = type.titleLg.copy(fontSize = 24.sp, letterSpacing = 0.3.em),
             textAlign = TextAlign.Center,

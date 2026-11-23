@@ -4,6 +4,7 @@ import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.TeamDto
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.tourderun.domain.team.joinRejection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -28,6 +29,16 @@ class FakeTeamRepository @Inject constructor() : TeamRepository {
 
     override fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>> =
         teams.map { Loaded.Ready(if (teamId in it) FAKE_INVITE_CODE else null, isFromCache = false) }
+
+    override suspend fun findTeamByCode(code: String): Result<TeamDto?> =
+        Result.success(if (code == FAKE_INVITE_CODE) teams.value.values.firstOrNull() else null)
+
+    override suspend fun joinTeam(uid: String, nickname: String, code: String): Result<JoinOutcome> {
+        val team = findTeamByCode(code).getOrNull() ?: return Result.success(JoinOutcome.NotFound)
+        joinRejection(myTeamId = null, memberCount = team.memberCount)?.let { return Result.success(JoinOutcome.Rejected(it)) }
+        teams.update { it + (team.teamId to team.copy(memberCount = team.memberCount + 1)) }
+        return Result.success(JoinOutcome.Joined(team.teamId))
+    }
 
     companion object {
         const val FAKE_INVITE_CODE = "ABC234"
