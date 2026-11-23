@@ -293,6 +293,11 @@
     <string name="team_kick_desc">%1$s 내보내기</string>
     <string name="team_invite_label">초대 코드 · 팀원에게만 보여요</string>
     <string name="team_leave">팀 나가기</string>
+    <string name="team_leave_confirm_title">팀에서 나갈까요?</string>
+    <string name="team_leave_confirm_body">내가 달린 거리는 팀에 남아요. 다시 들어오려면 초대 코드가 필요해요</string>
+    <string name="team_leave_confirm_last">마지막 팀원이라 나가면 팀이 없어져요</string>
+    <string name="team_leave_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="team_leave_error_failed">나가지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="team_leave_notice">팀장이 나가면 가장 먼저 가입한 팀원이 팀장이 돼요 · 나간 팀원의 거리는 팀에 남아요</string>
 
     <!-- S14 팀 정보 수정 -->
