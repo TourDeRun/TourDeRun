@@ -16,3 +16,29 @@ fun seenArrivalsOf(fields: Map<String, Any?>?): Int? {
 
 /** members 문서 스냅샷 → 본 도착 수. 없는 문서면 null. */
 fun DocumentSnapshot.seenArrivals(): Int? = seenArrivalsOf(if (exists()) data.orEmpty() else null)
+
+/**
+ * S14 팀원 한 명 (TEAM-04). `teams/{teamId}/members/{uid}` → 화면에 필요한 값만.
+ *
+ * @property joinedAtMs 가입 시각. 서버 시각이 아직 없으면(방금 참여) 기기 추정값, 그것도 없으면 0
+ */
+data class TeamMemberDto(
+    val uid: String,
+    val nickname: String,
+    val isLeader: Boolean,
+    val joinedAtMs: Long,
+    val contributionM: Long,
+)
+
+/** members 문서 → [TeamMemberDto]. 닉네임이 없으면 null(목록에서 뺀다). */
+fun DocumentSnapshot.toTeamMemberDto(): TeamMemberDto? {
+    val nickname = getString(MemberFields.NICKNAME) ?: return null
+    return TeamMemberDto(
+        uid = id,
+        nickname = nickname,
+        isLeader = getString(MemberFields.ROLE) == MemberFields.ROLE_LEADER,
+        joinedAtMs = getTimestamp(MemberFields.JOINED_AT, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+            ?.toDate()?.time ?: 0L,
+        contributionM = getLong(MemberFields.CONTRIBUTION_M) ?: 0L,
+    )
+}

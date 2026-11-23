@@ -3,6 +3,7 @@ package com.tourderun.core.data.team
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.domain.team.JoinRejection
+import com.tourderun.core.data.firestore.TeamMemberDto
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -31,6 +32,9 @@ interface TeamRepository {
      * 실시간으로 읽는다. 코드는 팀원만 볼 수 있다(보안 규칙). 문서가 없으면 `Ready(null)`.
      */
     fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>>
+
+    /** TEAM-04 팀원 목록 실시간 (`teams/{teamId}/members`). 같은 팀원만 읽을 수 있다(보안 규칙). 순서는 정하지 않는다. */
+    fun observeMembers(teamId: String): Flow<Loaded<List<TeamMemberDto>>>
 
     /**
      * TEAM-03 코드 → 들어갈 팀 미리 보기 (S05). `inviteCodes/{code}` → `teams/{teamId}`를 **서버에서** 읽는다.
