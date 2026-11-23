@@ -10,6 +10,7 @@ import com.tourderun.core.data.session.SessionState
 import com.tourderun.core.data.session.teamId
 import com.tourderun.core.data.session.uid
 import com.tourderun.core.data.team.MyTeamSource
+import com.tourderun.core.data.team.TeamRepository
 import com.tourderun.domain.team.validateNickname
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -32,6 +33,8 @@ data class ProfileHeader(
     val teamName: String?,
     val totalM: Long = 0,
     val runCount: Long = 0,
+    /** 내 members 문서의 역할이 팀장인지. 팀이 없거나 아직 모르면 false. */
+    val isLeader: Boolean = false,
 )
 
 /**
@@ -55,15 +58,31 @@ sealed interface ProfileAction {
 }
 
 /**
- * S13 프로필. 닉네임(세션)·팀 이름(내 팀)·누적 거리·러닝 횟수(users)는 진짜 값이다.
- * TODO(AUTH-03): 팀 역할(팀장/팀원)과 최근 기록 한 줄은 TEAM-04·RunRepository와 합친 뒤 붙인다.
+ * S13 프로필. 닉네임(세션)·팀 이름(내 팀)·팀 역할(members)·누적 거리·러닝 횟수(users)는 진짜 값이다.
+ * 최근 기록 한 줄은 RunRepository 담당(오영훈)이 붙인다.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val session: SessionRepository,
     myTeamSource: MyTeamSource,
+    teamRepository: TeamRepository,
 ) : ViewModel() {
+
+    /** 내가 팀장인지. 팀원 목록에서 내 줄을 찾는다(팀장 넘기기·승계로 바뀌면 바로 반영). */
+    private val isLeader = session.state
+        .map { state -> state.uid?.let { uid -> state.teamId?.let { teamId -> uid to teamId } } }
+        .distinctUntilChanged()
+        .flatMapLatest<Pair<String, String>?, Boolean> { key ->
+            if (key == null) {
+                flowOf(false)
+            } else {
+                val (uid, teamId) = key
+                teamRepository.observeMembers(teamId).map { loaded ->
+                    (loaded as? Loaded.Ready)?.value?.firstOrNull { it.uid == uid }?.isLeader == true
+                }
+            }
+        }
 
     private val myStats = session.state
         .map { it.uid }
@@ -77,12 +96,13 @@ class ProfileViewModel @Inject constructor(
         }
 
     val header: StateFlow<ProfileHeader> =
-        combine(session.state, myTeamSource.observeMyTeam(), myStats) { state, team, stats ->
+        combine(session.state, myTeamSource.observeMyTeam(), myStats, isLeader) { state, team, stats, leader ->
             ProfileHeader(
                 nickname = state.nickname,
                 teamName = team?.standing?.name,
                 totalM = stats.totalM,
                 runCount = stats.runCount,
+                isLeader = leader,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileHeader(null, null))
 
