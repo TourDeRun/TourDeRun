@@ -15,6 +15,7 @@ import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.data.firestore.toTeamStatDto
 import com.tourderun.domain.stats.lastWeekId
 import com.tourderun.domain.stats.weekId
+import dagger.Lazy
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.async
@@ -34,8 +35,11 @@ import com.tourderun.domain.stats.topPercent as calcTopPercent
  *   (인덱스가 periodId↑, distanceM↑이고 `season` 조건은 넣지 않는다). 전체 팀 수는 `teams`의 `season == 1`.
  */
 class FirestoreStatsRepository @Inject constructor(
-    private val firestore: FirebaseFirestore,
+    // google-services.json이 없으면 만들 수 없어서 리스너·조회를 시작할 때 처음 꺼낸다.
+    private val firestoreProvider: Lazy<FirebaseFirestore>,
 ) : StatsRepository {
+
+    private val firestore: FirebaseFirestore get() = firestoreProvider.get()
 
     override fun observeWeekly(teamId: String, nowMs: Long): Flow<Loaded<WeeklyStats>> {
         val thisWeek = weekDoc(teamId, weekId(nowMs)).snapshotFlow(TAG).map { it.mapReady { doc -> doc.toTeamStatDto() } }
