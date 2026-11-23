@@ -19,6 +19,7 @@ import com.tourderun.domain.race.fallbackQuery
 import com.tourderun.domain.race.rankInStage
 import com.tourderun.domain.race.stageRange
 import com.tourderun.domain.route.routeFor
+import dagger.Lazy
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -43,8 +44,11 @@ import kotlinx.coroutines.flow.map
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FirestoreRaceRepository @Inject constructor(
-    private val firestore: FirebaseFirestore,
+    // google-services.json이 없으면 만들 수 없어서 리스너·조회를 시작할 때 처음 꺼낸다.
+    private val firestoreProvider: Lazy<FirebaseFirestore>,
 ) : RaceRepository {
+
+    private val firestore: FirebaseFirestore get() = firestoreProvider.get()
 
     override fun observeRace(season: Int, myTeam: TeamStanding): Flow<Loaded<RaceSummary>> {
         val range = stageRange(myTeam.distanceM, routeFor(season))

@@ -48,6 +48,15 @@ class WeeklyStatsMapperTest {
         assertEquals(0L, c.distanceM)
     }
 
+    @Test fun `teamStats 문서가 없는 새 팀(EMPTY) → 0km, 첫 러닝 안내, 지난주 기록 없음`() {
+        val c = weeklyStatsContent(Loaded.Ready(WeeklyStats.EMPTY, isFromCache = false), top = null, period)
+        assertEquals(0L, c.distanceM)
+        assertEquals(0L, c.runCount)
+        assertEquals(WeeklyRankUi.FirstRun, c.rank)
+        assertEquals(WeeklyChangeUi.NoLastWeek, c.change)
+        assertFalse(needsTopPercent(Loaded.Ready(WeeklyStats.EMPTY, isFromCache = false)))
+    }
+
     @Test fun `이번 주 0km면 상위 % 값이 와도 첫 러닝 안내`() {
         assertEquals(WeeklyRankUi.FirstRun, content(0, 36_400, top = top).rank)
     }
