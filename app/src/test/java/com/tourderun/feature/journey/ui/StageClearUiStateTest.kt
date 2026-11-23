@@ -52,4 +52,20 @@ class StageClearUiStateTest {
             stateOf(seenArrivals = 6, teamDistanceM = 350_000),
         )
     }
+
+    @Test fun `부산 카드 → 순번 8 of 8, 영문 이름 Busan`() {
+        val pending = requireNotNull(pendingArrivals(6, 350_000, route))
+        assertEquals(EarnedCardUi("부산", "Busan", index = 8, total = 8), stageClearUiState(pending, route, listOf("busan")).card)
+    }
+
+    @Test fun `새 카드 빈 목록·null → 카드 없음`() {
+        val pending = requireNotNull(pendingArrivals(0, 19_000, route))
+        assertEquals(null, stageClearUiState(pending, route, emptyList()).card)
+        assertEquals(null, stageClearUiState(pending, route, null).card)
+    }
+
+    @Test fun `서울 카드 → 순번 1, 경로에 없는 도시 → null`() {
+        assertEquals(EarnedCardUi("서울", "Seoul", index = 1, total = 8), earnedCardUi("seoul", route))
+        assertEquals(null, earnedCardUi("jeju", route))
+    }
 }

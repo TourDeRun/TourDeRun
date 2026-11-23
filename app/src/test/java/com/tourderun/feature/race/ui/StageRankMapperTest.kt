@@ -62,6 +62,14 @@ class StageRankMapperTest {
         assertNull(c.rows.single().gapToAheadM)
     }
 
+    @Test fun `방금 만든 1인 팀(0m)만 있으면 스테이지 1의 1위 1팀이고 isAlone`() {
+        val c = content(race(listOf(team("me", 0, members = 1)), "me", stageIndex = 0), "me")
+        assertEquals(1, c.ourRank)
+        assertTrue(c.isAlone)
+        assertEquals(1, c.stage.stageNumber)
+        assertEquals(0L, c.rows.single().distanceM)
+    }
+
     @Test fun `동점이면 먼저 도달한 팀이 앞이고 차이는 0`() {
         val c = content(
             race(listOf(team("me", 60_000, reachedAtMs = 2_000), team("a", 60_000, reachedAtMs = 1_000)), "me"),

@@ -33,7 +33,7 @@ interface ArrivalRepository {
      * 연출을 봤다고 기록한다: [PendingSeen.uid]·[PendingSeen.teamId]의 `seenArrivals`를 [PendingArrivals.current]로.
      * 지금 팀이 바뀌었어도 받은 값의 팀에 쓴다.
      *
-     * @param newCardCityIds 같은 배치에서 줄 지역 카드 도시 ID(EXT-01, #21에서 채운다). 지금은 항상 빈 목록.
+     * @param newCardCityIds 같은 배치에서 줄 지역 카드 도시 ID(EXT-01). 스테이지 클리어 연출이 가진 카드를 읽은 뒤 계산해 넘긴다.
      *   이미 가진 도시를 뺀 목록이어야 한다(`:domain`의 [com.tourderun.domain.card.newCardCityIds] 결과).
      *   가진 도시를 넣으면 첫 획득 기록(`at`·`teamName`)이 덮어써진다
      */

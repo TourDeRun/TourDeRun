@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
@@ -75,18 +77,33 @@ internal class FixedTeamSource(private val team: MyTeam?) : MyTeamSource {
     override fun observeMyTeam(): Flow<MyTeam?> = flowOf(team)
 }
 
+/** 팀 값을 바꿀 수 있는 [MyTeamSource]. 기본은 값을 끝내 내지 않는다(팀 문서 첫 읽기가 실패해 멈춘 상태). */
+internal class SwitchableTeamSource : MyTeamSource {
+    var flow: Flow<MyTeam?> = flow { awaitCancellation() }
+    override fun observeMyTeam(): Flow<MyTeam?> = flow
+}
+
 internal val testUser = SessionUser(uid = "u1", nickname = "러너")
 internal val fixedTeam = MyTeam(1, TeamStanding("fake-my-team", "뛰뛰크루", 66_800, 0L))
 
-/** 서버 확인 뒤 정리를 바로 실행해 결과를 확인하는 조정자. */
+/** 팀 문서를 기다리는 시간(테스트용, 실제 3초를 기다리지 않게). */
+internal const val TEST_TEAM_WAIT_MS = 20L
+
+/**
+ * 서버 확인 뒤 정리를 바로 실행해 결과를 확인하는 조정자. 경고 로그는 [warnings]에 모은다.
+ */
 internal fun testCoordinator(
     manager: RunSessionManager,
     saver: FakeRunSaver,
     session: SessionState = SessionState.NoTeam(testUser),
+    teamSource: MyTeamSource = FixedTeamSource(fixedTeam),
+    warnings: MutableList<String> = mutableListOf(),
 ) = RunSaveCoordinator(
     manager = manager,
     runSaver = Lazy { saver },
     session = Lazy { FakeSession(session) },
-    myTeamSource = FixedTeamSource(fixedTeam),
+    myTeamSource = teamSource,
     appScope = CoroutineScope(Dispatchers.Unconfined),
+    teamWaitMs = TEST_TEAM_WAIT_MS,
+    warn = { warnings += it },
 )

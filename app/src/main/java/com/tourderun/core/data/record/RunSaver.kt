@@ -20,7 +20,7 @@ interface RunSaver {
      * 거리를 반올림해 0m면 저장하지 않고 실패를 돌려준다(페이스를 계산할 수 없음, M-05).
      *
      * @param team 저장하는 순간의 내 팀(`MyTeamSource`의 값). `standing.distanceM`이 저장 전 팀 거리(캐시)다.
-     *   null이면 팀 없이 `runs`·`users`만 쓴다(과도기)
+     *   null이면 팀 없이 `runs`·`users`만 쓴다(팀이 없는 사용자)
      * @param title 사용자가 비워 두면 `defaultRunTitle()` 값을 넘긴다
      * @param onServerConfirmed 서버가 배치를 받아들였을 때 한 번 부른다(#23, 기기에 남긴 위치점·진행 상태 정리용).
      *   오프라인이면 온라인이 되어 반영된 뒤에 불리고, 그 전에 앱이 꺼지면 불리지 않는다. 서버가 거부하면 부르지 않는다
@@ -53,12 +53,13 @@ interface RunSaver {
 }
 
 /**
- * 저장에 넘길 팀. 세션에 팀이 없으면(`NoTeam` 등) null이라 `runs`·`users` 두 문서만 쓴다.
- * 팀이 있고 [myTeam]이 세션의 팀과 같은 팀이면 [myTeam](`MyTeamSource`의 값)을 쓴다.
- * 세션의 팀과 다르면(지금은 [myTeam]이 고정값 `fake-my-team`이라 항상) Firestore에 없는 팀 문서를 쓰게 되어
- * 배치 전체가 거부되므로 null(팀 없이 저장)로 둔다.
+ * 저장에 넘길 팀. [myTeam](`MyTeamSource`의 값, 세션 teamId로 읽은 `teams` 문서)이 세션의 팀과 같으면 [myTeam], 아니면 null.
  *
- * TODO(REC-01): `TeamRepository`(권민찬)가 생기면 세션의 teamId로 읽은 팀으로 바꾼다(#45).
+ * null의 뜻은 세션에 따라 다르다.
+ * - 세션에 팀이 없음(`NoTeam` 등): 팀 없이 `runs`·`users` 두 문서만 저장한다
+ * - 세션에 팀이 있음(팀 문서 없음, 다른 팀 문서): **저장하지 않는다**(`RunSaveCoordinator`).
+ *   팀 없이 저장하면 `runs.teamId`(null)가 `users.teamId`와 달라 보안 규칙이 배치를 거부하고,
+ *   다른 팀 문서로 저장하면 남의 팀 거리에 더하게 된다
  */
 fun saveTeamOf(session: SessionState, myTeam: MyTeam?): MyTeam? {
     val teamId = session.teamId ?: return null
