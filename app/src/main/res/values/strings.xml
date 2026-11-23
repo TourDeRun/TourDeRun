@@ -134,6 +134,10 @@
     <string name="join_notice">참여 전에 달린 기록은 팀 거리에 더해지지 않아요 · 인터넷 연결이 필요해요</string>
     <string name="join_submit">참가하기</string>
     <string name="join_error_not_found">코드를 다시 확인해 주세요</string>
+    <string name="join_error_full">인원이 가득 찼어요</string>
+    <string name="join_error_already">지금 팀에서 나온 뒤 참여할 수 있어요</string>
+    <string name="join_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="join_error_failed">참여하지 못했어요. 잠시 후 다시 시도해 주세요</string>
 
     <!-- S06 초대 코드 공유 -->
     <string name="invite_created">팀이 만들어졌어요!</string>

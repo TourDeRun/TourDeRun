@@ -2,6 +2,7 @@ package com.tourderun.core.data.team
 
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.TeamDto
+import com.tourderun.domain.team.JoinRejection
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -30,6 +31,29 @@ interface TeamRepository {
      * 실시간으로 읽는다. 코드는 팀원만 볼 수 있다(보안 규칙). 문서가 없으면 `Ready(null)`.
      */
     fun observeInviteCode(teamId: String, uid: String): Flow<Loaded<String?>>
+
+    /**
+     * TEAM-03 코드 → 들어갈 팀 미리 보기 (S05). `inviteCodes/{code}` → `teams/{teamId}`를 **서버에서** 읽는다.
+     * 없는 코드면 `success(null)`. 오프라인·시간 초과는 failure.
+     *
+     * @param code [com.tourderun.domain.team.normalizeInviteCode]로 정리한 6자리
+     */
+    suspend fun findTeamByCode(code: String): Result<TeamDto?>
+
+    /**
+     * TEAM-03 초대 코드로 참여. 트랜잭션(온라인 필수) 안에서 코드·팀 인원·내 teamId를 다시 읽고
+     * `teamJoinPlan`(members 생성, teams.memberCount +1, users.teamId)을 쓴다.
+     * 실패(오프라인·시간 초과·규칙 거절)는 failure, 참여할 수 없는 이유는 [JoinOutcome]으로 돌려준다.
+     */
+    suspend fun joinTeam(uid: String, nickname: String, code: String): Result<JoinOutcome>
+}
+
+/** TEAM-03 참여 결과. */
+sealed interface JoinOutcome {
+    data class Joined(val teamId: String) : JoinOutcome
+    data class Rejected(val reason: JoinRejection) : JoinOutcome
+    /** 코드 문서나 팀 문서가 없다 (팀이 없어졌거나 잘못 입력). */
+    data object NotFound : JoinOutcome
 }
 
 /** 방금 만든 팀. */

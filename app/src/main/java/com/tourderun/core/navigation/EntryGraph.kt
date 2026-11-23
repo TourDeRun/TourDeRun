@@ -24,8 +24,7 @@ import com.tourderun.feature.auth.ui.TermsScreen
 import com.tourderun.feature.auth.ui.TermsUiState
 import com.tourderun.feature.team.ui.CreateTeamScreen
 import com.tourderun.feature.team.ui.InviteCodeScreen
-import com.tourderun.feature.team.ui.JoinTeamDialog
-import com.tourderun.feature.team.ui.JoinTeamUiState
+import com.tourderun.feature.team.ui.JoinTeamScreen
 import com.tourderun.feature.team.ui.TeamStartScreen
 
 /** 앱을 열었을 때의 시작 화면. 닉네임이 없으면 약관(S01-1)부터 다시 한다(AUTH-02, D-08). */
@@ -115,17 +114,10 @@ internal fun NavGraphBuilder.entryGraph(
                     navController.navigate(InviteCodeRoute)
                 },
             )
-            TeamDialog.JOIN -> {
-                // TODO(TEAM-03): JoinTeamViewModel로 코드 미리 보기(inviteCodes → teams)와 참여 트랜잭션을 붙인다.
-                //  그 전까지는 코드 입력만 되고 참여 버튼은 눌리지 않는다(preview가 없음).
-                var code by remember { mutableStateOf("") }
-                JoinTeamDialog(
-                    uiState = JoinTeamUiState(code = code),
-                    onDismiss = { dialog = TeamDialog.NONE },
-                    onCodeChange = { code = it.uppercase() },
-                    onJoin = {},
-                )
-            }
+            TeamDialog.JOIN -> JoinTeamScreen(
+                onDismiss = { dialog = TeamDialog.NONE },
+                onJoined = { navController.resetTo(HomeRoute) },
+            )
         }
     }
 
