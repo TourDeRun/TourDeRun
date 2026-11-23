@@ -60,6 +60,7 @@ fun RunRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var askPermission by rememberSaveable { mutableStateOf(false) }
+    var startFailed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(viewModel) {
         viewModel.eventFlow.collect { event ->
             when (event) {
@@ -67,7 +68,10 @@ fun RunRoute(
                 RunEvent.StartService -> if (!RunTrackingService.start(context)) {
                     // 시작 요청이 거절되면 onStartCommand까지 가지 않으므로 여기서 러닝을 되돌린다.
                     viewModel.onServiceStartFailed()
-                    askPermission = true
+                    when (serviceStartFailureNotice(context.hasRunPermissions())) {
+                        ServiceStartFailureNotice.Permission -> askPermission = true
+                        ServiceStartFailureNotice.Retry -> startFailed = true
+                    }
                 }
                 RunEvent.RequestResume -> if (context.hasRunPermissions()) viewModel.resume() else askPermission = true
                 RunEvent.OpenResult -> onOpenResult()
@@ -96,6 +100,35 @@ fun RunRoute(
             onDismiss = { askPermission = false },
         )
     }
+    if (startFailed) RunStartFailedDialog(onDismiss = { startFailed = false })
+}
+
+/** RUN-04 측정 서비스를 시작하지 못했을 때 보일 안내. */
+enum class ServiceStartFailureNotice {
+    /** 위치·알림 권한이 없다. 권한 안내를 띄운다. */
+    Permission,
+
+    /** 권한은 있는데 시스템이 시작을 거절했다(백그라운드 시작 제한 등). 다시 시도하라고 알린다. */
+    Retry,
+}
+
+fun serviceStartFailureNotice(hasRunPermissions: Boolean): ServiceStartFailureNotice =
+    if (hasRunPermissions) ServiceStartFailureNotice.Retry else ServiceStartFailureNotice.Permission
+
+/** 권한은 있는데 측정 서비스가 시작되지 않았을 때. 러닝은 일시정지(카운트다운이면 취소) 상태라 다시 누르면 된다. S09와 복구 안내가 같이 쓴다. */
+@Composable
+internal fun RunStartFailedDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = { Text(stringResource(R.string.run_start_failed), style = TdrTheme.typography.body, color = TdrTheme.colors.ink) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_confirm), color = TdrTheme.colors.ink, style = TdrTheme.typography.subtitle)
+            }
+        },
+        containerColor = TdrTheme.colors.bgSurface,
+        shape = TdrShapes.lg,
+    )
 }
 
 /**

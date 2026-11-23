@@ -212,6 +212,7 @@
     <string name="run_notification_running">측정 중 · %1$skm</string>
     <string name="run_notification_paused">일시정지 · %1$skm · %2$s</string>
     <string name="run_permission_resume_title">다시 시작하려면 위치 권한이 필요해요</string>
+    <string name="run_start_failed">측정을 시작하지 못했어요. 다시 시도해 주세요.</string>
     <string name="run_recovery_title">종료되지 않은 러닝이 있어요</string>
     <string name="run_recovery_body">%1$skm · %2$s까지 측정됐어요. 앱이 꺼져 있던 시간은 일시정지로 계산해요.</string>
     <string name="run_recovery_resume">이어하기</string>
