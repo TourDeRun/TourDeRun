@@ -3,7 +3,8 @@
      adb shell am start -n com.tourderun/.debug.DebugSaveRunActivity       (REC-01 러닝 저장)
      adb shell am start -n com.tourderun/.debug.DebugStageRankActivity     (S15 스테이지 순위)
      adb shell am start -n com.tourderun/.debug.DebugWeeklyStatsActivity   (S16 주간 통계)
-     adb shell am start -n com.tourderun/.debug.DebugStageClearActivity    (JRN-05 스테이지 클리어) -->
+     adb shell am start -n com.tourderun/.debug.DebugStageClearActivity    (JRN-05 스테이지 클리어)
+     adb shell am start -n com.tourderun/.debug.DebugRunResultActivity     (S10 러닝 결과 추월) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
@@ -22,5 +23,9 @@
             android:name=".debug.DebugStageClearActivity"
             android:exported="true"
             android:label="@string/debug_clear_title" />
+        <activity
+            android:name=".debug.DebugRunResultActivity"
+            android:exported="true"
+            android:label="@string/debug_overtake_title" />
     </application>
 </manifest>

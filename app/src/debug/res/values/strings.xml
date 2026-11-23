@@ -33,4 +33,11 @@
     <string name="debug_clear_finish">완주</string>
     <string name="debug_clear_owned">이미 가진 카드</string>
     <string name="debug_clear_closed">연출을 닫았어요. 칩을 누르면 다시 열려요.</string>
+
+    <!-- S10 러닝 결과 추월 (RACE-02) -->
+    <string name="debug_overtake_title">[디버그] S10 러닝 결과 추월</string>
+    <string name="debug_overtake_one">한 팀</string>
+    <string name="debug_overtake_two">두 팀</string>
+    <string name="debug_overtake_none">못 넘음</string>
+    <string name="debug_overtake_next_stage">스테이지 넘음</string>
 </resources>
