@@ -27,6 +27,7 @@ class FirestoreRunSaver @Inject constructor(
         team: MyTeam?,
         title: String,
         onServerConfirmed: () -> Unit,
+        onServerRejected: () -> Unit,
     ): Result<SaveOutcome?> {
         val distanceM = savedDistanceM(result)
         // 페이스를 계산할 수 없는 거리 0은 저장하지 않는다(100m 미만은 원래 저장 대상이 아님, M-05).
@@ -36,9 +37,15 @@ class FirestoreRunSaver @Inject constructor(
         return try {
             val batch = firestore.batchOf(runSavePlan(result, distanceM, uid, team, title))
             // 오프라인이면 기기에 대기했다가 온라인이 되면 올라간다. 기다리지 않는다.
+            // commit() Task는 서버 응답으로 끝난다: 오프라인 동안은 대기(성공·실패 둘 다 안 불림), 거부되면 실패.
+            // 공식 문서는 "쓰기는 네트워크가 돌아올 때까지 쌓인다"(enable-offline)와
+            // "쓰기가 끝나면 Task가 끝난다"(WriteBatch.commit)까지만 적고, 오프라인에서 실패가 안 불린다고 직접 적지는 않는다.
             batch.commit()
                 .addOnSuccessListener { onServerConfirmed() }
-                .addOnFailureListener { e -> Log.w(TAG, "러닝 저장 배치 실패", e) }
+                .addOnFailureListener { e ->
+                    Log.w(TAG, "러닝 저장 배치 거부", e)
+                    onServerRejected()
+                }
             Result.success(team?.let { saveOutcome(it.standing.distanceM, distanceM, routeFor(it.season)) })
         } catch (e: Exception) {
             Log.w(TAG, "러닝 저장 배치 만들기 실패", e)

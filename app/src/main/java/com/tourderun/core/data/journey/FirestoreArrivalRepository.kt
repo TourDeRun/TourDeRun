@@ -100,5 +100,5 @@ internal fun pendingFor(uid: String?, team: MyTeam?, seen: SeenOf?): PendingSeen
     val key = memberKeyOf(uid, team) ?: return null
     if (team == null || seen == null || seen.key != key) return null
     val pending = pendingArrivals(seen.seenArrivals, team.standing.distanceM, routeFor(team.season)) ?: return null
-    return PendingSeen(key.uid, key.teamId, team.standing.name, pending)
+    return PendingSeen(key.uid, key.teamId, team.standing.name, pending, team.season)
 }

@@ -16,7 +16,7 @@ interface RunSaver {
 
     /**
      * 커밋을 **시작만** 하고 바로 돌아온다(오프라인 대기 쓰기라 `await()`하지 않는다).
-     * 실패는 배치를 만드는 단계의 오류만 [Result]로 돌려준다. 서버 반영 실패는 로그로만 남는다.
+     * 실패는 배치를 만드는 단계의 오류만 [Result]로 돌려준다. 서버 반영 실패는 [onServerRejected]로 알린다.
      * 거리를 반올림해 0m면 저장하지 않고 실패를 돌려준다(페이스를 계산할 수 없음, M-05).
      *
      * @param team 저장하는 순간의 내 팀(`MyTeamSource`의 값). `standing.distanceM`이 저장 전 팀 거리(캐시)다.
@@ -24,6 +24,8 @@ interface RunSaver {
      * @param title 사용자가 비워 두면 `defaultRunTitle()` 값을 넘긴다
      * @param onServerConfirmed 서버가 배치를 받아들였을 때 한 번 부른다(#23, 기기에 남긴 위치점·진행 상태 정리용).
      *   오프라인이면 온라인이 되어 반영된 뒤에 불리고, 그 전에 앱이 꺼지면 불리지 않는다. 서버가 거부하면 부르지 않는다
+     * @param onServerRejected 서버가 배치를 받아들이지 않았을 때(보안 규칙 거부 등). 기기 캐시의 쓰기는 되돌려진다.
+     *   [onServerConfirmed]와 둘 중 하나만 한 번 불린다. 오프라인은 실패가 아니라 대기라 부르지 않는다
      * @return S10 결과 화면 값. 서버를 기다리지 않고 기기에서 계산한다(`before` = 캐시된 팀 거리, `after = before + 이번 거리`).
      *   팀이 없으면 null
      */
@@ -33,6 +35,7 @@ interface RunSaver {
         team: MyTeam?,
         title: String,
         onServerConfirmed: () -> Unit = {},
+        onServerRejected: () -> Unit = {},
     ): Result<SaveOutcome?>
 
     /**

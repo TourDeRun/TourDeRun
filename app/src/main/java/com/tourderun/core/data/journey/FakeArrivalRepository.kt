@@ -28,7 +28,7 @@ class FakeArrivalRepository(scenario: ArrivalScenario) : ArrivalRepository {
 
     override fun observePending(uid: String?): Flow<PendingSeen?> {
         if (uid == null) return flowOf(null)
-        return state.map { pending -> pending?.let { PendingSeen(uid, TEAM_ID, TEAM_NAME, it) } }
+        return state.map { pending -> pending?.let { PendingSeen(uid, TEAM_ID, TEAM_NAME, it, SEASON) } }
     }
 
     override fun markSeen(seen: PendingSeen, newCardCityIds: List<String>): Result<Unit> {
