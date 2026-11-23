@@ -25,4 +25,11 @@
     <!-- S16 주간 통계 -->
     <string name="debug_weekly_title">[디버그] S16 주간 통계</string>
     <string name="debug_weekly_zero">이번 주 0km</string>
+
+    <!-- JRN-05 스테이지 클리어 -->
+    <string name="debug_clear_title">[디버그] JRN-05 스테이지 클리어</string>
+    <string name="debug_clear_one_city">안양 도착</string>
+    <string name="debug_clear_two_cities">두 도시</string>
+    <string name="debug_clear_finish">완주</string>
+    <string name="debug_clear_closed">연출을 닫았어요. 칩을 누르면 다시 열려요.</string>
 </resources>

@@ -1,5 +1,8 @@
 package com.tourderun.feature.team.ui
 
+import android.content.Intent
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,16 +20,23 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
 import com.tourderun.core.designsystem.component.InviteCodeBox
 import com.tourderun.core.designsystem.component.MascotFace
@@ -50,9 +60,55 @@ data class InviteCodeUiState(
     val routeKm: Int,
 )
 
-/** S06 초대 코드 공유. 복사·공유 후 [onDepart]로 홈에 간다. */
+/**
+ * S06 초대 코드 공유 (TEAM-02). 내 팀과 초대 코드를 [InviteCodeViewModel]에서 받는다.
+ * 복사는 클립보드, 공유는 Android 공유 시트. 불러오는 중이면 스피너.
+ */
 @Composable
 fun InviteCodeScreen(
+    onBack: () -> Unit,
+    onDepart: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: InviteCodeViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state = uiState
+    if (state == null) {
+        Box(
+            modifier
+                .fillMaxSize()
+                .background(TdrTheme.colors.bgSurface),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = TdrTheme.colors.brand)
+        }
+        return
+    }
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val shareText = stringResource(R.string.invite_share_text, state.teamName, state.code)
+    InviteCodeContent(
+        uiState = state,
+        onBack = onBack,
+        onCopyCode = {
+            clipboard.setText(AnnotatedString(state.code))
+            // Android 13부터는 시스템이 복사 알림을 띄우므로 그 전 버전에서만 알린다
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                Toast.makeText(context, R.string.invite_copied, Toast.LENGTH_SHORT).show()
+            }
+        },
+        onShareCode = {
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareText)
+            context.startActivity(Intent.createChooser(send, null))
+        },
+        onDepart = onDepart,
+        modifier = modifier,
+    )
+}
+
+/** S06 초대 코드 공유 화면 그리기만 한다 (상태 없음, Preview 대상). 복사·공유 후 [onDepart]로 홈에 간다. */
+@Composable
+fun InviteCodeContent(
     uiState: InviteCodeUiState,
     onBack: () -> Unit,
     onCopyCode: () -> Unit,
@@ -132,9 +188,9 @@ private fun MemberSlots(count: Int, max: Int) {
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
-private fun InviteCodeScreenPreview() {
+private fun InviteCodeContentPreview() {
     TdrTheme {
-        InviteCodeScreen(
+        InviteCodeContent(
             InviteCodeUiState("뛰뛰크루", TeamAppearance(), "4K7Q2M", 1, 4, 1, "서울", "부산", 350),
             {}, {}, {}, {},
         )

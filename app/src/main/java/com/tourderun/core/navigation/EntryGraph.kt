@@ -18,19 +18,15 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.tourderun.R
-import com.tourderun.core.designsystem.component.TeamAppearance
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.preview.PreviewSamples
-import com.tourderun.domain.route.routeFor
 import com.tourderun.feature.auth.ui.LoginScreen
 import com.tourderun.feature.auth.ui.NicknameScreen
 import com.tourderun.feature.auth.ui.TermsItem
 import com.tourderun.feature.auth.ui.TermsScreen
 import com.tourderun.feature.auth.ui.TermsUiState
-import com.tourderun.feature.team.ui.CreateTeamDialog
-import com.tourderun.feature.team.ui.CreateTeamUiState
+import com.tourderun.feature.team.ui.CreateTeamScreen
 import com.tourderun.feature.team.ui.InviteCodeScreen
-import com.tourderun.feature.team.ui.InviteCodeUiState
 import com.tourderun.feature.team.ui.JoinTeamDialog
 import com.tourderun.feature.team.ui.JoinTeamPreviewUi
 import com.tourderun.feature.team.ui.JoinTeamUiState
@@ -53,12 +49,12 @@ internal fun NavController.followEntryStage(stage: EntryStage) {
     val destination = currentDestination ?: return
     val onLogin = destination.hasRoute<LoginRoute>()
     val inSignUp = destination.hasRoute<TermsRoute>() || destination.hasRoute<NicknameRoute>()
-    val onTeamStart = destination.hasRoute<TeamStartRoute>()
     when (stage) {
         EntryStage.SIGNED_OUT -> if (!onLogin) resetTo(LoginRoute)
         EntryStage.NEEDS_NICKNAME -> if (onLogin) resetTo(TermsRoute)
         EntryStage.NEEDS_TEAM -> if (onLogin || inSignUp) resetTo(TeamStartRoute)
-        EntryStage.READY -> if (onLogin || inSignUp || onTeamStart) resetTo(HomeRoute)
+        // 팀 시작 화면(S03)에서는 직접 옮긴다: 만들기는 홈 위에 S06, 참여는 홈 (TEAM-01·03)
+        EntryStage.READY -> if (onLogin || inSignUp) resetTo(HomeRoute)
     }
 }
 
@@ -118,24 +114,14 @@ internal fun NavGraphBuilder.entryGraph(
 
         when (dialog) {
             TeamDialog.NONE -> Unit
-            TeamDialog.CREATE -> {
-                var state by remember { mutableStateOf(CreateTeamUiState()) }
-                CreateTeamDialog(
-                    uiState = state,
-                    onDismiss = { dialog = TeamDialog.NONE },
-                    onNameChange = { state = state.copy(name = it) },
-                    onColorSelect = { state = state.copy(color = it) },
-                    onIconSelect = { state = state.copy(icon = it) },
-                    onSubmit = {
-                        if (state.isValid) {
-                            session.joinTeam(MockTeam(state.name.trim(), TeamAppearance(state.color, state.icon)))
-                            // S06에서 뒤로 가도 팀 시작이 아니라 홈이 나오게, 홈을 먼저 깔고 그 위에 S06을 올린다.
-                            navController.resetTo(HomeRoute)
-                            navController.navigate(InviteCodeRoute)
-                        }
-                    },
-                )
-            }
+            TeamDialog.CREATE -> CreateTeamScreen(
+                onDismiss = { dialog = TeamDialog.NONE },
+                onCreated = {
+                    // S06에서 뒤로 가도 팀 시작이 아니라 홈이 나오게, 홈을 먼저 깔고 그 위에 S06을 올린다.
+                    navController.resetTo(HomeRoute)
+                    navController.navigate(InviteCodeRoute)
+                },
+            )
             TeamDialog.JOIN -> {
                 var code by remember { mutableStateOf("") }
                 val found = code == MockSession.INVITE_CODE
@@ -175,22 +161,8 @@ internal fun NavGraphBuilder.entryGraph(
     }
 
     composable<InviteCodeRoute> {
-        val team = session.team
-        val route = routeFor(SEASON)
         InviteCodeScreen(
-            uiState = InviteCodeUiState(
-                teamName = team?.name.orEmpty(),
-                appearance = team?.appearance ?: TeamAppearance(),
-                code = MockSession.INVITE_CODE,
-                memberCount = 1,
-                season = SEASON,
-                routeFrom = route.cities.first().nameKo,
-                routeTo = route.cities.last().nameKo,
-                routeKm = (route.totalM / 1_000).toInt(),
-            ),
             onBack = { navController.popBackStack() },
-            onCopyCode = {}, // TODO(TEAM-02): 클립보드 복사
-            onShareCode = {}, // TODO(TEAM-02): 공유 시트
             onDepart = { navController.popBackStack() },
         )
     }
@@ -198,4 +170,3 @@ internal fun NavGraphBuilder.entryGraph(
 
 private enum class TeamDialog { NONE, CREATE, JOIN }
 
-private const val SEASON = 1
