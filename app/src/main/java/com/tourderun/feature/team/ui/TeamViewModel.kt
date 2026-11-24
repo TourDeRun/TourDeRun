@@ -3,7 +3,10 @@ package com.tourderun.feature.team.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tourderun.core.data.Clock
+import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.firestore.toDataError
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.TeamMemberDto
 import com.tourderun.core.data.session.SessionRepository
@@ -23,7 +26,14 @@ import com.tourderun.domain.team.weeklyMvps
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -39,11 +49,44 @@ import kotlinx.coroutines.flow.stateIn
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TeamViewModel @Inject constructor(
-    session: SessionRepository,
-    teamRepository: TeamRepository,
+    private val session: SessionRepository,
+    private val teamRepository: TeamRepository,
     statsRepository: StatsRepository,
     clock: Clock,
 ) : ViewModel() {
+
+    private val _leave = MutableStateFlow(LeaveUiState())
+    /** TEAM-07 나가기 확인 창·진행 상태. */
+    val leave: StateFlow<LeaveUiState> = _leave.asStateFlow()
+
+    private val _events = Channel<TeamEvent>(Channel.BUFFERED)
+    val events: Flow<TeamEvent> = _events.receiveAsFlow()
+
+    fun onAction(action: TeamAction) {
+        when (action) {
+            TeamAction.LeaveClick -> _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            TeamAction.LeaveDismiss -> _leave.update { if (it.isLeaving) it else LeaveUiState() }
+            TeamAction.LeaveConfirm -> leaveTeam()
+        }
+    }
+
+    private fun leaveTeam() {
+        if (_leave.value.isLeaving) return
+        val state = session.state.value
+        val uid = state.uid ?: return
+        val teamId = state.teamId ?: return
+        _leave.update { it.copy(isLeaving = true, errorRes = null) }
+        viewModelScope.launch {
+            teamRepository.leaveTeam(uid, teamId)
+                .onSuccess {
+                    _leave.value = LeaveUiState()
+                    _events.trySend(TeamEvent.Left)
+                }
+                .onFailure { error ->
+                    _leave.update { it.copy(isLeaving = false, errorRes = leaveErrorRes(error.toDataError())) }
+                }
+        }
+    }
 
     /** null이면 불러오는 중(팀이 없거나 팀·팀원 값이 아직 없음). */
     val uiState: StateFlow<TeamUiState?> = session.state
@@ -131,4 +174,28 @@ internal fun teamUiState(
         formerM = former?.distanceM ?: 0L,
         formerPercent = former?.percent ?: 0,
     )
+}
+
+/** TEAM-07 나가기 확인 창 상태. */
+data class LeaveUiState(
+    val showConfirm: Boolean = false,
+    val isLeaving: Boolean = false,
+    val errorRes: Int? = null,
+)
+
+sealed interface TeamAction {
+    data object LeaveClick : TeamAction
+    data object LeaveConfirm : TeamAction
+    data object LeaveDismiss : TeamAction
+}
+
+sealed interface TeamEvent {
+    /** 팀에서 나갔다 → S03 팀 시작으로. */
+    data object Left : TeamEvent
+}
+
+/** 나가기 실패 → 문구. 트랜잭션이라 연결 문제면 다시 시도를 권한다. */
+internal fun leaveErrorRes(error: DataError): Int = when (error) {
+    DataError.Unavailable -> R.string.team_leave_error_network
+    DataError.PermissionDenied, DataError.Other -> R.string.team_leave_error_failed
 }

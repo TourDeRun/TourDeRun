@@ -280,6 +280,12 @@
     <string name="profile_logout_title">로그아웃할까요?</string>
     <string name="profile_logout_body">다시 로그인하면 팀과 기록이 그대로 있어요</string>
     <string name="profile_withdraw">회원 탈퇴</string>
+    <string name="withdraw_title">정말 탈퇴할까요?</string>
+    <string name="withdraw_body">내 러닝 기록과 계정 정보가 지워지고 되돌릴 수 없어요. 내가 달린 거리는 팀에 남아요. 계속하려면 구글 계정을 한 번 더 확인해요.</string>
+    <string name="withdraw_confirm">탈퇴하기</string>
+    <string name="withdraw_error_reauth">구글 계정을 확인하지 못했어요. 다시 시도해 주세요</string>
+    <string name="withdraw_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="withdraw_error_failed">탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="profile_account_notice">회원 탈퇴는 구글 재인증 후 진행돼요. 러닝 측정 중에는 로그아웃·탈퇴를 할 수 없어요.</string>
 
     <!-- S14 팀 -->
@@ -293,6 +299,11 @@
     <string name="team_kick_desc">%1$s 내보내기</string>
     <string name="team_invite_label">초대 코드 · 팀원에게만 보여요</string>
     <string name="team_leave">팀 나가기</string>
+    <string name="team_leave_confirm_title">팀에서 나갈까요?</string>
+    <string name="team_leave_confirm_body">내가 달린 거리는 팀에 남아요. 다시 들어오려면 초대 코드가 필요해요</string>
+    <string name="team_leave_confirm_last">마지막 팀원이라 나가면 팀이 없어져요</string>
+    <string name="team_leave_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="team_leave_error_failed">나가지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="team_leave_notice">팀장이 나가면 가장 먼저 가입한 팀원이 팀장이 돼요 · 나간 팀원의 거리는 팀에 남아요</string>
 
     <!-- S14 팀 정보 수정 -->

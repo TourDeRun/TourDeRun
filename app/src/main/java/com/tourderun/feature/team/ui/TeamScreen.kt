@@ -1,5 +1,7 @@
 package com.tourderun.feature.team.ui
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.AlertDialog
 import com.tourderun.core.designsystem.component.TeamColor
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -76,10 +78,19 @@ fun TeamScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onShowInvite: () -> Unit,
+    onLeft: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TeamViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val leave by viewModel.leave.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                TeamEvent.Left -> onLeft()
+            }
+        }
+    }
     val state = uiState
     if (state == null) {
         Box(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas), contentAlignment = Alignment.Center) {
@@ -93,8 +104,53 @@ fun TeamScreen(
         onEdit = onEdit,
         onKick = {}, // TODO(TEAM-06): 팀원 내보내기
         onShareInvite = onShowInvite,
-        onLeave = {}, // TODO(TEAM-07): 팀 나가기
+        onLeave = { viewModel.onAction(TeamAction.LeaveClick) },
         modifier = modifier,
+    )
+    if (leave.showConfirm) {
+        LeaveTeamDialog(
+            isLast = state.team.memberCount <= 1,
+            leave = leave,
+            onConfirm = { viewModel.onAction(TeamAction.LeaveConfirm) },
+            onDismiss = { viewModel.onAction(TeamAction.LeaveDismiss) },
+        )
+    }
+}
+
+/** TEAM-07 나가기 확인 창. 마지막 1명이면 팀이 없어진다고 알린다. */
+@Composable
+private fun LeaveTeamDialog(isLast: Boolean, leave: LeaveUiState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.team_leave_confirm_title), style = type.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
+                Text(
+                    stringResource(if (isLast) R.string.team_leave_confirm_last else R.string.team_leave_confirm_body),
+                    style = type.body,
+                    color = colors.inkMuted,
+                )
+                leave.errorRes?.let { Text(stringResource(it), style = type.caption, color = colors.danger) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !leave.isLeaving) {
+                Text(
+                    stringResource(R.string.team_leave),
+                    color = if (leave.isLeaving) colors.inkMuted else colors.danger,
+                    style = type.subtitle,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !leave.isLeaving) {
+                Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle)
+            }
+        },
+        containerColor = colors.bgSurface,
+        shape = TdrShapes.lg,
     )
 }
 

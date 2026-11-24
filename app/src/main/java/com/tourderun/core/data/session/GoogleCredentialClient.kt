@@ -1,4 +1,4 @@
-package com.tourderun.feature.auth.data
+package com.tourderun.core.data.session
 
 import android.content.Context
 import android.util.Log
@@ -21,7 +21,7 @@ sealed interface GoogleSignInResult {
 }
 
 /**
- * S01: 기기의 구글 계정 선택 창(Credential Manager)을 띄우고 ID 토큰을 받는다 (AUTH-01).
+ * S01 로그인·S13 탈퇴 재인증(AUTH-05): 기기의 구글 계정 선택 창(Credential Manager)을 띄우고 ID 토큰을 받는다 (AUTH-01).
  * 창을 띄우려면 Activity Context가 필요하다. ViewModel은 Context를 받지 않으므로 Screen이 부르고 결과만 ViewModel에 넘긴다.
  */
 class GoogleCredentialClient {

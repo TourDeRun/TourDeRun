@@ -48,7 +48,7 @@ import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
-import com.tourderun.feature.auth.data.GoogleCredentialClient
+import com.tourderun.core.data.session.GoogleCredentialClient
 import kotlinx.coroutines.launch
 
 /** S01 로그인 화면 상태. */

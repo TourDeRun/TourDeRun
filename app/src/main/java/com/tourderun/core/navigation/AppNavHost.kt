@@ -37,6 +37,9 @@ import com.tourderun.feature.profile.ui.NicknameEditDialog
 import com.tourderun.feature.profile.ui.ProfileAction
 import com.tourderun.feature.profile.ui.ProfileScreen
 import com.tourderun.feature.profile.ui.ProfileViewModel
+import com.tourderun.feature.profile.ui.WithdrawAction
+import com.tourderun.feature.profile.ui.WithdrawFlow
+import com.tourderun.feature.profile.ui.WithdrawViewModel
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
 import com.tourderun.feature.record.ui.RecordsScreen
@@ -104,6 +107,7 @@ fun AppNavHost(
             composable<ProfileRoute> {
                 // TODO(AUTH-03): 팀 역할(팀장/팀원)과 최근 기록 한 줄은 다음에 붙인다.
                 val profileViewModel: ProfileViewModel = hiltViewModel()
+                val withdrawViewModel: WithdrawViewModel = hiltViewModel()
                 val header by profileViewModel.header.collectAsStateWithLifecycle()
                 val nicknameEdit by profileViewModel.nicknameEdit.collectAsStateWithLifecycle()
                 // AUTH-04: 확인 창이 열렸는지는 화면 회전에도 남게 rememberSaveable로 둔다.
@@ -112,6 +116,7 @@ fun AppNavHost(
                     uiState = TempUiStates.profile.copy(
                         nickname = header.nickname ?: TempUiStates.profile.nickname,
                         teamName = header.teamName,
+                        isLeader = header.isLeader,
                         showLogoutConfirm = showLogoutConfirm,
                         totalDistanceM = header.totalM,
                         runCount = header.runCount.toInt(),
@@ -127,9 +132,9 @@ fun AppNavHost(
                         showLogoutConfirm = false
                         entryViewModel.signOut()
                     },
-                    // TODO(AUTH-05): 실제 탈퇴. 지금은 로그아웃만 한다.
-                    onWithdraw = entryViewModel::signOut,
+                    onWithdraw = { withdrawViewModel.onAction(WithdrawAction.Click) },
                 )
+                WithdrawFlow(withdrawViewModel)
                 nicknameEdit?.let { edit ->
                     NicknameEditDialog(
                         state = edit,
@@ -168,11 +173,13 @@ fun AppNavHost(
             }
 
             composable<TeamRoute> {
-                // 초대 코드 공유는 S06을 다시 쓴다. 내보내기(TEAM-06)·나가기(TEAM-07)는 TeamScreen 안 TODO
+                // 초대 코드 공유는 S06을 다시 쓴다. 내보내기(TEAM-06)는 TeamScreen 안 TODO
                 TeamScreen(
                     onBack = back,
                     onEdit = { navController.navigate(TeamEditRoute) },
                     onShowInvite = { navController.navigate(InviteCodeRoute) },
+                    // TEAM-07: 나가면 users.teamId가 null → 팀 시작(S03)부터 다시
+                    onLeft = { navController.resetTo(TeamStartRoute) },
                 )
             }
             composable<TeamEditRoute> {

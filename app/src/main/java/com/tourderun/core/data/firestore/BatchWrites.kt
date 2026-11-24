@@ -23,6 +23,7 @@ fun FirebaseFirestore.batchOf(writes: List<DocWrite>): WriteBatch {
             WriteMode.SET -> batch.set(ref, fields)
             WriteMode.UPDATE -> batch.update(ref, fields)
             WriteMode.SET_MERGE -> batch.set(ref, fields, SetOptions.merge())
+            WriteMode.DELETE -> batch.delete(ref)
         }
     }
     return batch
@@ -41,6 +42,7 @@ fun Transaction.applyWrites(firestore: FirebaseFirestore, writes: List<DocWrite>
             WriteMode.SET -> set(ref, fields)
             WriteMode.UPDATE -> update(ref, fields)
             WriteMode.SET_MERGE -> set(ref, fields, SetOptions.merge())
+            WriteMode.DELETE -> delete(ref)
         }
     }
     return this
