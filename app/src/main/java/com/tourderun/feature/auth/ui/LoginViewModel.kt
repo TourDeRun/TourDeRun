@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseNetworkException
 import com.tourderun.R
 import com.tourderun.core.data.session.SessionRepository
-import com.tourderun.feature.auth.data.GoogleSignInResult
+import com.tourderun.core.data.session.GoogleSignInResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
