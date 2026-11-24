@@ -117,7 +117,7 @@ class StageClearControllerTest {
         val (c, shown) = withCards(FakeCardRepository(), distanceM = 85_000)
         val s = requireNotNull(shown())
         assertEquals(listOf("osan", "cheonan"), s.newCardCityIds)
-        assertEquals(EarnedCardUi("천안", "Cheonan", index = 4, total = 8), stageClearUiState(s.seen.pending, routeFor(1), s.newCardCityIds).card)
+        assertEquals(EarnedCardUi("천안", "Cheonan", index = 4, total = 8, count = 2), stageClearUiState(s.seen.pending, routeFor(1), s.newCardCityIds).card)
         c.confirm(s)
         assertEquals(listOf("osan", "cheonan"), lastArrivals.marked.single().second)
     }

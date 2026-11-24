@@ -28,6 +28,9 @@ object Format {
      */
     fun teamKm(meters: Long): String = kmDown(meters, decimals = 1)
 
+    /** 1km 미만 거리를 m 정수로. 840 → "840". 음수는 0. 단위는 문자열 리소스(`m_value`)가 붙인다. */
+    fun meters(meters: Long): String = meters.coerceAtLeast(0).toString()
+
     private fun kmRounded(meters: Long, decimals: Int, mode: RoundingMode): String =
         BigDecimal.valueOf(meters, 3).setScale(decimals, mode).toPlainString()
 

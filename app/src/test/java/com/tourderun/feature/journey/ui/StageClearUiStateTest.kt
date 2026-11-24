@@ -58,6 +58,19 @@ class StageClearUiStateTest {
         assertEquals(EarnedCardUi("부산", "Busan", index = 8, total = 8), stageClearUiState(pending, route, listOf("busan")).card)
     }
 
+    @Test fun `오산·천안을 한 번에 지나면 천안 카드에 2장 표시`() {
+        val pending = requireNotNull(pendingArrivals(1, 85_000, route))
+        assertEquals(
+            EarnedCardUi("천안", "Cheonan", index = 4, total = 8, count = 2),
+            stageClearUiState(pending, route, listOf("osan", "cheonan")).card,
+        )
+    }
+
+    @Test fun `카드 한 장이면 수는 1`() {
+        val pending = requireNotNull(pendingArrivals(0, 19_000, route))
+        assertEquals(1, stageClearUiState(pending, route, listOf("anyang")).card?.count)
+    }
+
     @Test fun `새 카드 빈 목록·null → 카드 없음`() {
         val pending = requireNotNull(pendingArrivals(0, 19_000, route))
         assertEquals(null, stageClearUiState(pending, route, emptyList()).card)
