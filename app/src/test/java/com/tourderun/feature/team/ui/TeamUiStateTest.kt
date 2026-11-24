@@ -1,5 +1,7 @@
 package com.tourderun.feature.team.ui
 
+import com.tourderun.core.data.DataError
+import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.TeamMemberDto
 import com.tourderun.core.designsystem.component.TeamColor
@@ -49,5 +51,38 @@ class TeamUiStateTest {
         val state = teamUiState(team(10_000, 2), listOf(member, leader), "", emptyMap(), myUid = "a")
         assertEquals(TeamColor.BLUE, state.members.first { it.uid == "a" }.color)
         assertEquals(TeamColor.NAVY, state.members.first { it.uid == "b" }.color)
+    }
+
+    @Test fun `팀원 목록을 못 읽으면 실패로 보인다`() {
+        val state = teamLoadState(
+            team = Loaded.Ready(team(0, 1), isFromCache = false),
+            members = Loaded.Failed(DataError.PermissionDenied),
+            inviteCode = "",
+            weeklyMemberM = emptyMap(),
+            myUid = "a",
+        )
+        assertEquals(TeamLoadState.Failed(DataError.PermissionDenied), state)
+    }
+
+    @Test fun `팀 문서가 없으면 불러오는 중으로 둔다`() {
+        val state = teamLoadState(
+            team = Loaded.Ready(null, isFromCache = false),
+            members = Loaded.Ready(listOf(leader), isFromCache = false),
+            inviteCode = "",
+            weeklyMemberM = emptyMap(),
+            myUid = "a",
+        )
+        assertEquals(TeamLoadState.Loading, state)
+    }
+
+    @Test fun `팀과 팀원이 오면 화면 값을 만든다`() {
+        val state = teamLoadState(
+            team = Loaded.Ready(team(10_000, 2), isFromCache = true),
+            members = Loaded.Ready(listOf(leader, member), isFromCache = true),
+            inviteCode = "ABC234",
+            weeklyMemberM = emptyMap(),
+            myUid = "a",
+        )
+        assertTrue(state is TeamLoadState.Ready)
     }
 }
