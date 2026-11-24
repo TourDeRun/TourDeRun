@@ -1,5 +1,8 @@
 package com.tourderun.core.data.account
 
+import com.tourderun.core.data.DataError
+import kotlinx.coroutines.flow.Flow
+
 /**
  * 계정 (AUTH-05 회원 탈퇴). 담당: 권민찬.
  * uid·teamId는 부르는 ViewModel이 `SessionRepository.state`에서 읽어 넘긴다.
@@ -16,4 +19,10 @@ interface AccountRepository {
      * 5. Firebase 계정 삭제 → 세션이 SignedOut이 된다
      */
     suspend fun withdraw(uid: String, teamId: String?, idToken: String): Result<Unit>
+
+    /**
+     * 탈퇴 실패. 팀을 나간 뒤에는 화면이 S03으로 옮겨져 탈퇴 창이 사라질 수 있어서,
+     * 앱 전체(AppNavHost)가 이 값을 받아 알린다(RUN-02, AUTH-05 리뷰).
+     */
+    val withdrawFailures: Flow<DataError>
 }

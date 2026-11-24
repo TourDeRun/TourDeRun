@@ -1,6 +1,9 @@
 package com.tourderun.feature.run.session
 
 import com.tourderun.core.data.local.ActiveRunStore
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
+import com.tourderun.core.data.run.RunActivity
 import com.tourderun.core.data.local.PendingRunSave
 import com.tourderun.core.data.local.PendingSaveState
 import com.tourderun.core.data.local.RunPointDao
@@ -33,7 +36,7 @@ import kotlinx.coroutines.withContext
 class RunSessionManager @Inject constructor(
     private val pointDao: RunPointDao,
     private val store: ActiveRunStore,
-) {
+) : RunActivity {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(RunState())
     val state: StateFlow<RunState> = mutableState.asStateFlow()
@@ -49,6 +52,21 @@ class RunSessionManager @Inject constructor(
     private var lastAcceptedMs: Long? = null
     // 삽입 실패 또는 취소 시 실제 커밋 여부가 불확실하므로 다음 상태 계산 전에 다시 읽는다.
     private var pointsNeedReload = false
+
+    // ── RUN-02 다른 영역에 알리는 러닝 활동 ────────────────────
+    override val isBusy: Flow<Boolean> =
+        combine(state, store.session, store.pendingSaves) { current, stored, pending ->
+            isRunBusy(current.phase, hasStoredSession = stored != null, pendingSaveCount = pending.size)
+        }.distinctUntilChanged()
+
+    override suspend fun clearDeviceData() = mutex.withLock {
+        withContext(NonCancellable) {
+            pointDao.deleteAll()
+            store.clearAll()
+            resetInMemory()
+            mutableState.value = RunState()
+        }
+    }
 
     /**
      * 새 러닝의 카운트다운을 시작한다. 기기에 진행 중인 러닝이 남아 있으면 시작하지 않는다.

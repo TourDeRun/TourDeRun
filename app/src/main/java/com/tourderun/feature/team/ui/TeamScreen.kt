@@ -1,5 +1,7 @@
 package com.tourderun.feature.team.ui
 
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.AlertDialog
 import com.tourderun.core.designsystem.component.TeamColor
@@ -84,10 +86,12 @@ fun TeamScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val leave by viewModel.leave.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 TeamEvent.Left -> onLeft()
+                is TeamEvent.ShowMessage -> Toast.makeText(context, event.messageRes, Toast.LENGTH_SHORT).show()
             }
         }
     }

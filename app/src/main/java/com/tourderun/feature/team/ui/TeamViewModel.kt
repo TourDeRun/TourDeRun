@@ -7,6 +7,7 @@ import com.tourderun.R
 import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.toDataError
+import com.tourderun.core.data.run.RunActivity
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.TeamMemberDto
 import com.tourderun.core.data.session.SessionRepository
@@ -53,7 +54,12 @@ class TeamViewModel @Inject constructor(
     private val teamRepository: TeamRepository,
     statsRepository: StatsRepository,
     clock: Clock,
+    runActivity: RunActivity,
 ) : ViewModel() {
+
+    /** RUN-02 러닝 측정·저장 대기 중이면 팀 나가기를 막는다. */
+    private val runBusy: StateFlow<Boolean> = runActivity.isBusy
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _leave = MutableStateFlow(LeaveUiState())
     /** TEAM-07 나가기 확인 창·진행 상태. */
@@ -64,7 +70,9 @@ class TeamViewModel @Inject constructor(
 
     fun onAction(action: TeamAction) {
         when (action) {
-            TeamAction.LeaveClick -> _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            TeamAction.LeaveClick ->
+                if (runBusy.value) _events.trySend(TeamEvent.ShowMessage(R.string.run_busy_blocked))
+                else _leave.update { it.copy(showConfirm = true, errorRes = null) }
             TeamAction.LeaveDismiss -> _leave.update { if (it.isLeaving) it else LeaveUiState() }
             TeamAction.LeaveConfirm -> leaveTeam()
         }
@@ -192,6 +200,9 @@ sealed interface TeamAction {
 sealed interface TeamEvent {
     /** 팀에서 나갔다 → S03 팀 시작으로. */
     data object Left : TeamEvent
+
+    /** 한 번만 보여 줄 안내 (RUN-02 러닝 중이라 막힘 등). */
+    data class ShowMessage(val messageRes: Int) : TeamEvent
 }
 
 /** 나가기 실패 → 문구. 트랜잭션이라 연결 문제면 다시 시도를 권한다. */
