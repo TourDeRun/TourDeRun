@@ -8,6 +8,8 @@ import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.toDataError
 import com.tourderun.core.data.run.RunActivity
+import com.tourderun.core.ui.blockedMessageRes
+import com.tourderun.core.data.run.RunBusyReason
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.TeamMemberDto
 import com.tourderun.core.data.session.SessionRepository
@@ -57,9 +59,9 @@ class TeamViewModel @Inject constructor(
     runActivity: RunActivity,
 ) : ViewModel() {
 
-    /** RUN-02 러닝 측정·저장 대기 중이면 팀 나가기를 막는다. */
-    private val runBusy: StateFlow<Boolean> = runActivity.isBusy
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    /** RUN-02 팀 나가기를 막는 이유. null이면 막지 않는다. */
+    private val runBusy: StateFlow<RunBusyReason?> = runActivity.busyReason
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _leave = MutableStateFlow(LeaveUiState())
     /** TEAM-07 나가기 확인 창·진행 상태. */
@@ -70,9 +72,11 @@ class TeamViewModel @Inject constructor(
 
     fun onAction(action: TeamAction) {
         when (action) {
-            TeamAction.LeaveClick ->
-                if (runBusy.value) _events.trySend(TeamEvent.ShowMessage(R.string.run_busy_blocked))
+            TeamAction.LeaveClick -> {
+                val reason = runBusy.value
+                if (reason != null) _events.trySend(TeamEvent.ShowMessage(reason.blockedMessageRes()))
                 else _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            }
             TeamAction.LeaveDismiss -> _leave.update { if (it.isLeaving) it else LeaveUiState() }
             TeamAction.LeaveConfirm -> leaveTeam()
         }

@@ -4,6 +4,7 @@ import com.tourderun.core.data.local.ActiveRunStore
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
 import com.tourderun.core.data.run.RunActivity
+import com.tourderun.core.data.run.RunBusyReason
 import com.tourderun.core.data.local.PendingRunSave
 import com.tourderun.core.data.local.PendingSaveState
 import com.tourderun.core.data.local.RunPointDao
@@ -54,9 +55,9 @@ class RunSessionManager @Inject constructor(
     private var pointsNeedReload = false
 
     // ── RUN-02 다른 영역에 알리는 러닝 활동 ────────────────────
-    override val isBusy: Flow<Boolean> =
+    override val busyReason: Flow<RunBusyReason?> =
         combine(state, store.session, store.pendingSaves) { current, stored, pending ->
-            isRunBusy(current.phase, hasStoredSession = stored != null, pendingSaveCount = pending.size)
+            runBusyReason(current.phase, hasStoredSession = stored != null, pendingStates = pending.map { it.state })
         }.distinctUntilChanged()
 
     override suspend fun clearDeviceData() = mutex.withLock {

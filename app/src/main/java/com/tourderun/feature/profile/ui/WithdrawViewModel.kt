@@ -7,6 +7,8 @@ import com.tourderun.core.data.DataError
 import com.tourderun.core.data.account.AccountRepository
 import com.tourderun.core.data.firestore.toDataError
 import com.tourderun.core.data.run.RunActivity
+import com.tourderun.core.ui.blockedMessageRes
+import com.tourderun.core.data.run.RunBusyReason
 import com.tourderun.core.data.session.GoogleSignInResult
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.teamId
@@ -53,9 +55,9 @@ class WithdrawViewModel @Inject constructor(
     runActivity: RunActivity,
 ) : ViewModel() {
 
-    /** RUN-02 러닝 측정·저장 대기 중이면 true → 로그아웃·탈퇴를 막는다. */
-    val runBusy: StateFlow<Boolean> = runActivity.isBusy
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    /** RUN-02 로그아웃·탈퇴를 막는 이유. null이면 막지 않는다. */
+    val runBusy: StateFlow<RunBusyReason?> = runActivity.busyReason
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _messages = Channel<Int>(Channel.BUFFERED)
     /** 한 번만 보여 줄 안내(문구 리소스 ID). */
@@ -66,10 +68,12 @@ class WithdrawViewModel @Inject constructor(
 
     fun onAction(action: WithdrawAction) {
         when (action) {
-            WithdrawAction.Click ->
-                if (runBusy.value) _messages.trySend(R.string.run_busy_blocked)
+            WithdrawAction.Click -> {
+                val reason = runBusy.value
+                if (reason != null) _messages.trySend(reason.blockedMessageRes())
                 else _uiState.value = WithdrawUiState(showConfirm = true)
-            WithdrawAction.Blocked -> _messages.trySend(R.string.run_busy_blocked)
+            }
+            WithdrawAction.Blocked -> runBusy.value?.let { _messages.trySend(it.blockedMessageRes()) }
             WithdrawAction.Dismiss -> _uiState.update { if (it.isWorking) it else WithdrawUiState() }
             WithdrawAction.ReauthStarted -> _uiState.update { it.copy(isWorking = true, errorRes = null) }
             is WithdrawAction.CredentialReceived -> onCredential(action.result)

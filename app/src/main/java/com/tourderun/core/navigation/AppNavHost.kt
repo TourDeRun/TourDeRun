@@ -139,7 +139,7 @@ fun AppNavHost(
                     onCollectionClick = { navController.navigate(CollectionRoute) },
                     // RUN-02: 러닝 측정·저장 대기 중이면 막고 안내만
                     onLogout = {
-                        if (runBusy) withdrawViewModel.onAction(WithdrawAction.Blocked) else showLogoutConfirm = true
+                        if (runBusy != null) withdrawViewModel.onAction(WithdrawAction.Blocked) else showLogoutConfirm = true
                     },
                     onLogoutDismiss = { showLogoutConfirm = false },
                     onLogoutConfirm = {
