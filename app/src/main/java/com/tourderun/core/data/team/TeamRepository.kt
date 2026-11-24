@@ -56,6 +56,12 @@ interface TeamRepository {
      * 팀장이면 가장 먼저 가입한 팀원이 팀장이 되고, 마지막 1명이면 팀 문서들을 지운다.
      */
     suspend fun leaveTeam(uid: String, teamId: String): Result<Unit>
+
+    /**
+     * TEAM-06 팀장이 팀원을 내보낸다. 온라인 필수 트랜잭션에서 내가 팀장인지·그 사람이 아직 팀원인지·인원을
+     * 다시 읽고 [teamKickPlan]을 쓴다.
+     */
+    suspend fun kickMember(leaderUid: String, teamId: String, targetUid: String): Result<Unit>
 }
 
 /** TEAM-03 참여 결과. */
