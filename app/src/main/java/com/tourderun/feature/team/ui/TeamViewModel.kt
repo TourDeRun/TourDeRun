@@ -22,9 +22,8 @@ import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.TeamUi
+import com.tourderun.core.ui.model.teamMembersUi
 import com.tourderun.domain.team.TEAM_MAX_MEMBERS
-import com.tourderun.domain.team.contributionShares
-import com.tourderun.domain.team.weeklyMvps
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -128,13 +128,23 @@ class TeamViewModel @Inject constructor(
         }
     }
 
-    /** null이면 불러오는 중(팀이 없거나 팀·팀원 값이 아직 없음). */
-    val uiState: StateFlow<TeamUiState?> = session.state
-        .map { state -> state.uid?.let { uid -> state.teamId?.let { teamId -> uid to teamId } } }
-        .distinctUntilChanged()
-        .flatMapLatest<Pair<String, String>?, TeamUiState?> { key ->
+    /** 다시 시도할 때마다 1씩 늘린다. 값이 바뀌면 리스너를 새로 붙인다. */
+    private val attempt = MutableStateFlow(0)
+
+    /** 불러오기 실패 후 다시 시도. 다시 붙는 동안은 [TeamLoadState.Loading]. */
+    fun retry() {
+        attempt.update { it + 1 }
+    }
+
+    val uiState: StateFlow<TeamLoadState> = combine(
+        session.state
+            .map { state -> state.uid?.let { uid -> state.teamId?.let { teamId -> uid to teamId } } }
+            .distinctUntilChanged(),
+        attempt,
+    ) { key, _ -> key }
+        .flatMapLatest<Pair<String, String>?, TeamLoadState> { key ->
             if (key == null) {
-                flowOf(null)
+                flowOf(TeamLoadState.Loading)
             } else {
                 val (uid, teamId) = key
                 combine(
@@ -143,31 +153,51 @@ class TeamViewModel @Inject constructor(
                     teamRepository.observeInviteCode(teamId, uid),
                     statsRepository.observeWeekly(teamId, clock.nowMs()),
                 ) { team, members, code, weekly ->
-                    val teamDto = (team as? Loaded.Ready)?.value
-                    val memberList = (members as? Loaded.Ready)?.value
-                    if (teamDto == null || memberList == null) {
-                        null
-                    } else {
-                        teamUiState(
-                            team = teamDto,
-                            members = memberList,
-                            inviteCode = (code as? Loaded.Ready)?.value.orEmpty(),
-                            weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty(),
-                            myUid = uid,
-                        )
-                    }
-                }
+                    teamLoadState(
+                        team = team,
+                        members = members,
+                        inviteCode = (code as? Loaded.Ready)?.value.orEmpty(),
+                        weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty(),
+                        myUid = uid,
+                    )
+                }.onStart { emit(TeamLoadState.Loading) }
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TeamLoadState.Loading)
+}
+
+/** S14 불러오기 상태. */
+sealed interface TeamLoadState {
+    /** 팀·팀원 값을 기다리는 중(팀 문서가 없어 곧 S03으로 옮겨질 때도). */
+    data object Loading : TeamLoadState
+
+    /** 팀이나 팀원 목록을 못 읽었다 → 다시 시도. */
+    data class Failed(val error: DataError) : TeamLoadState
+
+    data class Ready(val state: TeamUiState) : TeamLoadState
 }
 
 /**
- * 팀 + 팀원 + 이번 주 거리 → S14 상태.
- *
- * - 팀원 순서·비율은 `contributionShares`(기여 거리 내림차순, 합 100%). 나간 팀원 몫은 [TeamUiState.formerM]
- * - MVP는 `weeklyMvps`(1인 팀·모두 0km면 없음)
- * - 팀원 아바타 색은 가입 순서대로 `TeamColor` 순서를 돌려 쓴다
+ * 리스너 값 → S14 불러오기 상태. 팀·팀원 중 하나라도 실패면 [TeamLoadState.Failed].
+ * 초대 코드·이번 주 통계는 보조 값이라 실패해도 빈 값으로 보인다.
+ */
+internal fun teamLoadState(
+    team: Loaded<TeamDto?>,
+    members: Loaded<List<TeamMemberDto>>,
+    inviteCode: String,
+    weeklyMemberM: Map<String, Long>,
+    myUid: String,
+): TeamLoadState {
+    if (team is Loaded.Failed) return TeamLoadState.Failed(team.error)
+    if (members is Loaded.Failed) return TeamLoadState.Failed(members.error)
+    val teamDto = (team as Loaded.Ready).value ?: return TeamLoadState.Loading
+    val memberList = (members as Loaded.Ready).value
+    return TeamLoadState.Ready(teamUiState(teamDto, memberList, inviteCode, weeklyMemberM, myUid))
+}
+
+
+/**
+ * 팀 + 팀원 + 이번 주 거리 → S14 상태. 팀원 순서·비율·MVP·아바타 색은 홈과 같은 [teamMembersUi]로 만든다.
  */
 internal fun teamUiState(
     team: TeamDto,
@@ -176,14 +206,7 @@ internal fun teamUiState(
     weeklyMemberM: Map<String, Long>,
     myUid: String,
 ): TeamUiState {
-    val shares = contributionShares(team.distanceM, members.associate { it.uid to it.contributionM })
-    val byUid = members.associateBy { it.uid }
-    val colorOf = members.sortedWith(compareBy<TeamMemberDto> { it.joinedAtMs }.thenBy { it.uid })
-        .mapIndexed { i, m -> m.uid to TeamColor.entries[i % TeamColor.entries.size] }
-        .toMap()
-    val mvps = weeklyMvps(weeklyMemberM, byUid.keys)
-    val former = shares.firstOrNull { it.uid == null }
-
+    val membersUi = teamMembersUi(team.distanceM, members, weeklyMemberM)
     return TeamUiState(
         team = TeamUi(
             name = team.name,
@@ -196,23 +219,12 @@ internal fun teamUiState(
             maxMembers = TEAM_MAX_MEMBERS,
             distanceM = team.distanceM,
         ),
-        members = shares.mapNotNull { share ->
-            val member = share.uid?.let { byUid[it] } ?: return@mapNotNull null
-            MemberUi(
-                uid = member.uid,
-                nickname = member.nickname,
-                color = colorOf[member.uid] ?: TeamColor.BLUE,
-                contributionM = share.distanceM,
-                isLeader = member.isLeader,
-                isMvp = member.uid in mvps,
-                percent = share.percent,
-            )
-        },
+        members = membersUi.members,
         inviteCode = inviteCode,
-        isLeader = byUid[myUid]?.isLeader == true,
+        isLeader = members.firstOrNull { it.uid == myUid }?.isLeader == true,
         myUid = myUid,
-        formerM = former?.distanceM ?: 0L,
-        formerPercent = former?.percent ?: 0,
+        formerM = membersUi.formerM,
+        formerPercent = membersUi.formerPercent,
     )
 }
 
