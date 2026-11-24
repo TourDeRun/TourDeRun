@@ -57,3 +57,13 @@ fun teamLeavePlan(uid: String, teamId: String, kind: LeaveKind): List<DocWrite> 
         }
     }
 }
+
+/**
+ * TEAM-06 팀장이 팀원을 내보낸다. 그 사람의 `members` 삭제 + `teams.memberCount` = 읽은 인원 − 1.
+ * 팀장은 남의 `users`를 쓸 수 없어서(D-05) 그 사람의 `users.teamId`는 본인 기기가 비운다.
+ * 거리·기여·주간 통계는 그대로 남는다(M-02, S14 "이전 팀원").
+ */
+fun teamKickPlan(teamId: String, targetUid: String, newMemberCount: Int): List<DocWrite> = listOf(
+    DocWrite("${Collections.TEAMS}/$teamId/${Collections.MEMBERS}/$targetUid", WriteMode.DELETE, emptyMap()),
+    DocWrite("${Collections.TEAMS}/$teamId", WriteMode.UPDATE, mapOf(TeamFields.MEMBER_COUNT to newMemberCount)),
+)
