@@ -43,6 +43,9 @@ import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.model.RunRowUi
 import com.tourderun.core.ui.preview.PreviewSamples
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
+import com.tourderun.core.data.DataError
 
 /** S11 내 기록 목록 상태. 20개씩 불러온다. */
 data class RecordsUiState(
@@ -54,6 +57,8 @@ data class RecordsUiState(
     val isLoadingMore: Boolean = false,
     /** 첫 목록을 받기 전. 빈 상태 문구를 잠깐 보였다 지우지 않으려고 둔다. */
     val isLoading: Boolean = false,
+    /** 목록을 불러오지 못했다. 받아 둔 목록 아래(없으면 빈 상태 자리)에 실패 + 다시 시도를 보인다. */
+    val loadError: DataError? = null,
 ) {
     companion object {
         val Loading = RecordsUiState(totalRuns = 0, totalDistanceM = 0, runs = emptyList(), isLoading = true)
@@ -70,10 +75,13 @@ fun RecordsScreen(
     viewModel: RecordsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    RecordsContent(uiState, onBack, onRunClick, viewModel::loadMore, onStartRun, modifier)
+    RecordsContent(uiState, onBack, onRunClick, viewModel::loadMore, onStartRun, viewModel::retry, modifier)
 }
 
-/** S11 화면 내용. 상태 없음(Preview 대상). 끝까지 스크롤하면 [onLoadMore]를 부른다. */
+/**
+ * S11 화면 내용. 상태 없음(Preview 대상). 끝까지 스크롤하면 [onLoadMore]를 부른다.
+ * 불러오지 못하면 실패 + 다시 시도([onRetry])를 보인다.
+ */
 @Composable
 fun RecordsContent(
     uiState: RecordsUiState,
@@ -81,6 +89,7 @@ fun RecordsContent(
     onRunClick: (RunRowUi) -> Unit,
     onLoadMore: () -> Unit,
     onStartRun: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
@@ -120,7 +129,7 @@ fun RecordsContent(
                     modifier = Modifier.padding(horizontal = 2.dp),
                 )
             }
-            if (uiState.runs.isEmpty() && !uiState.isLoading) {
+            if (uiState.runs.isEmpty() && !uiState.isLoading && uiState.loadError == null) {
                 item {
                     Column(
                         Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
@@ -144,6 +153,9 @@ fun RecordsContent(
             }
             items(uiState.runs, key = { it.runId }) { run ->
                 RunRow(run, onClick = { onRunClick(run) })
+            }
+            uiState.loadError?.let { error ->
+                item { LoadFailed(error.loadFailedMessageRes(), onRetry) }
             }
             if (uiState.isLoadingMore) {
                 item {
@@ -189,7 +201,7 @@ fun RunRow(run: RunRowUi, onClick: () -> Unit, modifier: Modifier = Modifier, in
 @Composable
 private fun RecordsScreenPreview() {
     TdrTheme {
-        RecordsContent(RecordsUiState(21, 86_400, PreviewSamples.runs, canLoadMore = true), {}, {}, {}, {})
+        RecordsContent(RecordsUiState(21, 86_400, PreviewSamples.runs, canLoadMore = true), {}, {}, {}, {}, {})
     }
 }
 
@@ -197,6 +209,14 @@ private fun RecordsScreenPreview() {
 @Composable
 private fun RecordsScreenEmptyPreview() {
     TdrTheme {
-        RecordsContent(RecordsUiState(0, 0, emptyList()), {}, {}, {}, {})
+        RecordsContent(RecordsUiState(0, 0, emptyList()), {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun RecordsScreenFailedPreview() {
+    TdrTheme {
+        RecordsContent(RecordsUiState(0, 0, emptyList(), loadError = DataError.Unavailable), {}, {}, {}, {}, {})
     }
 }
