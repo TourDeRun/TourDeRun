@@ -50,6 +50,12 @@ interface TeamRepository {
      * 실패(오프라인·시간 초과·규칙 거절)는 failure, 참여할 수 없는 이유는 [JoinOutcome]으로 돌려준다.
      */
     suspend fun joinTeam(uid: String, nickname: String, code: String): Result<JoinOutcome>
+
+    /**
+     * TEAM-07 팀 나가기. 온라인 필수 트랜잭션에서 팀 인원·내 문서·다음 팀장을 다시 읽고 [teamLeavePlan]을 쓴다.
+     * 팀장이면 가장 먼저 가입한 팀원이 팀장이 되고, 마지막 1명이면 팀 문서들을 지운다.
+     */
+    suspend fun leaveTeam(uid: String, teamId: String): Result<Unit>
 }
 
 /** TEAM-03 참여 결과. */

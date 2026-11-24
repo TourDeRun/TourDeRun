@@ -17,6 +17,9 @@ enum class WriteMode {
 
     /** 없으면 만들고 있으면 합친다(`set(merge)`). 중첩 Map은 안쪽 키만 합쳐진다. */
     SET_MERGE,
+
+    /** 문서를 지운다(`delete`). [DocWrite.fields]는 비워 둔다 (TEAM-07). */
+    DELETE,
 }
 
 /**
