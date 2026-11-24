@@ -221,6 +221,14 @@ class FirestoreTeamRepository @Inject constructor(
         Result.failure(e)
     }
 
+    override fun updateTeam(teamId: String, name: String, icon: Int, color: Int): Result<Unit> = try {
+        firestore.batchOf(teamEditPlan(teamId, name, icon, color)).commit()
+            .addOnFailureListener { e -> Log.w(TAG, "팀 정보 수정 실패", e) }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
     /**
      * 아직 아무 팀도 쓰지 않는 초대 코드 (TEAM-02). 서버 값을 직접 확인한다(캐시는 믿지 않는다).
      * 32글자 6자리라 겹칠 일은 거의 없지만, 겹치면 [MAX_CODE_TRIES]번까지 다시 만든다.
