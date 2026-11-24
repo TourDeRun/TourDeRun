@@ -54,6 +54,9 @@ import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.component.TdrTopBar
+import com.tourderun.core.data.DataError
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.designsystem.component.TdrTopBarTextAction
 import com.tourderun.core.designsystem.component.TeamImage
 import com.tourderun.core.designsystem.theme.TdrShapes
@@ -80,7 +83,8 @@ data class TeamUiState(
 )
 
 /**
- * S14 팀 (TEAM-04). 내 팀·팀원·초대 코드를 [TeamViewModel]에서 받는다. 불러오는 중이면 스피너.
+ * S14 팀 (TEAM-04). 내 팀·팀원·초대 코드를 [TeamViewModel]에서 받는다.
+ * 불러오는 중이면 스피너, 실패면 다시 시도. 둘 다 상단 바를 먼저 그려 뒤로 갈 수 있게 한다.
  * 초대 코드 공유는 S06 화면을 다시 쓴다([onShowInvite]).
  */
 @Composable
@@ -105,11 +109,14 @@ fun TeamScreen(
             }
         }
     }
-    val state = uiState
+    val state = (uiState as? TeamLoadState.Ready)?.state
     if (state == null) {
-        Box(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = TdrTheme.colors.brand)
-        }
+        TeamLoadingContent(
+            failed = uiState as? TeamLoadState.Failed,
+            onBack = onBack,
+            onRetry = viewModel::retry,
+            modifier = modifier,
+        )
         return
     }
     TeamContent(
@@ -435,6 +442,40 @@ private fun FormerMembersRow(distanceM: Long, percent: Int) {
             }
         }
         TdrProgressBar(progress = percent / 100f, trackColor = colors.bgSubtle, fillColor = TeamColor.GRAY.color)
+    }
+}
+
+/** S14 불러오는 중(스피너)·실패(다시 시도). 상단 바는 먼저 그린다. */
+@Composable
+private fun TeamLoadingContent(
+    failed: TeamLoadState.Failed?,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgCanvas)
+            .statusBarsPadding()
+            .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3),
+    ) {
+        TdrTopBar(title = stringResource(R.string.team_title), onBack = onBack)
+        if (failed != null) {
+            LoadFailed(failed.error.loadFailedMessageRes(), onRetry)
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = TdrTheme.colors.brand)
+            }
+        }
+    }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "불러오기 실패")
+@Composable
+private fun TeamLoadFailedPreview() {
+    TdrTheme {
+        TeamLoadingContent(TeamLoadState.Failed(DataError.Unavailable), {}, {})
     }
 }
 
