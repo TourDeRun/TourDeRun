@@ -1,6 +1,8 @@
 package com.tourderun.core.navigation
 
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.Flow
+import com.tourderun.core.data.account.AccountRepository
 import com.tourderun.core.data.DataError
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 @HiltViewModel
 class EntryViewModel @Inject constructor(
     private val session: SessionRepository,
+    accountRepository: AccountRepository,
 ) : ViewModel() {
 
     val sessionState: StateFlow<SessionState> = session.state
@@ -20,6 +23,9 @@ class EntryViewModel @Inject constructor(
     val loadError: StateFlow<DataError?> = session.loadError
 
     fun retry() = session.retry()
+
+    /** 탈퇴 실패. 탈퇴 창이 사라진 뒤에도 알리려고 앱 전체에서 받는다(RUN-02). */
+    val withdrawFailures: Flow<DataError> = accountRepository.withdrawFailures
 
     /** AUTH-04 로그아웃. 세션 상태가 SignedOut이 되면 화면 이동은 [followEntryStage]가 한다. */
     fun signOut() = session.signOut()

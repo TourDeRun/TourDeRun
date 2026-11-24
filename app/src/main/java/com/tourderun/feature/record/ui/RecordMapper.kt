@@ -1,5 +1,6 @@
 package com.tourderun.feature.record.ui
 
+import com.tourderun.core.data.session.MyStats
 import com.tourderun.core.ui.model.RunRowUi
 import com.tourderun.domain.record.RunRecord
 import com.tourderun.domain.record.RunTextCheck
@@ -27,9 +28,7 @@ fun RunRecord.toRowUi(zone: ZoneId = SEOUL): RunRowUi {
 /**
  * 기록 목록 → S11 상태. [runs]는 최신순으로 최대 [limit]개.
  * 받은 개수가 [limit]만큼이면 더 있을 수 있다고 본다(딱 [limit]개뿐이면 한 번 더 불러 보고 끝난다).
- *
- * TODO(AUTH-03): 총 횟수·총 거리는 `users` 문서의 `runCount`·`totalM`으로 바꾼다. 지금은 불러온 기록만 더한 값이라
- *  기록이 한 쪽(20개)을 넘으면 실제보다 작다.
+ * 총계는 불러온 기록의 합이다. `users` 누적 값이 있으면 [withUserTotals]로 바꾼다.
  */
 fun recordsUiState(runs: List<RunRecord>, limit: Long, zone: ZoneId = SEOUL): RecordsUiState =
     RecordsUiState(
@@ -38,6 +37,17 @@ fun recordsUiState(runs: List<RunRecord>, limit: Long, zone: ZoneId = SEOUL): Re
         runs = runs.map { it.toRowUi(zone) },
         canLoadMore = runs.size >= limit,
     )
+
+/**
+ * S11 총 횟수·총 거리를 `users.runCount`·`totalM`(S13 프로필과 같은 값, AUTH-03)으로 바꾼다.
+ * 불러온 기록만 더하면 한 쪽(20개)을 넘을 때 실제보다 작기 때문이다.
+ * [stats]가 null(읽기 전·실패)이거나 불러오는 중이면 그대로 둔다.
+ *
+ * 누적 값은 기록을 지워도 줄지 않는다(팀 거리와 같은 원칙). 그래서 지운 뒤에는 총 횟수가 목록 개수보다 클 수 있다.
+ */
+fun RecordsUiState.withUserTotals(stats: MyStats?): RecordsUiState =
+    if (stats == null || isLoading) this
+    else copy(totalRuns = stats.runCount.toInt(), totalDistanceM = stats.totalM)
 
 private val STARTED_AT_FORMAT = DateTimeFormatter.ofPattern("yyyy. M. d (E) HH:mm", Locale.KOREAN)
 

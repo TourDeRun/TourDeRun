@@ -42,7 +42,8 @@ internal fun EntryStage.startRoute(): Any = when (this) {
 
 /**
  * 세션 단계가 바뀌었을 때 진입 화면에서 다음 화면으로 옮긴다. 이미 맞는 화면에 있으면 그대로 둔다.
- * 로그아웃(SIGNED_OUT)만 어느 화면에서든 로그인으로 보낸다.
+ * 로그아웃(SIGNED_OUT)은 어느 화면에서든 로그인으로, 팀이 없어지면(NEEDS_TEAM: 내보내짐 TEAM-06·나가기 TEAM-07)
+ * 어느 화면에서든 팀 시작(S03)으로 보낸다.
  */
 internal fun NavController.followEntryStage(stage: EntryStage) {
     val destination = currentDestination ?: return
@@ -51,7 +52,7 @@ internal fun NavController.followEntryStage(stage: EntryStage) {
     when (stage) {
         EntryStage.SIGNED_OUT -> if (!onLogin) resetTo(LoginRoute)
         EntryStage.NEEDS_NICKNAME -> if (onLogin) resetTo(TermsRoute)
-        EntryStage.NEEDS_TEAM -> if (onLogin || inSignUp) resetTo(TeamStartRoute)
+        EntryStage.NEEDS_TEAM -> if (!destination.hasRoute<TeamStartRoute>()) resetTo(TeamStartRoute)
         // 팀 시작 화면(S03)에서는 직접 옮긴다: 만들기는 홈 위에 S06, 참여는 홈 (TEAM-01·03)
         EntryStage.READY -> if (onLogin || inSignUp) resetTo(HomeRoute)
     }
