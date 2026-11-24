@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -48,11 +49,17 @@ internal fun NavController.followEntryStage(stage: EntryStage) {
     when (stage) {
         EntryStage.SIGNED_OUT -> if (!onLogin) resetTo(LoginRoute)
         EntryStage.NEEDS_NICKNAME -> if (onLogin) resetTo(TermsRoute)
-        EntryStage.NEEDS_TEAM -> if (!destination.hasRoute<TeamStartRoute>()) resetTo(TeamStartRoute)
+        // 측정(S09)·결과(S10) 중에는 미루고, 그 화면을 벗어날 때 S03으로 간다(#143). 측정을 끊지 않기 위해서다.
+        EntryStage.NEEDS_TEAM -> if (!destination.hasRoute<TeamStartRoute>() && !destination.isRunFlow()) {
+            resetTo(TeamStartRoute)
+        }
         // 팀 시작 화면(S03)에서는 직접 옮긴다: 만들기는 홈 위에 S06, 참여는 홈 (TEAM-01·03)
         EntryStage.READY -> if (onLogin || inSignUp) resetTo(HomeRoute)
     }
 }
+
+/** 러닝 측정(S09)·결과(S10) 화면인지. 이 화면에서는 팀이 없어져도 바로 옮기지 않는다. */
+private fun NavDestination.isRunFlow(): Boolean = hasRoute<RunningRoute>() || hasRoute<RunResultRoute>()
 
 /** 세션 첫 값을 기다리는 동안 보이는 화면 (앱 시작 직후, 보통 1초 안). */
 @Composable
