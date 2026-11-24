@@ -85,7 +85,9 @@ fun AppNavHost(
         return
     }
     // 그 뒤로는 세션 상태가 바뀌면 진입 화면 사이를 옮긴다 (로그인 성공, 닉네임 저장, 로그아웃).
-    LaunchedEffect(stage) {
+    // 화면이 바뀔 때도 다시 본다: 측정·결과 화면에서 미룬 S03 이동을 그 화면을 벗어날 때 한다(#143).
+    val currentRoute = backStackEntry?.destination?.route
+    LaunchedEffect(stage, currentRoute) {
         if (stage != null) navController.followEntryStage(stage)
     }
     // RUN-02: 탈퇴 창이 사라진 뒤(팀을 나가 S03으로 옮겨진 뒤)의 탈퇴 실패도 알린다
@@ -201,15 +203,7 @@ fun AppNavHost(
                 )
             }
             composable<TeamEditRoute> {
-                // TODO(TEAM-05): 이름·색·아이콘 입력과 저장
-                TeamEditScreen(
-                    uiState = TempUiStates.teamEdit,
-                    onBack = back,
-                    onSave = back,
-                    onNameChange = {},
-                    onColorSelect = {},
-                    onIconSelect = {},
-                )
+                TeamEditScreen(onBack = back, onSaved = back)
             }
 
             composable<StageRankRoute> { StageRankScreen(onBack = back) }
