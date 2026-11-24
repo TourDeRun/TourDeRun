@@ -83,6 +83,9 @@ class TeamEditViewModel @Inject constructor(
         val current = _uiState.value ?: return
         if (!current.canSave) return
         val teamId = session.state.value.teamId ?: return
+        // 먼저 저장 중으로 바꿔 둔다. canSave가 !isSaving을 보므로 빠르게 두 번 눌러도 두 번째는 막힌다
+        // (안 막으면 Saved가 두 번 나가 S14까지 닫힌다. #120 리뷰)
+        _uiState.update { it?.copy(isSaving = true, errorRes = null) }
         val edited = current.copy(name = current.name.trim())
         if (edited.sameAs(original)) {
             _events.trySend(TeamEditEvent.Saved)
@@ -90,7 +93,9 @@ class TeamEditViewModel @Inject constructor(
         }
         teamRepository.updateTeam(teamId, edited.name, icon = edited.icon.ordinal, color = edited.color.ordinal)
             .onSuccess { _events.trySend(TeamEditEvent.Saved) }
-            .onFailure { _uiState.update { it?.copy(errorRes = R.string.team_edit_error_failed) } }
+            .onFailure {
+                _uiState.update { it?.copy(isSaving = false, errorRes = R.string.team_edit_error_failed) }
+            }
     }
 }
 

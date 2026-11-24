@@ -75,8 +75,18 @@ fun TeamEditScreen(
     }
     val state = uiState
     if (state == null) {
-        Box(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = TdrTheme.colors.brand)
+        // 읽는 중에도 상단 바는 먼저 그려 뒤로 가기 버튼으로 나갈 수 있게 한다 (#120 리뷰)
+        Column(
+            modifier
+                .fillMaxSize()
+                .background(TdrTheme.colors.bgCanvas)
+                .statusBarsPadding()
+                .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3),
+        ) {
+            TdrTopBar(title = stringResource(R.string.team_edit_title), onBack = onBack)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = TdrTheme.colors.brand)
+            }
         }
         return
     }
