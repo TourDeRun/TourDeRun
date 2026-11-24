@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunRepository
+import com.tourderun.core.data.session.MyStats
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.uid
 import com.tourderun.domain.record.RunRecord
@@ -13,6 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -56,6 +58,7 @@ internal fun recordsUiStates(
  * S11 내 기록 (REC-02). 로그인한 계정의 기록을 20개부터 보여 주고, 끝까지 내리면 20개씩 늘려 다시 구독한다.
  * uid는 [SessionRepository]에서 읽는다.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class RecordsViewModel @Inject constructor(
     runRepository: RunRepository,
@@ -64,13 +67,26 @@ class RecordsViewModel @Inject constructor(
 
     private val limit = MutableStateFlow(RunRepository.PAGE_SIZE)
 
+    /** AUTH-03 `users` 누적 값. 읽기 전·실패면 null → 불러온 기록의 합을 그대로 보여 준다. */
+    private val myStats: Flow<MyStats?> = sessionRepository.state
+        .map { it.uid }
+        .distinctUntilChanged()
+        .flatMapLatest<String?, MyStats?> { uid ->
+            if (uid == null) flowOf(null)
+            else sessionRepository.observeMyStats(uid).map { (it as? Loaded.Ready)?.value }
+        }
+        .onStart { emit(null) }
+
     val uiState: StateFlow<RecordsUiState> =
-        recordsUiStates(
-            uids = sessionRepository.state.map { it.uid },
-            limits = limit,
-            observeRuns = runRepository::observeRuns,
-            onUidChanged = { limit.value = RunRepository.PAGE_SIZE },
-        )
+        combine(
+            recordsUiStates(
+                uids = sessionRepository.state.map { it.uid },
+                limits = limit,
+                observeRuns = runRepository::observeRuns,
+                onUidChanged = { limit.value = RunRepository.PAGE_SIZE },
+            ),
+            myStats,
+        ) { state, stats -> state.withUserTotals(stats) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordsUiState.Loading)
 
     /** 지금 보이는 개수 기준이라 여러 번 불려도 한 쪽만 늘어난다. */

@@ -52,6 +52,14 @@ class FakeTeamRepository @Inject constructor() : TeamRepository {
         return Result.success(Unit)
     }
 
+    override suspend fun kickMember(leaderUid: String, teamId: String, targetUid: String): Result<Unit> {
+        teams.update { all ->
+            val team = all[teamId] ?: return@update all
+            all + (teamId to team.copy(memberCount = (team.memberCount - 1).coerceAtLeast(1)))
+        }
+        return Result.success(Unit)
+    }
+
     companion object {
         const val FAKE_INVITE_CODE = "ABC234"
     }

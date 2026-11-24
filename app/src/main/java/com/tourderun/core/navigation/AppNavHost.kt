@@ -1,5 +1,6 @@
 package com.tourderun.core.navigation
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,8 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -40,6 +41,7 @@ import com.tourderun.feature.profile.ui.ProfileViewModel
 import com.tourderun.feature.profile.ui.WithdrawAction
 import com.tourderun.feature.profile.ui.WithdrawFlow
 import com.tourderun.feature.profile.ui.WithdrawViewModel
+import com.tourderun.feature.profile.ui.withdrawErrorRes
 import com.tourderun.feature.race.ui.StageRankScreen
 import com.tourderun.feature.record.ui.RecordDetailScreen
 import com.tourderun.feature.record.ui.RecordsScreen
@@ -84,6 +86,16 @@ fun AppNavHost(
     LaunchedEffect(stage) {
         if (stage != null) navController.followEntryStage(stage)
     }
+    // RUN-02: 탈퇴 창이 사라진 뒤(팀을 나가 S03으로 옮겨진 뒤)의 탈퇴 실패도 알린다
+    val context = LocalContext.current
+    LaunchedEffect(entryViewModel) {
+        entryViewModel.withdrawFailures.collect { error ->
+            // 프로필에 있으면 탈퇴 창 안 문구로 충분하다. 창이 닫히고 다른 화면(S03 등)으로 옮겨진 뒤에만 띄운다(#132 리뷰)
+            if (navController.currentDestination?.hasRoute<ProfileRoute>() != true) {
+                Toast.makeText(context, withdrawErrorRes(error), Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Column(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas)) {
         NavHost(
@@ -110,8 +122,8 @@ fun AppNavHost(
                 val withdrawViewModel: WithdrawViewModel = hiltViewModel()
                 val header by profileViewModel.header.collectAsStateWithLifecycle()
                 val nicknameEdit by profileViewModel.nicknameEdit.collectAsStateWithLifecycle()
-                // AUTH-04: 확인 창이 열렸는지는 화면 회전에도 남게 rememberSaveable로 둔다.
-                var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
+                // AUTH-04 확인 창 상태는 ViewModel에 둔다(로그아웃 직전에 러닝 상태를 다시 보려고, RUN-02)
+                val showLogoutConfirm by withdrawViewModel.showLogoutConfirm.collectAsStateWithLifecycle()
                 ProfileScreen(
                     uiState = TempUiStates.profile.copy(
                         nickname = header.nickname ?: TempUiStates.profile.nickname,
@@ -126,12 +138,10 @@ fun AppNavHost(
                     onRecordsClick = { navController.navigate(RecordsRoute) },
                     onRunClick = { navController.navigate(RecordDetailRoute(it.runId)) },
                     onCollectionClick = { navController.navigate(CollectionRoute) },
-                    onLogout = { showLogoutConfirm = true },
-                    onLogoutDismiss = { showLogoutConfirm = false },
-                    onLogoutConfirm = {
-                        showLogoutConfirm = false
-                        entryViewModel.signOut()
-                    },
+                    // RUN-02: 러닝 측정·저장 대기 중이면 막고 안내만. 확인 창에서 실행하기 직전에도 다시 본다
+                    onLogout = { withdrawViewModel.onAction(WithdrawAction.LogoutClick) },
+                    onLogoutDismiss = { withdrawViewModel.onAction(WithdrawAction.LogoutDismiss) },
+                    onLogoutConfirm = { withdrawViewModel.onAction(WithdrawAction.LogoutConfirm) },
                     onWithdraw = { withdrawViewModel.onAction(WithdrawAction.Click) },
                 )
                 WithdrawFlow(withdrawViewModel)
