@@ -12,6 +12,9 @@ import com.tourderun.core.data.stats.StatsRepository
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
 import com.tourderun.core.data.team.MyTeamSource
+import com.tourderun.core.data.team.TeamRepository
+import com.tourderun.core.ui.model.MemberUi
+import com.tourderun.core.ui.model.teamMembersUi
 import com.tourderun.core.ui.model.MyRaceUi
 import com.tourderun.core.ui.model.myRaceUi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -74,12 +77,15 @@ internal sealed interface WeeklyLoad {
     data class Content(val ui: WeeklySummaryUi) : WeeklyLoad
 }
 
-/** 경쟁 상황 + 이번 주 → S07 상태. 이번 주만 실패하면 홈은 그대로 보이고 이번 주 자리에 실패 카드가 뜬다. */
-internal fun homeLoad(race: HomeRaceLoad, weekly: WeeklyLoad): HomeLoad = when (race) {
+/**
+ * 경쟁 상황 + 이번 주 + 팀원 → S07 상태. 이번 주만 실패하면 홈은 그대로 보이고 이번 주 자리에 실패 카드가 뜬다.
+ * 팀원은 불러오는 중·실패면 빈 목록이라 카드가 숨는다(TEAM-04).
+ */
+internal fun homeLoad(race: HomeRaceLoad, weekly: WeeklyLoad, members: List<MemberUi> = emptyList()): HomeLoad = when (race) {
     HomeRaceLoad.Loading -> HomeLoad.Loading
     is HomeRaceLoad.Failed -> HomeLoad.Failed(race.error)
     is HomeRaceLoad.Content -> HomeLoad.Content(
-        homeUiState(race.race, (weekly as? WeeklyLoad.Content)?.ui)
+        homeUiState(race.race, (weekly as? WeeklyLoad.Content)?.ui, members)
             .copy(weeklyError = (weekly as? WeeklyLoad.Failed)?.error),
     )
 }
@@ -101,6 +107,7 @@ class HomeViewModel @Inject constructor(
     private val statsRepository: StatsRepository,
     myTeamSource: MyTeamSource,
     private val clock: Clock,
+    private val teamRepository: TeamRepository,
 ) : ViewModel() {
 
     /** 다시 시도할 때마다 1씩 늘린다. 값이 바뀌면 리스너를 새로 붙인다. */
@@ -119,10 +126,37 @@ class HomeViewModel @Inject constructor(
             .onStart { emit(WeeklyLoad.Loading) }
     }
 
-    val uiState: StateFlow<HomeLoad> = combine(race, weekly, ::homeLoad)
+    /**
+     * 팀원 카드(TEAM-04). 팀원 문서 + 이번 주 거리(MVP).
+     * 리스너는 팀 ID로만 붙이고(팀 거리가 바뀌어도 끊지 않는다), 팀 거리는 combine으로 받아 비율만 다시 계산한다(#136 리뷰).
+     * 불러오는 중·실패면 빈 목록 → 카드를 숨긴다. 홈 전체 [retry] 때 같이 다시 구독한다.
+     */
+    private val members: Flow<List<MemberUi>> = raceAttempt.flatMapLatest {
+        myTeamSource.observeMyTeam()
+            .map { it?.standing?.teamId }
+            .distinctUntilChanged()
+            .flatMapLatest<String?, List<MemberUi>> { teamId ->
+                if (teamId == null) {
+                    flowOf(emptyList())
+                } else {
+                    combine(
+                        teamRepository.observeMembers(teamId),
+                        statsRepository.observeWeekly(teamId, clock.nowMs()),
+                        myTeamSource.observeMyTeam().map { it?.standing?.distanceM ?: 0L }.distinctUntilChanged(),
+                    ) { members, weekly, teamDistanceM ->
+                        val list = (members as? Loaded.Ready)?.value ?: return@combine emptyList()
+                        val weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty()
+                        teamMembersUi(teamDistanceM, list, weeklyMemberM).members
+                    }
+                }
+            }
+            .onStart { emit(emptyList()) }
+    }
+
+    val uiState: StateFlow<HomeLoad> = combine(race, weekly, members, ::homeLoad)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeLoad.Loading)
 
-    /** 경쟁 상황 불러오기 실패 후 다시 시도. 이번 주 통계도 같이 다시 구독한다. */
+    /** 경쟁 상황 불러오기 실패 후 다시 시도. 이번 주 통계·팀원도 같이 다시 구독한다. */
     fun retry() {
         raceAttempt.update { it + 1 }
         weeklyAttempt.update { it + 1 }

@@ -6,6 +6,8 @@ import com.tourderun.core.data.race.MyRace
 import com.tourderun.core.data.race.RaceSummary
 import com.tourderun.core.data.race.RaceTeam
 import com.tourderun.core.data.team.MyTeam
+import com.tourderun.core.designsystem.component.TeamColor
+import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.domain.model.StageRanking
 import com.tourderun.domain.model.TeamStanding
 import org.junit.Assert.assertEquals
@@ -80,5 +82,14 @@ class HomeLoadTest {
 
         assertNull(ui.weekly)
         assertNull(ui.weeklyError)
+    }
+
+    @Test fun `팀원 목록은 홈 상태에 그대로 들어간다`() {
+        val race = nextHomeRace(HomeRaceLoad.Loading, ranked)
+        val members = listOf(MemberUi("u1", "민지", TeamColor.BLUE, 30_000, isLeader = true, percent = 100))
+
+        val ui = (homeLoad(race, WeeklyLoad.Loading, members) as HomeLoad.Content).ui
+
+        assertEquals(members, ui.members)
     }
 }
