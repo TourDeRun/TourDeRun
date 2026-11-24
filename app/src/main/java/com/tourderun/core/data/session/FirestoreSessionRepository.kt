@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -123,6 +124,9 @@ class FirestoreSessionRepository @Inject constructor(
                             is Loaded.Failed -> _loadError.value = loaded.error
                         }
                     }
+                    // 로그인 직후처럼 uid가 바뀌면 users를 읽기 전까지 Loading이다.
+                    // 이전 상태(SignedOut)에 머물면 S01에서 실패를 알릴 수 없다(#134 리뷰)
+                    .onStart { emit(SessionState.Loading) }
             }
         }
         .stateIn(appScope, SharingStarted.Eagerly, SessionState.Loading)
