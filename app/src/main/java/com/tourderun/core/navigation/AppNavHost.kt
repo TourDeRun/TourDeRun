@@ -116,6 +116,7 @@ fun AppNavHost(
                     uiState = TempUiStates.profile.copy(
                         nickname = header.nickname ?: TempUiStates.profile.nickname,
                         teamName = header.teamName,
+                        isLeader = header.isLeader,
                         showLogoutConfirm = showLogoutConfirm,
                         totalDistanceM = header.totalM,
                         runCount = header.runCount.toInt(),

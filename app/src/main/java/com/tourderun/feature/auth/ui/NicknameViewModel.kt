@@ -2,12 +2,12 @@ package com.tourderun.feature.auth.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.tourderun.R
+import com.tourderun.core.data.DataError
+import com.tourderun.core.data.firestore.toDataError
 import com.tourderun.core.data.session.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,11 +51,7 @@ class NicknameViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            errorRes = if (error.isNetworkError()) {
-                                R.string.nickname_error_network
-                            } else {
-                                R.string.nickname_error_failed
-                            },
+                            errorRes = nicknameErrorRes(error.toDataError()),
                         )
                     }
                 }
@@ -63,7 +59,8 @@ class NicknameViewModel @Inject constructor(
     }
 }
 
-/** 오프라인(UNAVAILABLE)이거나 10초 안에 서버 답이 없었다(createUser의 withTimeout). */
-private fun Throwable.isNetworkError(): Boolean =
-    this is TimeoutCancellationException ||
-        (this is FirebaseFirestoreException && code == FirebaseFirestoreException.Code.UNAVAILABLE)
+/** users 만들기 실패 → 문구. 오프라인·10초 제한(createUser의 withTimeout)이면 연결 문구. */
+internal fun nicknameErrorRes(error: DataError): Int = when (error) {
+    DataError.Unavailable -> R.string.nickname_error_network
+    DataError.PermissionDenied, DataError.Other -> R.string.nickname_error_failed
+}

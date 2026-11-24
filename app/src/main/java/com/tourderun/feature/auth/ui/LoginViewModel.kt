@@ -3,8 +3,9 @@ package com.tourderun.feature.auth.ui
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.FirebaseNetworkException
 import com.tourderun.R
+import com.tourderun.core.data.DataError
+import com.tourderun.core.data.firestore.toDataError
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.GoogleSignInResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,13 +63,7 @@ class LoginViewModel @Inject constructor(
                 session.signInWithGoogle(result.idToken)
                     .onFailure { error ->
                         stopLoading()
-                        showMessage(
-                            if (error is FirebaseNetworkException) {
-                                R.string.login_error_network
-                            } else {
-                                R.string.login_error_failed
-                            },
-                        )
+                        showMessage(loginErrorRes(error.toDataError()))
                     }
                 // 성공이면 아무것도 안 한다. 스피너는 다음 화면으로 넘어갈 때까지 그대로 둔다.
             }
@@ -91,4 +86,9 @@ class LoginViewModel @Inject constructor(
     private fun showMessage(@StringRes messageRes: Int) {
         _events.trySend(LoginEvent.ShowMessage(messageRes))
     }
+}
+/** 로그인 실패 → 문구. 연결 문제면 다시 시도를 권한다. ViewModel은 Firebase 예외 타입을 모른다. */
+internal fun loginErrorRes(error: DataError): Int = when (error) {
+    DataError.Unavailable -> R.string.login_error_network
+    DataError.PermissionDenied, DataError.Other -> R.string.login_error_failed
 }
