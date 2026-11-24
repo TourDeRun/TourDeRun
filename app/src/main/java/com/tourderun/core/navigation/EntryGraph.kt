@@ -12,11 +12,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.tourderun.core.designsystem.theme.TdrTheme
+import com.tourderun.core.ui.loadFailedMessageRes
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.data.DataError
 import com.tourderun.feature.auth.ui.LoginScreen
 import com.tourderun.feature.auth.ui.NicknameScreen
 import com.tourderun.feature.auth.ui.TermsItem
@@ -53,17 +57,34 @@ internal fun NavController.followEntryStage(stage: EntryStage) {
     }
 }
 
-/** 세션 첫 값을 기다리는 동안 보이는 화면 (앱 시작 직후, 보통 1초 안). */
+/**
+ * 세션 첫 값을 기다리는 동안 보이는 화면 (앱 시작 직후, 보통 1초 안).
+ * users 읽기가 실패하면([loadError]) 스피너 대신 실패 문구와 다시 시도를 보여 준다.
+ */
 @Composable
-internal fun EntryLoadingScreen(modifier: Modifier = Modifier) {
+internal fun EntryLoadingScreen(
+    modifier: Modifier = Modifier,
+    loadError: DataError? = null,
+    onRetry: () -> Unit = {},
+) {
     Box(
         modifier
             .fillMaxSize()
             .background(TdrTheme.colors.bgSurface),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(color = TdrTheme.colors.brand)
+        if (loadError == null) {
+            CircularProgressIndicator(color = TdrTheme.colors.brand)
+        } else {
+            LoadFailed(messageRes = loadError.loadFailedMessageRes(), onRetry = onRetry)
+        }
     }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "진입 로딩 실패")
+@Composable
+private fun EntryLoadingFailedPreview() {
+    TdrTheme { EntryLoadingScreen(loadError = DataError.Unavailable) }
 }
 
 /** 백스택을 전부 비우고 [route]만 남긴다. 로그인·로그아웃·팀 가입·탈퇴 뒤에 뒤로 가기로 이전 화면에 못 돌아가게 한다. */

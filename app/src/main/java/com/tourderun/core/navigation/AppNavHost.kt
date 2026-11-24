@@ -77,7 +77,8 @@ fun AppNavHost(
     }
     val start = startRoute
     if (start == null) {
-        EntryLoadingScreen(modifier)
+        val loadError by entryViewModel.loadError.collectAsStateWithLifecycle()
+        EntryLoadingScreen(modifier, loadError = loadError, onRetry = entryViewModel::retry)
         return
     }
     // 그 뒤로는 세션 상태가 바뀌면 진입 화면 사이를 옮긴다 (로그인 성공, 닉네임 저장, 로그아웃).
@@ -119,7 +120,7 @@ fun AppNavHost(
                         isLeader = header.isLeader,
                         showLogoutConfirm = showLogoutConfirm,
                         totalDistanceM = header.totalM,
-                        runCount = header.runCount.toInt(),
+                        runCount = header.runCount?.toInt(),
                     ),
                     onEditNickname = { profileViewModel.onAction(ProfileAction.EditNickname) },
                     onTeamClick = { navController.navigate(TeamRoute) },
