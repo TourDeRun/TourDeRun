@@ -10,7 +10,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.DataError
@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -136,16 +137,17 @@ class FirestoreSessionRepository @Inject constructor(
 
     // ── 3-1. TEAM-06 내보내졌는지 확인 (D-05) ─────────────────
     init {
-        // 팀장은 남의 users를 쓸 수 없다. 그래서 팀이 있는 상태(Ready)가 되면 한 번, 내 members 문서가
-        // 서버에 아직 있는지 본다. 없으면(또는 팀원이 아니라 읽기가 거절되면) 내보내진 것이므로
-        // 내 기기가 users.teamId를 비운다 → 세션이 NoTeam이 되고 화면은 S03으로 간다.
+        // 팀장은 남의 users를 쓸 수 없다. 그래서 팀이 있는 동안(Ready) 내 members 문서를 리스너로 보다가
+        // 서버 값으로 없어지면(또는 팀원이 아니라 읽기가 거절되면) 내보내진 것이므로 내 기기가
+        // users.teamId를 비운다 → 세션이 NoTeam이 되고 화면은 S03으로 간다.
+        // 앱을 켜 둔 채 내보내져도 바로 반영된다(#143). 팀이나 사용자가 바뀌면 리스너를 다시 붙인다.
         appScope.launch {
             state
                 .map { (it as? SessionState.Ready)?.let { ready -> ready.user.uid to ready.teamId } }
                 .distinctUntilChanged()
                 .collectLatest { key ->
                     val (uid, teamId) = key ?: return@collectLatest
-                    if (wasKicked(uid, teamId)) {
+                    if (awaitKicked(uid, teamId)) {
                         Log.i(TAG, "팀에서 내보내져 팀 정보를 비운다")
                         firestore.collection(Collections.USERS).document(uid)
                             .update(UserFields.TEAM_ID, null)
@@ -156,23 +158,41 @@ class FirestoreSessionRepository @Inject constructor(
     }
 
     /**
-     * 내 members 문서가 서버에 없는지. 내 쓰기(팀 만들기·참여)가 아직 서버에 안 올라갔으면 잘못 판단하므로
-     * 먼저 대기 쓰기를 모두 기다린다(오프라인이면 연결될 때까지). 연결 문제 등 다른 실패는 "모름"(false).
+     * 내 members 문서가 서버에서 없어질 때까지 기다린다. 없어지면(또는 읽기 거절) true, 판단할 수 없으면 false.
+     * 내 쓰기(팀 만들기·참여·나가기)가 아직 서버에 안 올라갔으면 잘못 판단하므로 먼저 대기 쓰기를 모두 기다리고,
+     * 캐시 값이나 대기 쓰기가 있는 스냅숏으로는 판단하지 않는다.
      */
-    private suspend fun wasKicked(uid: String, teamId: String): Boolean = try {
+    private suspend fun awaitKicked(uid: String, teamId: String): Boolean = try {
         // 기다리는 도중 사용자가 바뀌면(대기 쓰기 + 로그아웃·탈퇴) 이 Task가 실패한다.
         // appScope에는 예외 처리기가 없어 밖으로 새면 앱이 꺼지므로 try 안에서 "모름"으로 처리한다(#119 리뷰)
         firestore.waitForPendingWrites().await()
-        !firestore.collection(Collections.TEAMS).document(teamId)
-            .collection(Collections.MEMBERS).document(uid)
-            .get(Source.SERVER).await()
-            .exists()
-    } catch (e: FirebaseFirestoreException) {
-        e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+        memberGoneFlow(uid, teamId).first { it }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         false
+    }
+
+    /** 서버 값 기준으로 내 members 문서가 없으면 true를 낸다. 캐시·대기 쓰기 스냅숏은 건너뛴다. */
+    private fun memberGoneFlow(uid: String, teamId: String): Flow<Boolean> = callbackFlow {
+        val registration = firestore.collection(Collections.TEAMS).document(teamId)
+            .collection(Collections.MEMBERS).document(uid)
+            .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+                when {
+                    error != null -> {
+                        if (error.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                            trySend(true)
+                        } else {
+                            // 그 밖의 실패는 "모름". 리스너가 끝나므로 흐름을 닫는다
+                            close(error)
+                        }
+                    }
+                    snapshot == null -> Unit
+                    snapshot.metadata.isFromCache || snapshot.metadata.hasPendingWrites() -> Unit
+                    else -> trySend(!snapshot.exists())
+                }
+            }
+        awaitClose { registration.remove() }
     }
 
     // ── 4. S01 로그인 ────────────────────────────────────────
