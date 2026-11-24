@@ -69,21 +69,22 @@ class HomeViewModel @Inject constructor(
         .onStart { emit(null) }
 
     /**
-     * 팀원 카드(TEAM-04). 팀원 문서 + 이번 주 거리(MVP). 팀 거리가 바뀌면(러닝 저장) 비율을 다시 계산한다.
+     * 팀원 카드(TEAM-04). 팀원 문서 + 이번 주 거리(MVP).
+     * 리스너는 팀 ID로만 붙이고(팀 거리가 바뀌어도 끊지 않는다), 팀 거리는 combine으로 받아 비율만 다시 계산한다(#136 리뷰).
      * 불러오는 중·실패면 빈 목록 → 카드를 숨긴다.
      */
     private val members: Flow<List<MemberUi>> = myTeamSource.observeMyTeam()
-        .map { team -> team?.standing?.let { it.teamId to it.distanceM } }
+        .map { it?.standing?.teamId }
         .distinctUntilChanged()
-        .flatMapLatest<Pair<String, Long>?, List<MemberUi>> { key ->
-            if (key == null) {
+        .flatMapLatest<String?, List<MemberUi>> { teamId ->
+            if (teamId == null) {
                 flowOf(emptyList())
             } else {
-                val (teamId, teamDistanceM) = key
                 combine(
                     teamRepository.observeMembers(teamId),
                     statsRepository.observeWeekly(teamId, clock.nowMs()),
-                ) { members, weekly ->
+                    myTeamSource.observeMyTeam().map { it?.standing?.distanceM ?: 0L }.distinctUntilChanged(),
+                ) { members, weekly, teamDistanceM ->
                     val list = (members as? Loaded.Ready)?.value ?: return@combine emptyList()
                     val weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty()
                     teamMembersUi(teamDistanceM, list, weeklyMemberM).members
