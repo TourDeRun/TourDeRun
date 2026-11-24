@@ -196,6 +196,31 @@ class FirestoreTeamRepository @Inject constructor(
         Result.failure(e)
     }
 
+    override suspend fun kickMember(leaderUid: String, teamId: String, targetUid: String): Result<Unit> = try {
+        require(leaderUid != targetUid) { "자기 자신은 내보낼 수 없다(나가기를 쓴다)" }
+        withTimeout(CODE_CHECK_TIMEOUT_MS) {
+            val teamRef = firestore.collection(Collections.TEAMS).document(teamId)
+            val membersRef = teamRef.collection(Collections.MEMBERS)
+            firestore.runTransaction { tx ->
+                val team = tx.get(teamRef)
+                val me = tx.get(membersRef.document(leaderUid))
+                val target = tx.get(membersRef.document(targetUid))
+                check(me.getString(MemberFields.ROLE) == MemberFields.ROLE_LEADER) { "팀장이 아니다" }
+                // 이미 나갔거나 내보내졌으면 할 일이 없다
+                if (!target.exists()) return@runTransaction
+                val memberCount = (team.getLong(TeamFields.MEMBER_COUNT) ?: 1L).toInt()
+                tx.applyWrites(firestore, teamKickPlan(teamId, targetUid, memberCount - 1))
+            }.await()
+        }
+        Result.success(Unit)
+    } catch (e: TimeoutCancellationException) {
+        Result.failure(e)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
     /**
      * 아직 아무 팀도 쓰지 않는 초대 코드 (TEAM-02). 서버 값을 직접 확인한다(캐시는 믿지 않는다).
      * 32글자 6자리라 겹칠 일은 거의 없지만, 겹치면 [MAX_CODE_TRIES]번까지 다시 만든다.

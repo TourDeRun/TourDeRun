@@ -39,4 +39,15 @@ class TeamLeavePlanTest {
             assertTrue(keys.none { it in setOf("distanceM", "contributionM", "memberM") })
         }
     }
+
+    @Test fun `내보내기는 그 사람 members 삭제와 인원 −1만 쓴다`() {
+        val plan = teamKickPlan("t1", "u3", newMemberCount = 2)
+        assertEquals(listOf("teams/t1/members/u3", "teams/t1"), plan.map { it.path })
+        assertEquals(listOf(WriteMode.DELETE, WriteMode.UPDATE), plan.map { it.mode })
+        assertEquals(mapOf("memberCount" to 2), plan[1].fields)
+    }
+
+    @Test fun `내보내기는 남의 users를 쓰지 않는다`() {
+        assertTrue(teamKickPlan("t1", "u3", 2).none { it.path.startsWith("users/") })
+    }
 }

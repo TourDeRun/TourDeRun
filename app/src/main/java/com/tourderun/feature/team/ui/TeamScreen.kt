@@ -86,6 +86,7 @@ fun TeamScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val leave by viewModel.leave.collectAsStateWithLifecycle()
+    val kick by viewModel.kick.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -106,11 +107,19 @@ fun TeamScreen(
         uiState = state,
         onBack = onBack,
         onEdit = onEdit,
-        onKick = {}, // TODO(TEAM-06): 팀원 내보내기
+        onKick = { viewModel.onAction(TeamAction.KickClick(it)) },
         onShareInvite = onShowInvite,
         onLeave = { viewModel.onAction(TeamAction.LeaveClick) },
         modifier = modifier,
     )
+    kick.target?.let { target ->
+        KickMemberDialog(
+            nickname = target.nickname,
+            kick = kick,
+            onConfirm = { viewModel.onAction(TeamAction.KickConfirm) },
+            onDismiss = { viewModel.onAction(TeamAction.KickDismiss) },
+        )
+    }
     if (leave.showConfirm) {
         LeaveTeamDialog(
             isLast = state.team.memberCount <= 1,
@@ -119,6 +128,39 @@ fun TeamScreen(
             onDismiss = { viewModel.onAction(TeamAction.LeaveDismiss) },
         )
     }
+}
+
+/** TEAM-06 내보내기 확인 창. */
+@Composable
+private fun KickMemberDialog(nickname: String, kick: KickUiState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.team_kick_confirm_title, nickname), style = type.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
+                Text(stringResource(R.string.team_kick_confirm_body), style = type.body, color = colors.inkMuted)
+                kick.errorRes?.let { Text(stringResource(it), style = type.caption, color = colors.danger) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !kick.isKicking) {
+                Text(
+                    stringResource(R.string.team_kick),
+                    color = if (kick.isKicking) colors.inkMuted else colors.danger,
+                    style = type.subtitle,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !kick.isKicking) {
+                Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle)
+            }
+        },
+        containerColor = colors.bgSurface,
+        shape = TdrShapes.lg,
+    )
 }
 
 /** TEAM-07 나가기 확인 창. 마지막 1명이면 팀이 없어진다고 알린다. */
