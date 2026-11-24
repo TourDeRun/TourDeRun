@@ -3,6 +3,7 @@ package com.tourderun.feature.home.ui
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
+import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.MyRaceUi
 
 /**
@@ -24,11 +25,11 @@ fun weeklySummaryUi(weekly: Loaded.Ready<WeeklyStats>, top: TopPercent?): Weekly
 }
 
 /**
- * 경쟁 상황 + 이번 주 요약 → S07 상태.
+ * 경쟁 상황 + 이번 주 요약 + 팀원 → S07 상태.
  *
- * TODO(TEAM-04): 팀원 목록(닉네임·기여 거리)은 `TeamRepository`(권민찬)가 생기면 채운다. 지금은 비어 있어 팀원 카드를 숨긴다.
+ * @param members 팀원 카드(TEAM-04, `teamMembersUi`). 비어 있으면(불러오는 중·실패) 카드를 숨긴다
  */
-fun homeUiState(race: MyRaceUi, weekly: WeeklySummaryUi?): HomeUiState = HomeUiState(
+fun homeUiState(race: MyRaceUi, weekly: WeeklySummaryUi?, members: List<MemberUi> = emptyList()): HomeUiState = HomeUiState(
     team = race.team,
     stage = race.stage,
     rank = race.rank,
@@ -38,6 +39,6 @@ fun homeUiState(race: MyRaceUi, weekly: WeeklySummaryUi?): HomeUiState = HomeUiS
     behind = race.behind,
     behindIsOtherStage = race.behindIsOtherStage,
     weekly = weekly,
-    members = emptyList(),
+    members = members,
     isOffline = race.isOffline,
 )
