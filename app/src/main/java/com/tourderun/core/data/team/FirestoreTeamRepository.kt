@@ -5,6 +5,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.Collections
+import com.tourderun.domain.team.nextLeader
+import com.tourderun.domain.team.MemberJoin
+import com.tourderun.core.data.firestore.TeamStatFields
+import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.InviteCodeFields
 import com.tourderun.core.data.firestore.UserFields
 import com.tourderun.core.data.firestore.applyWrites
@@ -144,6 +148,46 @@ class FirestoreTeamRepository @Inject constructor(
             }.await()
         }
         Result.success(outcome)
+    } catch (e: TimeoutCancellationException) {
+        Result.failure(e)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    override suspend fun leaveTeam(uid: String, teamId: String): Result<Unit> = try {
+        withTimeout(CODE_CHECK_TIMEOUT_MS) {
+            val teamRef = firestore.collection(Collections.TEAMS).document(teamId)
+            val membersRef = teamRef.collection(Collections.MEMBERS)
+            // 트랜잭션은 목록 조회를 못 해서, 팀원 목록과 주간 통계 ID는 서버에서 먼저 읽는다
+            val members = membersRef.get(Source.SERVER).await().documents.mapNotNull { it.toTeamMemberDto() }
+            val statIds = firestore.collection(Collections.TEAM_STATS)
+                .whereEqualTo(TeamStatFields.TEAM_ID, teamId)
+                .get(Source.SERVER).await()
+                .documents.map { it.id }
+
+            firestore.runTransaction { tx ->
+                val team = tx.get(teamRef)
+                val me = tx.get(membersRef.document(uid))
+                check(team.exists() && me.exists()) { "이미 팀에 없다" }
+                val memberCount = (team.getLong(TeamFields.MEMBER_COUNT) ?: 1L).toInt()
+                val isLeader = me.getString(MemberFields.ROLE) == MemberFields.ROLE_LEADER
+
+                val kind = when {
+                    memberCount <= 1 -> LeaveKind.Last(me.getString(MemberFields.INVITE_CODE), statIds)
+                    isLeader -> {
+                        val successor = nextLeader(members.map { MemberJoin(it.uid, it.joinedAtMs) }, uid)
+                        // 목록을 읽은 뒤 그 사람이 나갔을 수 있으니 트랜잭션 안에서 다시 확인한다
+                        checkNotNull(successor?.takeIf { tx.get(membersRef.document(it)).exists() }) { "다음 팀장을 찾지 못했다" }
+                            .let { LeaveKind.Leader(memberCount - 1, it) }
+                    }
+                    else -> LeaveKind.Member(memberCount - 1)
+                }
+                tx.applyWrites(firestore, teamLeavePlan(uid, teamId, kind))
+            }.await()
+        }
+        Result.success(Unit)
     } catch (e: TimeoutCancellationException) {
         Result.failure(e)
     } catch (e: CancellationException) {

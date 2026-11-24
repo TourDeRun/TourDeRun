@@ -369,6 +369,47 @@ describe('초대 코드·팀 관리 (TEAM-02·05·06·07)', () => {
     await assertSucceeds(b.commit());
   });
 
+  test('TEAM-07 팀원이 스스로 나가기 (내 members 삭제 + 인원 -1 + users.teamId null) → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    const d = db('u2');
+    const b = writeBatch(d);
+    b.delete(doc(d, 'teams', 't1', 'members', 'u2'));
+    b.update(doc(d, 'teams', 't1'), { memberCount: 1 });
+    b.update(doc(d, 'users', 'u2'), { teamId: null });
+    await assertSucceeds(b.commit());
+  });
+
+  test('TEAM-07 팀장이 나가며 다음 팀원을 팀장으로 → 허용', async () => {
+    await seedTeam(['u1', 'u2', 'u3']);
+    const d = db('u1');
+    const b = writeBatch(d);
+    b.update(doc(d, 'teams', 't1', 'members', 'u2'), { role: 'leader' });
+    b.delete(doc(d, 'teams', 't1', 'members', 'u1'));
+    b.update(doc(d, 'teams', 't1'), { memberCount: 2 });
+    b.update(doc(d, 'users', 'u1'), { teamId: null });
+    await assertSucceeds(b.commit());
+  });
+
+  test('TEAM-07 팀원이 나가며 다른 팀원을 팀장으로 → 거절', async () => {
+    await seedTeam(['u1', 'u2', 'u3']);
+    const d = db('u2');
+    const b = writeBatch(d);
+    b.update(doc(d, 'teams', 't1', 'members', 'u3'), { role: 'leader' });
+    b.delete(doc(d, 'teams', 't1', 'members', 'u2'));
+    b.update(doc(d, 'teams', 't1'), { memberCount: 2 });
+    b.update(doc(d, 'users', 'u2'), { teamId: null });
+    await assertFails(b.commit());
+  });
+
+  test('TEAM-07 나가면서 인원을 2 줄이기 → 거절', async () => {
+    await seedTeam(['u1', 'u2', 'u3']);
+    const d = db('u3');
+    const b = writeBatch(d);
+    b.delete(doc(d, 'teams', 't1', 'members', 'u3'));
+    b.update(doc(d, 'teams', 't1'), { memberCount: 1 });
+    await assertFails(b.commit());
+  });
+
   test('팀원이 아닌 사람의 members 읽기 → 거절', async () => {
     await seedTeam(['u1']);
     await seedUser('u9');
