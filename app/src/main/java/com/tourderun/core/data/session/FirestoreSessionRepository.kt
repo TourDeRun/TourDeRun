@@ -123,20 +123,20 @@ class FirestoreSessionRepository @Inject constructor(
      * 내 members 문서가 서버에 없는지. 내 쓰기(팀 만들기·참여)가 아직 서버에 안 올라갔으면 잘못 판단하므로
      * 먼저 대기 쓰기를 모두 기다린다(오프라인이면 연결될 때까지). 연결 문제 등 다른 실패는 "모름"(false).
      */
-    private suspend fun wasKicked(uid: String, teamId: String): Boolean {
+    private suspend fun wasKicked(uid: String, teamId: String): Boolean = try {
+        // 기다리는 도중 사용자가 바뀌면(대기 쓰기 + 로그아웃·탈퇴) 이 Task가 실패한다.
+        // appScope에는 예외 처리기가 없어 밖으로 새면 앱이 꺼지므로 try 안에서 "모름"으로 처리한다(#119 리뷰)
         firestore.waitForPendingWrites().await()
-        return try {
-            !firestore.collection(Collections.TEAMS).document(teamId)
-                .collection(Collections.MEMBERS).document(uid)
-                .get(Source.SERVER).await()
-                .exists()
-        } catch (e: FirebaseFirestoreException) {
-            e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            false
-        }
+        !firestore.collection(Collections.TEAMS).document(teamId)
+            .collection(Collections.MEMBERS).document(uid)
+            .get(Source.SERVER).await()
+            .exists()
+    } catch (e: FirebaseFirestoreException) {
+        e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        false
     }
 
     // ── 4. S01 로그인 ────────────────────────────────────────
