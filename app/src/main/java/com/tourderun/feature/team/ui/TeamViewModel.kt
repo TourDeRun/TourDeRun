@@ -7,6 +7,8 @@ import com.tourderun.R
 import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.toDataError
+import com.tourderun.core.data.run.RunActivity
+import com.tourderun.core.ui.blockedMessageRes
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.TeamMemberDto
 import com.tourderun.core.data.session.SessionRepository
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -53,6 +56,7 @@ class TeamViewModel @Inject constructor(
     private val teamRepository: TeamRepository,
     statsRepository: StatsRepository,
     clock: Clock,
+    private val runActivity: RunActivity,
 ) : ViewModel() {
 
     private val _leave = MutableStateFlow(LeaveUiState())
@@ -68,7 +72,12 @@ class TeamViewModel @Inject constructor(
 
     fun onAction(action: TeamAction) {
         when (action) {
-            TeamAction.LeaveClick -> _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            // RUN-02: 저장소를 지금 읽은 값으로 판단한다(미리 받아 둔 값은 첫 조회 전 null일 수 있다, #132 리뷰)
+            TeamAction.LeaveClick -> viewModelScope.launch {
+                val reason = runActivity.busyReason.first()
+                if (reason != null) _events.send(TeamEvent.ShowMessage(reason.blockedMessageRes()))
+                else _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            }
             TeamAction.LeaveDismiss -> _leave.update { if (it.isLeaving) it else LeaveUiState() }
             TeamAction.LeaveConfirm -> leaveTeam()
             is TeamAction.KickClick -> _kick.value = KickUiState(target = action.member)
@@ -101,6 +110,13 @@ class TeamViewModel @Inject constructor(
         val teamId = state.teamId ?: return
         _leave.update { it.copy(isLeaving = true, errorRes = null) }
         viewModelScope.launch {
+            // 확인 창이 열린 사이 러닝이 시작·저장 대기가 됐을 수 있어 실행 직전에 다시 본다
+            val reason = runActivity.busyReason.first()
+            if (reason != null) {
+                _leave.value = LeaveUiState()
+                _events.send(TeamEvent.ShowMessage(reason.blockedMessageRes()))
+                return@launch
+            }
             teamRepository.leaveTeam(uid, teamId)
                 .onSuccess {
                     _leave.value = LeaveUiState()
@@ -219,6 +235,9 @@ sealed interface TeamAction {
 sealed interface TeamEvent {
     /** 팀에서 나갔다 → S03 팀 시작으로. */
     data object Left : TeamEvent
+
+    /** 한 번만 보여 줄 안내 (RUN-02 러닝 중이라 막힘 등). */
+    data class ShowMessage(val messageRes: Int) : TeamEvent
 }
 
 /** 나가기 실패 → 문구. 트랜잭션이라 연결 문제면 다시 시도를 권한다. */

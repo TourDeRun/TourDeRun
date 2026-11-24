@@ -69,6 +69,9 @@ interface ActiveRunStore {
      * 이미 진행 중인 러닝이 있거나 목록에 없으면 아무것도 하지 않고 null.
      */
     suspend fun restorePendingSave(runId: String): StoredRunSession?
+
+    /** RUN-02·AUTH-05 탈퇴 뒤: 진행 중 러닝과 저장 대기 목록을 전부 지운다. */
+    suspend fun clearAll()
 }
 
 @Singleton
@@ -100,6 +103,10 @@ class RunSessionStore @Inject constructor(@ApplicationContext private val contex
         var removed = false
         context.runSessionDataStore.edit { removed = it.removePendingSave(runId) }
         return removed
+    }
+
+    override suspend fun clearAll() {
+        context.runSessionDataStore.edit { it.clear() }
     }
 
     override suspend fun restorePendingSave(runId: String): StoredRunSession? {

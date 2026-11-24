@@ -21,6 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,10 +48,10 @@ import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 
 /** 필수 약관 3가지. */
-enum class TermsItem(@StringRes val labelRes: Int) {
-    SERVICE(R.string.terms_service),
-    PRIVACY(R.string.terms_privacy),
-    LOCATION(R.string.terms_location),
+enum class TermsItem(@StringRes val labelRes: Int, @StringRes val bodyRes: Int) {
+    SERVICE(R.string.terms_service, R.string.terms_service_body),
+    PRIVACY(R.string.terms_privacy, R.string.terms_privacy_body),
+    LOCATION(R.string.terms_location, R.string.terms_location_body),
 }
 
 /** S01-1 약관 동의 화면 상태. */
@@ -212,6 +214,38 @@ private fun PrivacySummary() {
             }
         }
     }
+}
+
+/** S01-1 약관 전문 보기 (AUTH-01). 길어서 창 안에서 스크롤한다. */
+@Composable
+fun TermsDetailDialog(item: TermsItem, onDismiss: () -> Unit) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(item.labelRes), style = type.title) },
+        text = {
+            Text(
+                stringResource(item.bodyRes),
+                style = type.body,
+                color = colors.ink,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_close), color = colors.brand, style = type.subtitle)
+            }
+        },
+        containerColor = colors.bgSurface,
+        shape = TdrShapes.lg,
+    )
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "약관 전문")
+@Composable
+private fun TermsDetailDialogPreview() {
+    TdrTheme { TermsDetailDialog(TermsItem.PRIVACY, onDismiss = {}) }
 }
 
 @Preview(widthDp = 390, heightDp = 844)
