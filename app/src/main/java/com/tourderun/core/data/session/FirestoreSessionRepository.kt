@@ -25,6 +25,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -140,15 +141,19 @@ class FirestoreSessionRepository @Inject constructor(
     }
 
     // ── 4. S01 로그인 ────────────────────────────────────────
-    override suspend fun signInWithGoogle(idToken: String): Result<Unit> = runCatching {
+    override suspend fun signInWithGoogle(idToken: String): Result<Unit> = try {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-
         auth.signInWithCredential(credential).await()
-        Unit
+        Result.success(Unit)
+    } catch (e: CancellationException) {
+        // 화면을 나가 취소된 것. 실패로 바꾸지 않고 위로 보낸다
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     // ── 5. S02 users 문서 만들기 ─────────────────────────────
-    override suspend fun createUser(nickname: String): Result<Unit> = runCatching {
+    override suspend fun createUser(nickname: String): Result<Unit> = try {
         val uid = requireNotNull(auth.currentUser?.uid) { "로그인하지 않은 상태에서 createUser를 불렀다" }
         val ref = firestore.collection(Collections.USERS).document(uid)
         val data = mapOf(
@@ -166,6 +171,14 @@ class FirestoreSessionRepository @Inject constructor(
                 if (!tx.get(ref).exists()) tx.set(ref, data)
             }.await()
         }
+        Result.success(Unit)
+    } catch (e: TimeoutCancellationException) {
+        // 우리가 건 10초 제한 = 연결 문제. CancellationException의 하위라 먼저 잡는다
+        Result.failure(e)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     // ── 7. AUTH-03 닉네임 바꾸기 ─────────────────────────────
