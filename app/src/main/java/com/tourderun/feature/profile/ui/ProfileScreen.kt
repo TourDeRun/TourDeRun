@@ -57,9 +57,11 @@ import com.tourderun.feature.record.ui.RunRow
 data class ProfileUiState(
     val nickname: String,
     val teamName: String?,
-    val isLeader: Boolean,
-    val totalDistanceM: Long,
-    val runCount: Int,
+    /** null이면 아직 모름 → 역할 표시를 숨긴다. */
+    val isLeader: Boolean?,
+    /** null이면 아직 모르거나 읽기 실패 → "–" (0km와 구분). */
+    val totalDistanceM: Long?,
+    val runCount: Int?,
     val latestRun: RunRowUi?,
     /** 지역 도감(P1). 기능이 꺼져 있으면 null. */
     val collection: CollectionSummaryUi?,
@@ -125,12 +127,17 @@ fun ProfileScreen(
                 }
                 if (uiState.teamName != null) {
                     TextButton(onClick = onTeamClick, modifier = Modifier.offset(y = (-6).dp)) {
+                        val isLeader = uiState.isLeader
                         Text(
-                            stringResource(
-                                R.string.profile_team_role,
-                                uiState.teamName,
-                                stringResource(if (uiState.isLeader) R.string.role_leader else R.string.role_member),
-                            ),
+                            if (isLeader == null) {
+                                stringResource(R.string.profile_team_only, uiState.teamName)
+                            } else {
+                                stringResource(
+                                    R.string.profile_team_role,
+                                    uiState.teamName,
+                                    stringResource(if (isLeader) R.string.role_leader else R.string.role_member),
+                                )
+                            },
                             style = type.caption,
                             color = colors.inkMuted,
                         )
@@ -138,13 +145,13 @@ fun ProfileScreen(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
                     ProfileStat(
-                        Format.km(uiState.totalDistanceM),
+                        uiState.totalDistanceM?.let { Format.km(it) } ?: stringResource(R.string.value_unknown),
                         stringResource(R.string.unit_km_spaced),
                         stringResource(R.string.profile_total_distance),
                         Modifier.weight(1f),
                     )
                     ProfileStat(
-                        uiState.runCount.toString(),
+                        uiState.runCount?.toString() ?: stringResource(R.string.value_unknown),
                         stringResource(R.string.unit_times_spaced),
                         stringResource(R.string.profile_run_count),
                         Modifier.weight(1f),
@@ -290,5 +297,13 @@ private fun ProfileScreenPreview() {
 private fun ProfileLogoutConfirmPreview() {
     TabScreenPreview(TdrTab.Profile) {
         ProfileScreen(previewState.copy(showLogoutConfirm = true), {}, {}, {}, {}, {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "숫자·역할을 아직 모름(읽기 실패)")
+@Composable
+private fun ProfileUnknownPreview() {
+    TabScreenPreview(TdrTab.Profile) {
+        ProfileScreen(previewState.copy(isLeader = null, totalDistanceM = null, runCount = null), {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }

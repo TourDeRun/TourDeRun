@@ -12,14 +12,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.tourderun.core.designsystem.theme.TdrTheme
+import com.tourderun.core.ui.loadFailedMessageRes
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.data.DataError
 import com.tourderun.feature.auth.ui.LoginScreen
 import com.tourderun.feature.auth.ui.NicknameScreen
+import com.tourderun.feature.auth.ui.TermsDetailDialog
 import com.tourderun.feature.auth.ui.TermsItem
 import com.tourderun.feature.auth.ui.TermsScreen
 import com.tourderun.feature.auth.ui.TermsUiState
@@ -61,17 +66,34 @@ internal fun NavController.followEntryStage(stage: EntryStage) {
 /** 러닝 측정(S09)·결과(S10) 화면인지. 이 화면에서는 팀이 없어져도 바로 옮기지 않는다. */
 private fun NavDestination.isRunFlow(): Boolean = hasRoute<RunningRoute>() || hasRoute<RunResultRoute>()
 
-/** 세션 첫 값을 기다리는 동안 보이는 화면 (앱 시작 직후, 보통 1초 안). */
+/**
+ * 세션 첫 값을 기다리는 동안 보이는 화면 (앱 시작 직후, 보통 1초 안).
+ * users 읽기가 실패하면([loadError]) 스피너 대신 실패 문구와 다시 시도를 보여 준다.
+ */
 @Composable
-internal fun EntryLoadingScreen(modifier: Modifier = Modifier) {
+internal fun EntryLoadingScreen(
+    modifier: Modifier = Modifier,
+    loadError: DataError? = null,
+    onRetry: () -> Unit = {},
+) {
     Box(
         modifier
             .fillMaxSize()
             .background(TdrTheme.colors.bgSurface),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(color = TdrTheme.colors.brand)
+        if (loadError == null) {
+            CircularProgressIndicator(color = TdrTheme.colors.brand)
+        } else {
+            LoadFailed(messageRes = loadError.loadFailedMessageRes(), onRetry = onRetry)
+        }
     }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "진입 로딩 실패")
+@Composable
+private fun EntryLoadingFailedPreview() {
+    TdrTheme { EntryLoadingScreen(loadError = DataError.Unavailable) }
 }
 
 /** 백스택을 전부 비우고 [route]만 남긴다. 로그인·로그아웃·팀 가입·탈퇴 뒤에 뒤로 가기로 이전 화면에 못 돌아가게 한다. */
@@ -93,14 +115,17 @@ internal fun NavGraphBuilder.entryGraph(
 
     composable<TermsRoute> {
         var agreed by remember { mutableStateOf(emptySet<TermsItem>()) }
+        // 전문을 보고 있는 약관. 화면을 돌려도 창이 남게 rememberSaveable
+        var viewing by rememberSaveable { mutableStateOf<TermsItem?>(null) }
         TermsScreen(
             uiState = TermsUiState(agreed),
             onBack = onSignOut,
             onToggleAll = { agreed = if (agreed.size == TermsItem.entries.size) emptySet() else TermsItem.entries.toSet() },
             onToggle = { agreed = if (it in agreed) agreed - it else agreed + it },
-            onViewTerms = {}, // TODO(AUTH-01): 약관 전문 보기
+            onViewTerms = { viewing = it },
             onContinue = { navController.navigate(NicknameRoute) },
         )
+        viewing?.let { TermsDetailDialog(it, onDismiss = { viewing = null }) }
     }
 
     composable<NicknameRoute> {

@@ -10,6 +10,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.RunFields
+import com.tourderun.core.data.run.RunActivity
+import com.tourderun.core.data.firestore.toDataError
+import com.tourderun.core.data.DataError
 import com.tourderun.core.data.team.TeamRepository
 import com.tourderun.core.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,6 +22,9 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 
@@ -28,9 +34,13 @@ class FirestoreAccountRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val teamRepository: TeamRepository,
+    private val runActivity: RunActivity,
     @ApplicationContext private val context: Context,
     @ApplicationScope private val appScope: CoroutineScope,
 ) : AccountRepository {
+
+    private val failures = MutableSharedFlow<DataError>(extraBufferCapacity = 1)
+    override val withdrawFailures: Flow<DataError> = failures.asSharedFlow()
 
     /**
      * 앱 범위에서 끝까지 진행한다. 2단계에서 팀을 나가면 세션이 NoTeam이 되어 화면이 S03으로 옮겨질 수 있는데,
@@ -68,13 +78,17 @@ class FirestoreAccountRepository @Inject constructor(
             user.delete().await()
         }
         clearCredentialState()
+        // 같은 기기에서 다음 계정에 이전 계정 러닝의 복구 안내가 뜨지 않게(RUN-02)
+        runActivity.clearDeviceData()
         Result.success(Unit)
     } catch (e: TimeoutCancellationException) {
+        failures.tryEmit(e.toDataError())
         Result.failure(e)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Log.w(TAG, "회원 탈퇴 실패", e)
+        failures.tryEmit(e.toDataError())
         Result.failure(e)
     }
 

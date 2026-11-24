@@ -57,6 +57,10 @@ internal class FakeActiveRunStore : ActiveRunStore {
     override suspend fun clearIfRunIdMatches(runId: String) {
         if (session.value?.runId == runId) session.value = null
     }
+    override suspend fun clearAll() {
+        session.value = null
+        pendingSaves.value = emptyList()
+    }
     override suspend fun moveToPendingSave(runId: String): Boolean {
         val active = session.value?.takeIf { it.runId == runId } ?: return false
         pendingSaves.value = (pendingSaves.value.filterNot { it.runId == runId } +
