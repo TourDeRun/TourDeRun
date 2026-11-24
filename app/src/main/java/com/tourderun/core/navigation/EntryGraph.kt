@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.feature.auth.ui.LoginScreen
 import com.tourderun.feature.auth.ui.NicknameScreen
+import com.tourderun.feature.auth.ui.TermsDetailDialog
 import com.tourderun.feature.auth.ui.TermsItem
 import com.tourderun.feature.auth.ui.TermsScreen
 import com.tourderun.feature.auth.ui.TermsUiState
@@ -85,14 +86,17 @@ internal fun NavGraphBuilder.entryGraph(
 
     composable<TermsRoute> {
         var agreed by remember { mutableStateOf(emptySet<TermsItem>()) }
+        // 전문을 보고 있는 약관. 화면을 돌려도 창이 남게 rememberSaveable
+        var viewing by rememberSaveable { mutableStateOf<TermsItem?>(null) }
         TermsScreen(
             uiState = TermsUiState(agreed),
             onBack = onSignOut,
             onToggleAll = { agreed = if (agreed.size == TermsItem.entries.size) emptySet() else TermsItem.entries.toSet() },
             onToggle = { agreed = if (it in agreed) agreed - it else agreed + it },
-            onViewTerms = {}, // TODO(AUTH-01): 약관 전문 보기
+            onViewTerms = { viewing = it },
             onContinue = { navController.navigate(NicknameRoute) },
         )
+        viewing?.let { TermsDetailDialog(it, onDismiss = { viewing = null }) }
     }
 
     composable<NicknameRoute> {
