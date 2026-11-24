@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,16 +42,19 @@ import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
+import com.tourderun.domain.route.routeFor
 
 /** 지역 카드 상태. */
 sealed interface RegionCardStatus {
-    /** 얻은 카드. [dateText] = "10월 28일". */
-    data class Collected(val dateText: String) : RegionCardStatus
+    /** 얻은 카드. [dateText] = "10월 28일". 받은 시각을 모르면 null(날짜 없이 "획득"). */
+    data class Collected(val dateText: String?) : RegionCardStatus
 
     /** 다음에 얻을 카드. */
     data class Next(val remainingM: Long) : RegionCardStatus
 
-    /** 아직 먼 카드. */
+    /** 아직 없는 카드. [stageNumber]가 0이면 출발 도시. */
     data class Locked(val stageNumber: Int, val cumulativeKm: Int) : RegionCardStatus
 }
 
@@ -67,20 +74,34 @@ data class CollectionUiState(
     val collected: Int get() = cards.count { it.status is RegionCardStatus.Collected }
 }
 
-/** S17 지역 도감. 얻은 카드만 눌러서 상세(S18)를 연다. */
+/**
+ * S17 지역 도감 (EXT-01). 상태는 [CollectionViewModel]. 얻은 카드만 눌러서 상세(S18)를 연다.
+ * 불러오는 중이면 상단 바만, 실패면 다시 시도를 보인다.
+ */
 @Composable
 fun CollectionScreen(
-    uiState: CollectionUiState,
     onBack: () -> Unit,
     onCardClick: (RegionCardUi) -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: CollectionViewModel = hiltViewModel(),
 ) {
-    val colors = TdrTheme.colors
-    val type = TdrTheme.typography
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
+        CollectionLoad.Loading -> CollectionFrame(onBack, modifier) {}
+        is CollectionLoad.Failed -> CollectionFrame(onBack, modifier) {
+            LoadFailed(state.error.loadFailedMessageRes(), viewModel::retry)
+        }
+        is CollectionLoad.Content -> CollectionContent(state.ui, onBack, onCardClick, modifier)
+    }
+}
+
+/** 상단 바 + 내용. 불러오는 중·실패에도 뒤로 갈 수 있게 상단 바를 먼저 그린다. */
+@Composable
+private fun CollectionFrame(onBack: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier
             .fillMaxSize()
-            .background(colors.bgCanvas)
+            .background(TdrTheme.colors.bgCanvas)
             .statusBarsPadding(),
     ) {
         TdrTopBar(
@@ -88,6 +109,21 @@ fun CollectionScreen(
             onBack = onBack,
             modifier = Modifier.padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3),
         )
+        content()
+    }
+}
+
+/** S17 화면 내용. 상태 없음(Preview 대상). */
+@Composable
+fun CollectionContent(
+    uiState: CollectionUiState,
+    onBack: () -> Unit,
+    onCardClick: (RegionCardUi) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    CollectionFrame(onBack, modifier) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f).navigationBarsPadding(),
@@ -159,9 +195,14 @@ private fun RegionCardTile(card: RegionCardUi, onClick: () -> Unit) {
             )
             Text(
                 when (status) {
-                    is RegionCardStatus.Collected -> stringResource(R.string.collection_got, status.dateText)
-                    is RegionCardStatus.Next -> stringResource(R.string.collection_next, Format.km(status.remainingM))
-                    is RegionCardStatus.Locked -> stringResource(R.string.collection_locked, status.stageNumber, status.cumulativeKm)
+                    is RegionCardStatus.Collected -> status.dateText?.let { stringResource(R.string.collection_got, it) }
+                        ?: stringResource(R.string.collection_got_no_date)
+                    is RegionCardStatus.Next -> stringResource(R.string.collection_next, Format.kmUp(status.remainingM))
+                    is RegionCardStatus.Locked -> if (status.stageNumber == 0) {
+                        stringResource(R.string.card_start_badge)
+                    } else {
+                        stringResource(R.string.collection_locked, status.stageNumber, status.cumulativeKm)
+                    }
                 },
                 style = type.micro,
                 color = if (next) colors.brand else colors.inkMuted,
@@ -172,9 +213,9 @@ private fun RegionCardTile(card: RegionCardUi, onClick: () -> Unit) {
 
 @Preview(widthDp = 390, heightDp = 900)
 @Composable
-private fun CollectionScreenPreview() {
+private fun CollectionContentPreview() {
     TdrTheme {
-        CollectionScreen(
+        CollectionContent(
             CollectionUiState(
                 "서울",
                 "부산",
@@ -191,5 +232,13 @@ private fun CollectionScreenPreview() {
             ),
             {}, {},
         )
+    }
+}
+
+@Preview(name = "카드 없음", widthDp = 390, heightDp = 900)
+@Composable
+private fun CollectionContentEmptyPreview() {
+    TdrTheme {
+        CollectionContent(collectionUiState(routeFor(1), owned = emptyList(), teamDistanceM = 0), {}, {})
     }
 }
