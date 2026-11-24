@@ -13,6 +13,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.DataError
 import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.batchOf
 import com.tourderun.core.data.firestore.Collections
@@ -28,6 +29,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
@@ -36,7 +42,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -80,21 +88,48 @@ class FirestoreSessionRepository @Inject constructor(
     }
 
     // ── 3. 둘을 이어서 앱 전체에 공개 ────────────────────────
-    override val state: StateFlow<SessionState> = authUidFlow()
-        .flatMapLatest { uid ->
+    /** 다시 시도할 때마다 1씩 늘린다. 값이 바뀌면 users 리스너를 새로 붙인다. */
+    private val attempt = MutableStateFlow(0)
+    private val _loadError = MutableStateFlow<DataError?>(null)
+    override val loadError: StateFlow<DataError?> = _loadError.asStateFlow()
+
+    override fun retry() {
+        _loadError.value = null
+        attempt.update { it + 1 }
+    }
+
+    override val state: StateFlow<SessionState> = combine(authUidFlow(), attempt) { uid, _ -> uid }
+        .flatMapLatest<String?, SessionState> { uid ->
             if (uid == null) {
+                _loadError.value = null
                 flowOf(SessionState.SignedOut)
             } else {
                 firestore.collection(Collections.USERS).document(uid)
                     .snapshotFlow(TAG)
-                    .map { loaded ->
+                    .transformLatest { loaded ->
                         when (loaded) {
-                            is Loaded.Ready -> toSessionState(uid, loaded.value)
-                            // 첫 값 전에 리스너가 실패함(권한 거절 등). 로그는 snapshotFlow가 남긴다.
-                            // TODO(AUTH-01): 로딩 화면에 다시 시도 버튼을 달고 여기서 재구독한다.
-                            is Loaded.Failed -> SessionState.Loading
+                            is Loaded.Ready -> {
+                                val next = toSessionState(uid, loaded.value)
+                                if (next is SessionState.Loading) {
+                                    // 기기 캐시에 users가 없고 서버 답을 기다리는 중. 오프라인 첫 진입이면 리스너가
+                                    // 실패하지 않고 여기서 멈추므로, 일정 시간 안에 서버 값이 안 오면 연결 문제로 알린다
+                                    // (새 값이 오면 transformLatest가 이 기다림을 취소한다)
+                                    delay(SERVER_WAIT_MS)
+                                    _loadError.value = DataError.Unavailable
+                                } else {
+                                    _loadError.value = null
+                                    emit(next)
+                                }
+                            }
+                            // 리스너 실패(권한 거절·오프라인 첫 진입). 로그는 snapshotFlow가 남긴다.
+                            // 상태는 내보내지 않는다: 처음이면 Loading에 머물고 로딩 화면이 다시 시도를 보여 주며,
+                            // 앱을 쓰는 중이면 마지막 상태를 유지한다(화면이 로딩으로 튀지 않게).
+                            is Loaded.Failed -> _loadError.value = loaded.error
                         }
                     }
+                    // 로그인 직후처럼 uid가 바뀌면 users를 읽기 전까지 Loading이다.
+                    // 이전 상태(SignedOut)에 머물면 S01에서 실패를 알릴 수 없다(#134 리뷰)
+                    .onStart { emit(SessionState.Loading) }
             }
         }
         .stateIn(appScope, SharingStarted.Eagerly, SessionState.Loading)
@@ -221,5 +256,7 @@ class FirestoreSessionRepository @Inject constructor(
     private companion object {
         const val TAG = "TDR/auth"
         const val CREATE_TIMEOUT_MS = 10_000L
+        /** 진입 때 users 서버 값을 기다리는 시간. 넘으면 로딩 화면에 다시 시도를 보인다. */
+        const val SERVER_WAIT_MS = 10_000L
     }
 }

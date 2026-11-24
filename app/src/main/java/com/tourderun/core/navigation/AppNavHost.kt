@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.tourderun.core.data.session.SessionRepository
+import com.tourderun.core.data.session.SessionState
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.TdrTabBar
 import com.tourderun.core.designsystem.theme.TdrTheme
@@ -77,9 +78,10 @@ fun AppNavHost(
     LaunchedEffect(stage) {
         if (startRoute == null && stage != null) startRoute = stage.startRoute()
     }
+    val loadError by entryViewModel.loadError.collectAsStateWithLifecycle()
     val start = startRoute
     if (start == null) {
-        EntryLoadingScreen(modifier)
+        EntryLoadingScreen(modifier, loadError = loadError, onRetry = entryViewModel::retry)
         return
     }
     // 그 뒤로는 세션 상태가 바뀌면 진입 화면 사이를 옮긴다 (로그인 성공, 닉네임 저장, 로그아웃).
@@ -95,6 +97,12 @@ fun AppNavHost(
                 Toast.makeText(context, withdrawErrorRes(error), Toast.LENGTH_LONG).show()
             }
         }
+    }
+    // 진입 화면이 정해진 뒤에도(예: S01에서 로그인 직후) users를 읽다 실패하면 다시 시도를 보인다.
+    // 같은 계정으로 리스너만 다시 붙인다. 성공하면 followEntryStage가 다음 화면으로 옮긴다(#134 리뷰)
+    if (sessionState is SessionState.Loading && loadError != null) {
+        EntryLoadingScreen(modifier, loadError = loadError, onRetry = entryViewModel::retry)
+        return
     }
 
     Column(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas)) {
@@ -131,7 +139,7 @@ fun AppNavHost(
                         isLeader = header.isLeader,
                         showLogoutConfirm = showLogoutConfirm,
                         totalDistanceM = header.totalM,
-                        runCount = header.runCount.toInt(),
+                        runCount = header.runCount?.toInt(),
                     ),
                     onEditNickname = { profileViewModel.onAction(ProfileAction.EditNickname) },
                     onTeamClick = { navController.navigate(TeamRoute) },

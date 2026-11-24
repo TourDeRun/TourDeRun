@@ -19,6 +19,11 @@ class EntryViewModel @Inject constructor(
 
     val sessionState: StateFlow<SessionState> = session.state
 
+    /** 세션(users) 읽기 실패. 진입 로딩 화면이 다시 시도를 보여 준다. */
+    val loadError: StateFlow<DataError?> = session.loadError
+
+    fun retry() = session.retry()
+
     /** 탈퇴 실패. 탈퇴 창이 사라진 뒤에도 알리려고 앱 전체에서 받는다(RUN-02). */
     val withdrawFailures: Flow<DataError> = accountRepository.withdrawFailures
 

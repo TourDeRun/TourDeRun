@@ -1,9 +1,11 @@
 package com.tourderun.core.data.session
 
+import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import kotlinx.coroutines.flow.Flow
-
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * 로그인 상태와 내 `users` 문서 (AUTH-01, AUTH-02). 담당: 권민찬.
@@ -13,6 +15,15 @@ interface SessionRepository {
 
     /** 지금 세션 상태. 로그인·`users` 문서가 바뀌면 새 값이 나온다. */
     val state: StateFlow<SessionState>
+
+    /**
+     * `users` 문서 읽기 실패(권한 거절·오프라인 첫 진입 등). 정상이면 null.
+     * 실패해도 [state]는 마지막 값을 유지한다(처음이면 Loading). 진입 로딩 화면이 이 값으로 다시 시도를 보여 준다.
+     */
+    val loadError: StateFlow<DataError?> get() = NO_LOAD_ERROR
+
+    /** [loadError] 뒤 `users` 리스너를 다시 붙인다. */
+    fun retry() {}
 
     /** S01: Credential Manager가 준 구글 ID 토큰으로 로그인한다. 온라인 필수. */
     suspend fun signInWithGoogle(idToken: String): Result<Unit>
@@ -43,3 +54,6 @@ data class MyStats(val totalM: Long, val runCount: Long) {
         val EMPTY = MyStats(totalM = 0, runCount = 0)
     }
 }
+
+/** 실패를 내지 않는 구현(가짜·테스트)의 [SessionRepository.loadError] 기본값. */
+private val NO_LOAD_ERROR: StateFlow<DataError?> = MutableStateFlow<DataError?>(null).asStateFlow()
