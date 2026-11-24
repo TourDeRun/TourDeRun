@@ -10,6 +10,9 @@ import com.tourderun.core.data.stats.StatsRepository
 import com.tourderun.core.data.stats.TopPercent
 import com.tourderun.core.data.stats.WeeklyStats
 import com.tourderun.core.data.team.MyTeamSource
+import com.tourderun.core.data.team.TeamRepository
+import com.tourderun.core.ui.model.MemberUi
+import com.tourderun.core.ui.model.teamMembersUi
 import com.tourderun.core.ui.model.MyRaceUi
 import com.tourderun.core.ui.model.myRaceUi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,6 +48,7 @@ class HomeViewModel @Inject constructor(
     private val statsRepository: StatsRepository,
     myTeamSource: MyTeamSource,
     private val clock: Clock,
+    private val teamRepository: TeamRepository,
 ) : ViewModel() {
 
     private val race: Flow<MyRaceUi?> = observeMyRace(myTeamSource, raceRepository)
@@ -64,8 +68,32 @@ class HomeViewModel @Inject constructor(
         .flatMapLatest { teamId -> if (teamId == null) flowOf(null) else weeklySummary(teamId) }
         .onStart { emit(null) }
 
-    val uiState: StateFlow<HomeUiState?> = combine(race, weekly) { race, weekly ->
-        race?.let { homeUiState(it, weekly) }
+    /**
+     * 팀원 카드(TEAM-04). 팀원 문서 + 이번 주 거리(MVP). 팀 거리가 바뀌면(러닝 저장) 비율을 다시 계산한다.
+     * 불러오는 중·실패면 빈 목록 → 카드를 숨긴다.
+     */
+    private val members: Flow<List<MemberUi>> = myTeamSource.observeMyTeam()
+        .map { team -> team?.standing?.let { it.teamId to it.distanceM } }
+        .distinctUntilChanged()
+        .flatMapLatest<Pair<String, Long>?, List<MemberUi>> { key ->
+            if (key == null) {
+                flowOf(emptyList())
+            } else {
+                val (teamId, teamDistanceM) = key
+                combine(
+                    teamRepository.observeMembers(teamId),
+                    statsRepository.observeWeekly(teamId, clock.nowMs()),
+                ) { members, weekly ->
+                    val list = (members as? Loaded.Ready)?.value ?: return@combine emptyList()
+                    val weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty()
+                    teamMembersUi(teamDistanceM, list, weeklyMemberM).members
+                }
+            }
+        }
+        .onStart { emit(emptyList()) }
+
+    val uiState: StateFlow<HomeUiState?> = combine(race, weekly, members) { race, weekly, members ->
+        race?.let { homeUiState(it, weekly, members) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
