@@ -1,5 +1,6 @@
 package com.tourderun.feature.profile.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
@@ -7,6 +8,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,8 +32,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun WithdrawFlow(viewModel: WithdrawViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    if (!uiState.showConfirm) return
     val context = LocalContext.current
+    // RUN-02: 러닝 중이라 막혔을 때 안내
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
+    if (!uiState.showConfirm) return
     val scope = rememberCoroutineScope()
     val client = remember { GoogleCredentialClient() }
     WithdrawDialog(

@@ -1,5 +1,11 @@
 package com.tourderun.feature.team.ui
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -42,15 +48,62 @@ data class TeamEditUiState(
     val name: String,
     val color: TeamColor,
     val icon: TeamIcon,
-    val errorMessage: String? = null,
+    @StringRes val errorRes: Int? = null,
     val isSaving: Boolean = false,
 ) {
     val canSave: Boolean get() = name.trim().length in 2..CreateTeamUiState.TEAM_NAME_MAX && !isSaving
 }
 
-/** S14 팀 정보 수정. */
+/**
+ * S14 팀 정보 수정 (TEAM-05, 팀장만). 상태는 [TeamEditViewModel]. 저장하면 [onSaved]로 S14에 돌아간다.
+ * 지금 팀 값을 읽는 동안은 스피너.
+ */
 @Composable
 fun TeamEditScreen(
+    onBack: () -> Unit,
+    onSaved: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: TeamEditViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                TeamEditEvent.Saved -> onSaved()
+            }
+        }
+    }
+    val state = uiState
+    if (state == null) {
+        // 읽는 중에도 상단 바는 먼저 그려 뒤로 가기 버튼으로 나갈 수 있게 한다 (#120 리뷰)
+        Column(
+            modifier
+                .fillMaxSize()
+                .background(TdrTheme.colors.bgCanvas)
+                .statusBarsPadding()
+                .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3),
+        ) {
+            TdrTopBar(title = stringResource(R.string.team_edit_title), onBack = onBack)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = TdrTheme.colors.brand)
+            }
+        }
+        return
+    }
+    TeamEditContent(
+        uiState = state,
+        onBack = onBack,
+        onSave = { viewModel.onAction(TeamEditAction.Save) },
+        onNameChange = { viewModel.onAction(TeamEditAction.NameChanged(it)) },
+        onColorSelect = { viewModel.onAction(TeamEditAction.ColorSelected(it)) },
+        onIconSelect = { viewModel.onAction(TeamEditAction.IconSelected(it)) },
+        modifier = modifier,
+    )
+}
+
+/** S14 팀 정보 수정 그리기만 한다 (상태 없음, Preview 대상). */
+@Composable
+fun TeamEditContent(
     uiState: TeamEditUiState,
     onBack: () -> Unit,
     onSave: () -> Unit,
@@ -90,7 +143,7 @@ fun TeamEditScreen(
             value = uiState.name,
             onValueChange = onNameChange,
             label = stringResource(R.string.team_name_label),
-            error = uiState.errorMessage,
+            error = uiState.errorRes?.let { stringResource(it) },
             maxLength = CreateTeamUiState.TEAM_NAME_MAX,
         )
         Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
@@ -107,8 +160,16 @@ fun TeamEditScreen(
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
-private fun TeamEditScreenPreview() {
+private fun TeamEditContentPreview() {
     TdrTheme {
-        TeamEditScreen(TeamEditUiState("뛰뛰크루", TeamColor.BLUE, TeamIcon.RUNNER), {}, {}, {}, {}, {})
+        TeamEditContent(TeamEditUiState("뛰뛰크루", TeamColor.BLUE, TeamIcon.RUNNER), {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "이름이 짧아 저장 불가")
+@Composable
+private fun TeamEditContentInvalidPreview() {
+    TdrTheme {
+        TeamEditContent(TeamEditUiState("뛰", TeamColor.ORANGE, TeamIcon.FLAME), {}, {}, {}, {}, {})
     }
 }

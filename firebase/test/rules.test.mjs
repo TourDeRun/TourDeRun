@@ -29,8 +29,8 @@ before(async () => {
     projectId: 'demo-tourderun',
     firestore: {
       rules: readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'),
-      host: '127.0.0.1',
-      port: 8080,
+      // host·port는 적지 않는다: emulators:exec가 넣어 주는 FIRESTORE_EMULATOR_HOST를 따른다
+      // (8080을 다른 프로그램이 쓰면 firebase.local.json 같은 설정으로 포트만 바꿔 돌릴 수 있게)
     },
   });
 });
@@ -428,6 +428,49 @@ describe('초대 코드·팀 관리 (TEAM-02·05·06·07)', () => {
     await seedTeam(['u1', 'u2']);
     await seed((s) => deleteDoc(doc(s, 'teams', 't1', 'members', 'u2')));
     await assertSucceeds(updateDoc(doc(db('u2'), 'users', 'u2'), { teamId: null }));
+  });
+
+  test('TEAM-05 팀장이 이름을 1자로 수정 → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1'), { name: '뛰' }));
+  });
+
+  test('TEAM-05 팀장이 색·아이콘을 범위 밖(8)으로 → 거절', async () => {
+    await seedTeam(['u1']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1'), { color: 8 }));
+  });
+
+  test('TEAM-05 팀장이 이름과 함께 거리를 고치기 → 거절', async () => {
+    await seedTeam(['u1']);
+    await assertFails(updateDoc(doc(db('u1'), 'teams', 't1'), { name: '새이름', distanceM: 999999 }));
+  });
+
+  test('TEAM-08 팀장 넘기기 (상대 leader + 나 member 한 배치) → 허용', async () => {
+    await seedTeam(['u1', 'u2']);
+    const d = db('u1');
+    const b = writeBatch(d);
+    b.update(doc(d, 'teams', 't1', 'members', 'u2'), { role: 'leader' });
+    b.update(doc(d, 'teams', 't1', 'members', 'u1'), { role: 'member' });
+    await assertSucceeds(b.commit());
+  });
+
+  test('TEAM-08 팀원이 스스로 팀장 되기 → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    await assertFails(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u2'), { role: 'leader' }));
+  });
+
+  test('TEAM-08 팀원이 다른 팀원을 팀장으로 → 거절', async () => {
+    await seedTeam(['u1', 'u2', 'u3']);
+    await assertFails(updateDoc(doc(db('u2'), 'teams', 't1', 'members', 'u3'), { role: 'leader' }));
+  });
+
+  test('TEAM-08 팀장 넘기기와 함께 기여 거리 고치기 → 거절', async () => {
+    await seedTeam(['u1', 'u2']);
+    const d = db('u1');
+    const b = writeBatch(d);
+    b.update(doc(d, 'teams', 't1', 'members', 'u2'), { role: 'leader', contributionM: 99999 });
+    b.update(doc(d, 'teams', 't1', 'members', 'u1'), { role: 'member' });
+    await assertFails(b.commit());
   });
 
   test('팀원이 아닌 사람의 members 읽기 → 거절', async () => {

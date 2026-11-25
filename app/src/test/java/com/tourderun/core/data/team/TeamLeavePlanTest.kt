@@ -50,4 +50,11 @@ class TeamLeavePlanTest {
     @Test fun `내보내기는 남의 users를 쓰지 않는다`() {
         assertTrue(teamKickPlan("t1", "u3", 2).none { it.path.startsWith("users/") })
     }
+
+    @Test fun `팀장 넘기기는 상대를 leader로, 나를 member로 같이 쓴다`() {
+        val plan = teamHandOverPlan("t1", fromUid = "u1", toUid = "u2")
+        assertEquals(listOf("teams/t1/members/u2", "teams/t1/members/u1"), plan.map { it.path })
+        assertEquals(listOf(mapOf("role" to "leader"), mapOf("role" to "member")), plan.map { it.fields })
+        assertTrue(plan.all { it.mode == WriteMode.UPDATE })
+    }
 }

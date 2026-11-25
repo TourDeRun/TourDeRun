@@ -62,6 +62,18 @@ interface TeamRepository {
      * 다시 읽고 [teamKickPlan]을 쓴다.
      */
     suspend fun kickMember(leaderUid: String, teamId: String, targetUid: String): Result<Unit>
+
+    /**
+     * TEAM-05 팀장이 이름·대표 이미지를 바꾼다([teamEditPlan]). 오프라인 대기 쓰기라 끝날 때까지 기다리지 않는다
+     * (기기 캐시에 바로 반영돼 [observeTeam]이 새 값을 낸다). 배치를 시작하지 못하면 failure.
+     */
+    fun updateTeam(teamId: String, name: String, icon: Int, color: Int): Result<Unit>
+
+    /**
+     * TEAM-08 팀장 넘기기. 온라인 필수 트랜잭션에서 내가 아직 팀장인지·상대가 아직 팀원인지 확인하고
+     * [teamHandOverPlan]을 쓴다.
+     */
+    suspend fun handOverLeader(leaderUid: String, teamId: String, targetUid: String): Result<Unit>
 }
 
 /** TEAM-03 참여 결과. */

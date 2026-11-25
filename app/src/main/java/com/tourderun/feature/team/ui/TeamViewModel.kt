@@ -7,6 +7,8 @@ import com.tourderun.R
 import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.firestore.toDataError
+import com.tourderun.core.data.run.RunActivity
+import com.tourderun.core.ui.blockedMessageRes
 import com.tourderun.core.data.firestore.TeamDto
 import com.tourderun.core.data.firestore.TeamMemberDto
 import com.tourderun.core.data.session.SessionRepository
@@ -20,9 +22,8 @@ import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamIcon
 import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.TeamUi
+import com.tourderun.core.ui.model.teamMembersUi
 import com.tourderun.domain.team.TEAM_MAX_MEMBERS
-import com.tourderun.domain.team.contributionShares
-import com.tourderun.domain.team.weeklyMvps
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -53,6 +56,7 @@ class TeamViewModel @Inject constructor(
     private val teamRepository: TeamRepository,
     statsRepository: StatsRepository,
     clock: Clock,
+    private val runActivity: RunActivity,
 ) : ViewModel() {
 
     private val _leave = MutableStateFlow(LeaveUiState())
@@ -63,17 +67,46 @@ class TeamViewModel @Inject constructor(
     /** TEAM-06 내보내기 확인 창·진행 상태. */
     val kick: StateFlow<KickUiState> = _kick.asStateFlow()
 
+    private val _handOver = MutableStateFlow(HandOverUiState())
+    /** TEAM-08 팀장 넘기기 확인 창·진행 상태. */
+    val handOver: StateFlow<HandOverUiState> = _handOver.asStateFlow()
+
     private val _events = Channel<TeamEvent>(Channel.BUFFERED)
     val events: Flow<TeamEvent> = _events.receiveAsFlow()
 
     fun onAction(action: TeamAction) {
         when (action) {
-            TeamAction.LeaveClick -> _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            // RUN-02: 저장소를 지금 읽은 값으로 판단한다(미리 받아 둔 값은 첫 조회 전 null일 수 있다, #132 리뷰)
+            TeamAction.LeaveClick -> viewModelScope.launch {
+                val reason = runActivity.busyReason.first()
+                if (reason != null) _events.send(TeamEvent.ShowMessage(reason.blockedMessageRes()))
+                else _leave.update { it.copy(showConfirm = true, errorRes = null) }
+            }
             TeamAction.LeaveDismiss -> _leave.update { if (it.isLeaving) it else LeaveUiState() }
             TeamAction.LeaveConfirm -> leaveTeam()
             is TeamAction.KickClick -> _kick.value = KickUiState(target = action.member)
             TeamAction.KickDismiss -> _kick.update { if (it.isKicking) it else KickUiState() }
             TeamAction.KickConfirm -> kickMember()
+            is TeamAction.HandOverClick -> _handOver.value = HandOverUiState(target = action.member)
+            TeamAction.HandOverDismiss -> _handOver.update { if (it.isWorking) it else HandOverUiState() }
+            TeamAction.HandOverConfirm -> handOverLeader()
+        }
+    }
+
+    private fun handOverLeader() {
+        val current = _handOver.value
+        val target = current.target ?: return
+        if (current.isWorking) return
+        val state = session.state.value
+        val uid = state.uid ?: return
+        val teamId = state.teamId ?: return
+        _handOver.update { it.copy(isWorking = true, errorRes = null) }
+        viewModelScope.launch {
+            teamRepository.handOverLeader(leaderUid = uid, teamId = teamId, targetUid = target.uid)
+                .onSuccess { _handOver.value = HandOverUiState() }   // 역할 배지는 리스너가 바로 바꾼다
+                .onFailure { error ->
+                    _handOver.update { it.copy(isWorking = false, errorRes = handOverErrorRes(error.toDataError())) }
+                }
         }
     }
 
@@ -101,6 +134,13 @@ class TeamViewModel @Inject constructor(
         val teamId = state.teamId ?: return
         _leave.update { it.copy(isLeaving = true, errorRes = null) }
         viewModelScope.launch {
+            // 확인 창이 열린 사이 러닝이 시작·저장 대기가 됐을 수 있어 실행 직전에 다시 본다
+            val reason = runActivity.busyReason.first()
+            if (reason != null) {
+                _leave.value = LeaveUiState()
+                _events.send(TeamEvent.ShowMessage(reason.blockedMessageRes()))
+                return@launch
+            }
             teamRepository.leaveTeam(uid, teamId)
                 .onSuccess {
                     _leave.value = LeaveUiState()
@@ -112,13 +152,23 @@ class TeamViewModel @Inject constructor(
         }
     }
 
-    /** null이면 불러오는 중(팀이 없거나 팀·팀원 값이 아직 없음). */
-    val uiState: StateFlow<TeamUiState?> = session.state
-        .map { state -> state.uid?.let { uid -> state.teamId?.let { teamId -> uid to teamId } } }
-        .distinctUntilChanged()
-        .flatMapLatest<Pair<String, String>?, TeamUiState?> { key ->
+    /** 다시 시도할 때마다 1씩 늘린다. 값이 바뀌면 리스너를 새로 붙인다. */
+    private val attempt = MutableStateFlow(0)
+
+    /** 불러오기 실패 후 다시 시도. 다시 붙는 동안은 [TeamLoadState.Loading]. */
+    fun retry() {
+        attempt.update { it + 1 }
+    }
+
+    val uiState: StateFlow<TeamLoadState> = combine(
+        session.state
+            .map { state -> state.uid?.let { uid -> state.teamId?.let { teamId -> uid to teamId } } }
+            .distinctUntilChanged(),
+        attempt,
+    ) { key, _ -> key }
+        .flatMapLatest<Pair<String, String>?, TeamLoadState> { key ->
             if (key == null) {
-                flowOf(null)
+                flowOf(TeamLoadState.Loading)
             } else {
                 val (uid, teamId) = key
                 combine(
@@ -127,31 +177,51 @@ class TeamViewModel @Inject constructor(
                     teamRepository.observeInviteCode(teamId, uid),
                     statsRepository.observeWeekly(teamId, clock.nowMs()),
                 ) { team, members, code, weekly ->
-                    val teamDto = (team as? Loaded.Ready)?.value
-                    val memberList = (members as? Loaded.Ready)?.value
-                    if (teamDto == null || memberList == null) {
-                        null
-                    } else {
-                        teamUiState(
-                            team = teamDto,
-                            members = memberList,
-                            inviteCode = (code as? Loaded.Ready)?.value.orEmpty(),
-                            weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty(),
-                            myUid = uid,
-                        )
-                    }
-                }
+                    teamLoadState(
+                        team = team,
+                        members = members,
+                        inviteCode = (code as? Loaded.Ready)?.value.orEmpty(),
+                        weeklyMemberM = (weekly as? Loaded.Ready)?.value?.memberM.orEmpty(),
+                        myUid = uid,
+                    )
+                }.onStart { emit(TeamLoadState.Loading) }
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TeamLoadState.Loading)
+}
+
+/** S14 불러오기 상태. */
+sealed interface TeamLoadState {
+    /** 팀·팀원 값을 기다리는 중(팀 문서가 없어 곧 S03으로 옮겨질 때도). */
+    data object Loading : TeamLoadState
+
+    /** 팀이나 팀원 목록을 못 읽었다 → 다시 시도. */
+    data class Failed(val error: DataError) : TeamLoadState
+
+    data class Ready(val state: TeamUiState) : TeamLoadState
 }
 
 /**
- * 팀 + 팀원 + 이번 주 거리 → S14 상태.
- *
- * - 팀원 순서·비율은 `contributionShares`(기여 거리 내림차순, 합 100%). 나간 팀원 몫은 [TeamUiState.formerM]
- * - MVP는 `weeklyMvps`(1인 팀·모두 0km면 없음)
- * - 팀원 아바타 색은 가입 순서대로 `TeamColor` 순서를 돌려 쓴다
+ * 리스너 값 → S14 불러오기 상태. 팀·팀원 중 하나라도 실패면 [TeamLoadState.Failed].
+ * 초대 코드·이번 주 통계는 보조 값이라 실패해도 빈 값으로 보인다.
+ */
+internal fun teamLoadState(
+    team: Loaded<TeamDto?>,
+    members: Loaded<List<TeamMemberDto>>,
+    inviteCode: String,
+    weeklyMemberM: Map<String, Long>,
+    myUid: String,
+): TeamLoadState {
+    if (team is Loaded.Failed) return TeamLoadState.Failed(team.error)
+    if (members is Loaded.Failed) return TeamLoadState.Failed(members.error)
+    val teamDto = (team as Loaded.Ready).value ?: return TeamLoadState.Loading
+    val memberList = (members as Loaded.Ready).value
+    return TeamLoadState.Ready(teamUiState(teamDto, memberList, inviteCode, weeklyMemberM, myUid))
+}
+
+
+/**
+ * 팀 + 팀원 + 이번 주 거리 → S14 상태. 팀원 순서·비율·MVP·아바타 색은 홈과 같은 [teamMembersUi]로 만든다.
  */
 internal fun teamUiState(
     team: TeamDto,
@@ -160,14 +230,7 @@ internal fun teamUiState(
     weeklyMemberM: Map<String, Long>,
     myUid: String,
 ): TeamUiState {
-    val shares = contributionShares(team.distanceM, members.associate { it.uid to it.contributionM })
-    val byUid = members.associateBy { it.uid }
-    val colorOf = members.sortedWith(compareBy<TeamMemberDto> { it.joinedAtMs }.thenBy { it.uid })
-        .mapIndexed { i, m -> m.uid to TeamColor.entries[i % TeamColor.entries.size] }
-        .toMap()
-    val mvps = weeklyMvps(weeklyMemberM, byUid.keys)
-    val former = shares.firstOrNull { it.uid == null }
-
+    val membersUi = teamMembersUi(team.distanceM, members, weeklyMemberM)
     return TeamUiState(
         team = TeamUi(
             name = team.name,
@@ -180,23 +243,12 @@ internal fun teamUiState(
             maxMembers = TEAM_MAX_MEMBERS,
             distanceM = team.distanceM,
         ),
-        members = shares.mapNotNull { share ->
-            val member = share.uid?.let { byUid[it] } ?: return@mapNotNull null
-            MemberUi(
-                uid = member.uid,
-                nickname = member.nickname,
-                color = colorOf[member.uid] ?: TeamColor.BLUE,
-                contributionM = share.distanceM,
-                isLeader = member.isLeader,
-                isMvp = member.uid in mvps,
-                percent = share.percent,
-            )
-        },
+        members = membersUi.members,
         inviteCode = inviteCode,
-        isLeader = byUid[myUid]?.isLeader == true,
+        isLeader = members.firstOrNull { it.uid == myUid }?.isLeader == true,
         myUid = myUid,
-        formerM = former?.distanceM ?: 0L,
-        formerPercent = former?.percent ?: 0,
+        formerM = membersUi.formerM,
+        formerPercent = membersUi.formerPercent,
     )
 }
 
@@ -209,6 +261,9 @@ data class LeaveUiState(
 
 sealed interface TeamAction {
     data class KickClick(val member: MemberUi) : TeamAction
+    data class HandOverClick(val member: MemberUi) : TeamAction
+    data object HandOverConfirm : TeamAction
+    data object HandOverDismiss : TeamAction
     data object KickConfirm : TeamAction
     data object KickDismiss : TeamAction
     data object LeaveClick : TeamAction
@@ -219,6 +274,9 @@ sealed interface TeamAction {
 sealed interface TeamEvent {
     /** 팀에서 나갔다 → S03 팀 시작으로. */
     data object Left : TeamEvent
+
+    /** 한 번만 보여 줄 안내 (RUN-02 러닝 중이라 막힘 등). */
+    data class ShowMessage(val messageRes: Int) : TeamEvent
 }
 
 /** 나가기 실패 → 문구. 트랜잭션이라 연결 문제면 다시 시도를 권한다. */
@@ -237,4 +295,16 @@ data class KickUiState(
 internal fun kickErrorRes(error: DataError): Int = when (error) {
     DataError.Unavailable -> R.string.team_kick_error_network
     DataError.PermissionDenied, DataError.Other -> R.string.team_kick_error_failed
+}
+
+/** TEAM-08 팀장 넘기기 확인 창 상태. [target]이 null이면 닫혀 있다. */
+data class HandOverUiState(
+    val target: MemberUi? = null,
+    val isWorking: Boolean = false,
+    val errorRes: Int? = null,
+)
+
+internal fun handOverErrorRes(error: DataError): Int = when (error) {
+    DataError.Unavailable -> R.string.team_hand_over_error_network
+    DataError.PermissionDenied, DataError.Other -> R.string.team_hand_over_error_failed
 }

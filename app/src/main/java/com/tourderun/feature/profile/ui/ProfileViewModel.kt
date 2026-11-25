@@ -31,10 +31,11 @@ import kotlinx.coroutines.flow.update
 data class ProfileHeader(
     val nickname: String?,
     val teamName: String?,
-    val totalM: Long = 0,
-    val runCount: Long = 0,
-    /** 내 members 문서의 역할이 팀장인지. 팀이 없거나 아직 모르면 false. */
-    val isLeader: Boolean = false,
+    /** 아직 모르거나 읽기에 실패하면 null → 화면은 "–" (0과 구분). */
+    val totalM: Long? = null,
+    val runCount: Long? = null,
+    /** 내 members 문서의 역할이 팀장인지. 팀이 없거나 아직 모르면 null → 화면은 역할을 숨긴다. */
+    val isLeader: Boolean? = null,
 )
 
 /**
@@ -73,13 +74,14 @@ class ProfileViewModel @Inject constructor(
     private val isLeader = session.state
         .map { state -> state.uid?.let { uid -> state.teamId?.let { teamId -> uid to teamId } } }
         .distinctUntilChanged()
-        .flatMapLatest<Pair<String, String>?, Boolean> { key ->
+        .flatMapLatest<Pair<String, String>?, Boolean?> { key ->
             if (key == null) {
-                flowOf(false)
+                flowOf(null)
             } else {
                 val (uid, teamId) = key
                 teamRepository.observeMembers(teamId).map { loaded ->
-                    (loaded as? Loaded.Ready)?.value?.firstOrNull { it.uid == uid }?.isLeader == true
+                    // 읽기 실패면 모름(null)
+                    (loaded as? Loaded.Ready)?.value?.firstOrNull { it.uid == uid }?.isLeader
                 }
             }
         }
@@ -87,11 +89,12 @@ class ProfileViewModel @Inject constructor(
     private val myStats = session.state
         .map { it.uid }
         .distinctUntilChanged()
-        .flatMapLatest<String?, MyStats> { uid ->
+        .flatMapLatest<String?, MyStats?> { uid ->
             if (uid == null) {
-                flowOf(MyStats.EMPTY)
+                flowOf(null)
             } else {
-                session.observeMyStats(uid).map { (it as? Loaded.Ready)?.value ?: MyStats.EMPTY }
+                // 읽기 실패면 null → 화면은 0이 아니라 "–"
+                session.observeMyStats(uid).map { (it as? Loaded.Ready)?.value }
             }
         }
 
@@ -100,8 +103,8 @@ class ProfileViewModel @Inject constructor(
             ProfileHeader(
                 nickname = state.nickname,
                 teamName = team?.standing?.name,
-                totalM = stats.totalM,
-                runCount = stats.runCount,
+                totalM = stats?.totalM,
+                runCount = stats?.runCount,
                 isLeader = leader,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileHeader(null, null))
