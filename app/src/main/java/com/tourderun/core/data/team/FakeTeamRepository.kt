@@ -68,6 +68,9 @@ class FakeTeamRepository @Inject constructor() : TeamRepository {
         return Result.success(Unit)
     }
 
+    override suspend fun handOverLeader(leaderUid: String, teamId: String, targetUid: String): Result<Unit> =
+        Result.success(Unit)
+
     companion object {
         const val FAKE_INVITE_CODE = "ABC234"
     }

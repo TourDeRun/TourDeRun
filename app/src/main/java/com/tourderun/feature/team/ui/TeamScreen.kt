@@ -2,6 +2,14 @@ package com.tourderun.feature.team.ui
 
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import com.tourderun.core.designsystem.component.TdrIcons
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.AlertDialog
 import com.tourderun.core.designsystem.component.TeamColor
@@ -92,6 +100,7 @@ fun TeamScreen(
     val leave by viewModel.leave.collectAsStateWithLifecycle()
     val kick by viewModel.kick.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val handOver by viewModel.handOver.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -115,10 +124,19 @@ fun TeamScreen(
         onBack = onBack,
         onEdit = onEdit,
         onKick = { viewModel.onAction(TeamAction.KickClick(it)) },
+        onHandOver = { viewModel.onAction(TeamAction.HandOverClick(it)) },
         onShareInvite = onShowInvite,
         onLeave = { viewModel.onAction(TeamAction.LeaveClick) },
         modifier = modifier,
     )
+    handOver.target?.let { target ->
+        HandOverDialog(
+            nickname = target.nickname,
+            handOver = handOver,
+            onConfirm = { viewModel.onAction(TeamAction.HandOverConfirm) },
+            onDismiss = { viewModel.onAction(TeamAction.HandOverDismiss) },
+        )
+    }
     kick.target?.let { target ->
         KickMemberDialog(
             nickname = target.nickname,
@@ -135,6 +153,39 @@ fun TeamScreen(
             onDismiss = { viewModel.onAction(TeamAction.LeaveDismiss) },
         )
     }
+}
+
+/** TEAM-08 팀장 넘기기 확인 창. */
+@Composable
+private fun HandOverDialog(nickname: String, handOver: HandOverUiState, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.team_hand_over_confirm_title, nickname), style = type.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
+                Text(stringResource(R.string.team_hand_over_confirm_body), style = type.body, color = colors.inkMuted)
+                handOver.errorRes?.let { Text(stringResource(it), style = type.caption, color = colors.danger) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !handOver.isWorking) {
+                Text(
+                    stringResource(R.string.team_hand_over),
+                    color = if (handOver.isWorking) colors.inkMuted else colors.brand,
+                    style = type.subtitle,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !handOver.isWorking) {
+                Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle)
+            }
+        },
+        containerColor = colors.bgSurface,
+        shape = TdrShapes.lg,
+    )
 }
 
 /** TEAM-06 내보내기 확인 창. */
@@ -214,6 +265,7 @@ fun TeamContent(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onKick: (MemberUi) -> Unit,
+    onHandOver: (MemberUi) -> Unit,
     onShareInvite: () -> Unit,
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
@@ -262,6 +314,7 @@ fun TeamContent(
                     teamDistanceM = team.distanceM,
                     canKick = uiState.isLeader && member.uid != uiState.myUid,
                     onKick = { onKick(member) },
+                    onHandOver = { onHandOver(member) },
                 )
             }
             if (uiState.formerM > 0) FormerMembersRow(uiState.formerM, uiState.formerPercent)
@@ -307,7 +360,13 @@ fun TeamContent(
 }
 
 @Composable
-private fun MemberRow(member: MemberUi, teamDistanceM: Long, canKick: Boolean, onKick: () -> Unit) {
+private fun MemberRow(
+    member: MemberUi,
+    teamDistanceM: Long,
+    canKick: Boolean,
+    onKick: () -> Unit,
+    onHandOver: () -> Unit,
+) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val share = member.percent / 100f
@@ -334,18 +393,30 @@ private fun MemberRow(member: MemberUi, teamDistanceM: Long, canKick: Boolean, o
                     color = colors.inkMuted,
                 )
             }
+            // 팀장만 다른 팀원에게 메뉴(팀장 넘기기 TEAM-08, 내보내기 TEAM-06)를 연다
             if (canKick) {
-                val kickDesc = stringResource(R.string.team_kick_desc, member.nickname)
-                TextButton(
-                    onClick = onKick,
-                    shape = TdrShapes.sm,
-                    modifier = Modifier.semantics { contentDescription = kickDesc },
-                ) {
-                    Text(
-                        stringResource(R.string.team_kick),
-                        style = type.caption.copy(fontWeight = FontWeight.SemiBold),
-                        color = colors.inkMuted,
-                    )
+                var menuOpen by remember { mutableStateOf(false) }
+                val menuDesc = stringResource(R.string.team_member_menu_desc, member.nickname)
+                Box {
+                    IconButton(onClick = { menuOpen = true }, modifier = Modifier.semantics { contentDescription = menuDesc }) {
+                        Icon(TdrIcons.More, contentDescription = null, tint = colors.inkMuted)
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.team_hand_over), style = type.body) },
+                            onClick = {
+                                menuOpen = false
+                                onHandOver()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.team_kick), style = type.body, color = colors.danger) },
+                            onClick = {
+                                menuOpen = false
+                                onKick()
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -414,7 +485,7 @@ private fun TeamContentPreview() {
     TdrTheme {
         TeamContent(
             TeamUiState(PreviewSamples.team, PreviewSamples.members, "4K7Q2M", isLeader = true, myUid = "u1"),
-            {}, {}, {}, {}, {},
+            {}, {}, {}, {}, {}, {},
         )
     }
 }
@@ -433,7 +504,7 @@ private fun TeamContentAlonePreview() {
                 formerM = 3_000,
                 formerPercent = 25,
             ),
-            {}, {}, {}, {}, {},
+            {}, {}, {}, {}, {}, {},
         )
     }
 }

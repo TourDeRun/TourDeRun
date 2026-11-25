@@ -67,3 +67,20 @@ fun teamKickPlan(teamId: String, targetUid: String, newMemberCount: Int): List<D
     DocWrite("${Collections.TEAMS}/$teamId/${Collections.MEMBERS}/$targetUid", WriteMode.DELETE, emptyMap()),
     DocWrite("${Collections.TEAMS}/$teamId", WriteMode.UPDATE, mapOf(TeamFields.MEMBER_COUNT to newMemberCount)),
 )
+
+/**
+ * TEAM-08 팀장 넘기기. 상대 `role = leader`, 내 `role = member`를 **같은 배치로** 쓴다(팀장이 둘이 되지 않게).
+ * 상대를 먼저 올린다(규칙은 쓰기 전 상태로 내가 팀장인지 보므로 순서는 결과에 영향이 없다).
+ */
+fun teamHandOverPlan(teamId: String, fromUid: String, toUid: String): List<DocWrite> = listOf(
+    DocWrite(
+        "${Collections.TEAMS}/$teamId/${Collections.MEMBERS}/$toUid",
+        WriteMode.UPDATE,
+        mapOf(MemberFields.ROLE to MemberFields.ROLE_LEADER),
+    ),
+    DocWrite(
+        "${Collections.TEAMS}/$teamId/${Collections.MEMBERS}/$fromUid",
+        WriteMode.UPDATE,
+        mapOf(MemberFields.ROLE to MemberFields.ROLE_MEMBER),
+    ),
+)

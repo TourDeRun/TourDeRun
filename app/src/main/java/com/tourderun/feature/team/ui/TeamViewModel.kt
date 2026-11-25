@@ -67,6 +67,10 @@ class TeamViewModel @Inject constructor(
     /** TEAM-06 내보내기 확인 창·진행 상태. */
     val kick: StateFlow<KickUiState> = _kick.asStateFlow()
 
+    private val _handOver = MutableStateFlow(HandOverUiState())
+    /** TEAM-08 팀장 넘기기 확인 창·진행 상태. */
+    val handOver: StateFlow<HandOverUiState> = _handOver.asStateFlow()
+
     private val _events = Channel<TeamEvent>(Channel.BUFFERED)
     val events: Flow<TeamEvent> = _events.receiveAsFlow()
 
@@ -83,6 +87,26 @@ class TeamViewModel @Inject constructor(
             is TeamAction.KickClick -> _kick.value = KickUiState(target = action.member)
             TeamAction.KickDismiss -> _kick.update { if (it.isKicking) it else KickUiState() }
             TeamAction.KickConfirm -> kickMember()
+            is TeamAction.HandOverClick -> _handOver.value = HandOverUiState(target = action.member)
+            TeamAction.HandOverDismiss -> _handOver.update { if (it.isWorking) it else HandOverUiState() }
+            TeamAction.HandOverConfirm -> handOverLeader()
+        }
+    }
+
+    private fun handOverLeader() {
+        val current = _handOver.value
+        val target = current.target ?: return
+        if (current.isWorking) return
+        val state = session.state.value
+        val uid = state.uid ?: return
+        val teamId = state.teamId ?: return
+        _handOver.update { it.copy(isWorking = true, errorRes = null) }
+        viewModelScope.launch {
+            teamRepository.handOverLeader(leaderUid = uid, teamId = teamId, targetUid = target.uid)
+                .onSuccess { _handOver.value = HandOverUiState() }   // 역할 배지는 리스너가 바로 바꾼다
+                .onFailure { error ->
+                    _handOver.update { it.copy(isWorking = false, errorRes = handOverErrorRes(error.toDataError())) }
+                }
         }
     }
 
@@ -237,6 +261,9 @@ data class LeaveUiState(
 
 sealed interface TeamAction {
     data class KickClick(val member: MemberUi) : TeamAction
+    data class HandOverClick(val member: MemberUi) : TeamAction
+    data object HandOverConfirm : TeamAction
+    data object HandOverDismiss : TeamAction
     data object KickConfirm : TeamAction
     data object KickDismiss : TeamAction
     data object LeaveClick : TeamAction
@@ -268,4 +295,16 @@ data class KickUiState(
 internal fun kickErrorRes(error: DataError): Int = when (error) {
     DataError.Unavailable -> R.string.team_kick_error_network
     DataError.PermissionDenied, DataError.Other -> R.string.team_kick_error_failed
+}
+
+/** TEAM-08 팀장 넘기기 확인 창 상태. [target]이 null이면 닫혀 있다. */
+data class HandOverUiState(
+    val target: MemberUi? = null,
+    val isWorking: Boolean = false,
+    val errorRes: Int? = null,
+)
+
+internal fun handOverErrorRes(error: DataError): Int = when (error) {
+    DataError.Unavailable -> R.string.team_hand_over_error_network
+    DataError.PermissionDenied, DataError.Other -> R.string.team_hand_over_error_failed
 }
