@@ -304,7 +304,12 @@
     <string name="team_member_sub">%1$skm · %2$d%%</string>
     <string name="team_former_members">이전 팀원</string>
     <string name="team_kick">내보내기</string>
-    <string name="team_kick_desc">%1$s 내보내기</string>
+    <string name="team_member_menu_desc">%1$s 메뉴</string>
+    <string name="team_hand_over">팀장 넘기기</string>
+    <string name="team_hand_over_confirm_title">%1$s 님에게 팀장을 넘길까요?</string>
+    <string name="team_hand_over_confirm_body">넘기면 나는 팀원이 되고, 팀 수정·내보내기는 새 팀장만 할 수 있어요</string>
+    <string name="team_hand_over_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="team_hand_over_error_failed">넘기지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="team_kick_confirm_title">%1$s 님을 내보낼까요?</string>
     <string name="team_kick_confirm_body">달린 거리는 팀에 남아요. 다시 들어오려면 초대 코드가 필요해요</string>
     <string name="team_kick_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
