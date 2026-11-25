@@ -34,4 +34,10 @@ class FormatTest {
         assertEquals("85.0", Format.km(84_960))
         assertEquals("66.8", Format.km(66_800))
     }
+
+    @Test fun `meters는 정수 m, 음수는 0`() {
+        assertEquals("840", Format.meters(840))
+        assertEquals("1", Format.meters(1))
+        assertEquals("0", Format.meters(-5))
+    }
 }

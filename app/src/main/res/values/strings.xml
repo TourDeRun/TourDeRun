@@ -13,6 +13,7 @@
     <string name="unit_km_spaced">" km"</string>
     <string name="unit_times_spaced">" 회"</string>
     <string name="km_value">%1$skm</string>
+    <string name="m_value">%1$sm</string>
     <string name="route_format">%1$s → %2$s</string>
     <string name="stage_of">스테이지 %1$d / %2$d</string>
     <string name="rank_value">%1$d위</string>
@@ -241,7 +242,7 @@
     <string name="result_stage_line">스테이지 %1$d · %2$s → %3$s · </string>
     <string name="result_stage_progress_desc">스테이지 %1$d 진행률</string>
     <string name="result_overtake_title">%1$s 팀을 추월했어요! %2$d위 → %3$d위</string>
-    <string name="result_overtake_sub">앞 팀과 %1$skm 차이였는데, 이제 %2$skm 앞서요</string>
+    <string name="result_overtake_sub">앞 팀과 %1$s 차이였는데, 이제 %2$s 앞서요</string>
 
     <!-- JRN-05 스테이지 클리어 -->
     <string name="clear_badge">스테이지 %1$d 클리어</string>
@@ -251,6 +252,7 @@
     <string name="clear_finished">서울 → 부산 완주! 시즌 1을 마쳤어요</string>
     <string name="clear_card_sub">%1$s · 지역 카드 %2$d / %3$d</string>
     <string name="clear_card_got">지역 카드를 얻었어요</string>
+    <string name="clear_cards_got">지역 카드 %1$d장을 얻었어요</string>
     <string name="clear_view_card">카드 보기</string>
     <string name="card_photo_placeholder">대표 사진</string>
 
@@ -367,9 +369,11 @@
     <string name="collection_title">지역 도감</string>
     <string name="collection_count">%1$d / %2$d장 모았어요</string>
     <string name="collection_got">%1$s 획득</string>
+    <string name="collection_got_no_date">획득</string>
     <string name="collection_next">팀이 %1$skm 더 달리면 획득</string>
     <string name="collection_locked">스테이지 %1$d 도착 · %2$dkm</string>
     <string name="collection_locked_desc">잠김</string>
+    <string name="collection_passed">팀이 이미 지나간 도시예요</string>
 
     <!-- S18 지역 카드 상세 -->
     <string name="card_stage_badge">스테이지 %1$d 도착 · %2$s에서 %3$dkm</string>
@@ -377,6 +381,7 @@
     <string name="card_photo_credit">사진 출처: %1$s</string>
     <string name="card_landmarks">랜드마크</string>
     <string name="card_acquired">%1$s 획득 · %2$s와 함께</string>
+    <string name="card_acquired_no_team">%1$s 획득</string>
     <string name="run_permission_explanation">러닝 거리를 측정하려면 정확한 위치가 필요해요. 측정 중에는 알림으로 진행 상황을 알려드려요.</string>
     <string name="run_permission_continue">계속하기</string>
     <string name="run_permission_request">권한 허용하기</string>

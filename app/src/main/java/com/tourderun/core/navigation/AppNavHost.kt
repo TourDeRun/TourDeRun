@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -24,7 +26,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
 import com.tourderun.core.designsystem.component.TdrTab
@@ -35,6 +36,7 @@ import com.tourderun.feature.collection.ui.CollectionScreen
 import com.tourderun.feature.home.ui.HomeScreen
 import com.tourderun.feature.journey.ui.RoadViewScreen
 import com.tourderun.feature.journey.ui.StageClearHost
+import com.tourderun.feature.journey.ui.StageClearViewModel
 import com.tourderun.feature.profile.ui.NicknameEditDialog
 import com.tourderun.feature.profile.ui.ProfileAction
 import com.tourderun.feature.profile.ui.ProfileScreen
@@ -107,6 +109,12 @@ fun AppNavHost(
         return
     }
 
+    // JRN-05: 스테이지 클리어 연출이 떠 있는 화면(백 스택 항목 ID). 그 화면이 보이는 동안 하단 탭을 숨긴다.
+    // 화면 전환 중에는 두 화면이 같이 그려지므로 항목 ID로 구분한다(떠나는 화면이 늦게 false를 알려도 덮어쓰지 않게).
+    var stageClearEntryId by remember { mutableStateOf<String?>(null) }
+    val onStageClearShown: (String, Boolean) -> Unit = { entryId, shown ->
+        if (shown) stageClearEntryId = entryId else if (stageClearEntryId == entryId) stageClearEntryId = null
+    }
     Column(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas)) {
         NavHost(
             navController = navController,
@@ -115,13 +123,18 @@ fun AppNavHost(
         ) {
             entryGraph(navController, onSignOut = entryViewModel::signOut)
 
-            composable<HomeRoute> {
-                HomeScreen(
-                    onTeamClick = { navController.navigate(TeamRoute) },
-                    onStageRankClick = { navController.navigate(StageRankRoute) },
-                    onWeeklyStatsClick = { navController.navigate(WeeklyStatsRoute) },
-                )
-                StageClearHost(onViewCard = { navController.navigate(CardDetailRoute(it)) })
+            composable<HomeRoute> { entry ->
+                WithStageClear(
+                    onViewCard = { navController.navigate(CardDetailRoute(it)) },
+                    onShownChange = { onStageClearShown(entry.id, it) },
+                ) { screenModifier ->
+                    HomeScreen(
+                        onTeamClick = { navController.navigate(TeamRoute) },
+                        onStageRankClick = { navController.navigate(StageRankRoute) },
+                        onWeeklyStatsClick = { navController.navigate(WeeklyStatsRoute) },
+                        modifier = screenModifier,
+                    )
+                }
             }
             composable<RoadViewRoute> {
                 RoadViewScreen()
@@ -174,10 +187,17 @@ fun AppNavHost(
                     onClose = back,
                 )
             }
-            composable<RunResultRoute> {
+            composable<RunResultRoute> { entry ->
                 // 종료된 러닝을 저장하고 결과를 보인다(REC-01). 저장할 러닝이 없으면 바로 홈으로 간다.
-                RunResultHost(onDone = { navController.popBackStack(HomeRoute, inclusive = false) })
-                StageClearHost(onViewCard = { navController.navigate(CardDetailRoute(it)) })
+                WithStageClear(
+                    onViewCard = { navController.navigate(CardDetailRoute(it)) },
+                    onShownChange = { onStageClearShown(entry.id, it) },
+                ) { screenModifier ->
+                    RunResultHost(
+                        onDone = { navController.popBackStack(HomeRoute, inclusive = false) },
+                        modifier = screenModifier,
+                    )
+                }
             }
 
             composable<RecordsRoute> {
@@ -211,20 +231,17 @@ fun AppNavHost(
 
             composable<CollectionRoute> {
                 CollectionScreen(
-                    uiState = TempUiStates.collection,
                     onBack = back,
                     onCardClick = { navController.navigate(CardDetailRoute(it.cityId)) },
                 )
             }
-            composable<CardDetailRoute> { entry ->
-                CardDetailScreen(
-                    uiState = TempUiStates.cardDetail(entry.toRoute<CardDetailRoute>().cityId),
-                    onBack = back,
-                )
+            composable<CardDetailRoute> {
+                CardDetailScreen(onBack = back)
             }
         }
 
-        if (currentTab != null) {
+        val stageClearCoversTab = stageClearEntryId != null && stageClearEntryId == backStackEntry?.id
+        if (currentTab != null && !stageClearCoversTab) {
             TdrTabBar(selected = currentTab, onSelect = { navController.selectTab(it) })
         }
     }
@@ -234,6 +251,28 @@ fun AppNavHost(
         onOpenRun = { navController.navigate(RunningRoute) { launchSingleTop = true } },
         onOpenResult = { navController.navigate(RunResultRoute) { launchSingleTop = true } },
     )
+}
+
+/**
+ * 화면 위에 스테이지 클리어 연출([StageClearHost], JRN-05)을 덮는다.
+ * 연출이 떠 있는 동안은 아래 화면을 낭독기에서 숨기고([screen]에 넘기는 Modifier), [onShownChange]로 하단 탭을 숨기게 한다.
+ * 화면을 떠나면 false를 알린다.
+ */
+@Composable
+private fun WithStageClear(
+    onViewCard: (cityId: String) -> Unit,
+    onShownChange: (Boolean) -> Unit,
+    screen: @Composable (Modifier) -> Unit,
+) {
+    val clearViewModel: StageClearViewModel = hiltViewModel()
+    val clear by clearViewModel.uiState.collectAsStateWithLifecycle()
+    val shown = clear != null
+    DisposableEffect(shown) {
+        onShownChange(shown)
+        onDispose { onShownChange(false) }
+    }
+    screen(if (shown) Modifier.clearAndSetSemantics {} else Modifier)
+    StageClearHost(onViewCard = onViewCard, viewModel = clearViewModel)
 }
 
 /** 이 화면이 탭 화면이면 그 탭, 아니면 null(하단 탭을 숨긴다). */

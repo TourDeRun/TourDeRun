@@ -11,6 +11,7 @@ import com.tourderun.domain.model.Route
  * - 완주(부산 도착)면 다음 스테이지·도시·거리가 모두 null.
  * - 지역 카드(EXT-01)는 [newCardCityIds]의 마지막 도시 하나만 보인다([earnedCardUi]). 새 카드가 없거나
  *   가진 카드를 못 읽었으면(null) card = null(카드 보기 버튼도 없다).
+ *   두 장 이상이면 [EarnedCardUi.count]에 수를 넣는다("지역 카드 2장을 얻었어요").
  *
  * 예: 안양 도착 → 스테이지 1 클리어, 다음 스테이지 2·오산·29km / 부산 도착 → 스테이지 7 클리어, 다음 없음.
  *
@@ -30,7 +31,8 @@ fun stageClearUiState(
         nextStage = next?.let { cleared + 1 },
         nextCity = next?.to?.nameKo,
         nextStageKm = next?.lengthKm,
-        card = newCardCityIds?.lastOrNull()?.let { earnedCardUi(it, route) },
+        card = newCardCityIds?.lastOrNull()?.let { earnedCardUi(it, route) }
+            ?.copy(count = newCardCityIds.distinct().size),
     )
 }
 

@@ -35,6 +35,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tourderun.R
+import com.tourderun.core.data.DataError
+import com.tourderun.core.designsystem.component.TdrTopBar
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
+import com.tourderun.domain.route.routeFor
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.core.designsystem.component.Pill
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.theme.TdrShapes
@@ -55,14 +64,50 @@ data class CardDetailUiState(
     val landmarks: List<LandmarkUi>,
     /** 사진 출처 표기. 사진이 정해지기 전에는 null이고, 그때는 출처 줄을 그리지 않는다. */
     val photoCredit: String?,
-    /** "11월 4일" */
-    val acquiredDateText: String,
+    /** "11월 4일". 아직 없는 카드거나 받은 시각을 모르면 null(받은 줄을 숨긴다). */
+    val acquiredDateText: String?,
+    /** 받을 때 팀 이름. 모르면 빈 문자열(팀 이름 없이 "획득"만). */
     val teamName: String,
 )
 
-/** S18 지역 카드 상세. 사진은 아직 자리표시다 (가로 1080px WebP 예정). */
+/**
+ * S18 지역 카드 상세 (EXT-01). 상태는 [CardDetailViewModel].
+ * 불러오는 중이면 뒤로 가기만, 실패면 다시 시도, 경로에 없는 도시면 닫는다.
+ */
 @Composable
 fun CardDetailScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: CardDetailViewModel = hiltViewModel(),
+) {
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
+        CardDetailLoad.Loading -> CardDetailFallback(error = null, onBack = onBack, onRetry = {}, modifier = modifier)
+        is CardDetailLoad.Failed -> CardDetailFallback(state.error, onBack, viewModel::retry, modifier)
+        CardDetailLoad.NotFound -> LaunchedEffect(Unit) { onBack() }
+        is CardDetailLoad.Content -> CardDetailContent(state.ui, onBack, modifier)
+    }
+}
+
+/** S18 불러오는 중(뒤로 가기만)·실패(다시 시도). 상태 없음(Preview 대상). */
+@Composable
+fun CardDetailFallback(error: DataError?, onBack: () -> Unit, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgSurface)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3),
+    ) {
+        TdrTopBar(onBack = onBack)
+        if (error != null) LoadFailed(error.loadFailedMessageRes(), onRetry)
+    }
+}
+
+/** S18 화면 내용. 상태 없음(Preview 대상). 사진은 아직 자리표시다 (가로 1080px WebP 예정). */
+@Composable
+fun CardDetailContent(
     uiState: CardDetailUiState,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -148,26 +193,32 @@ fun CardDetailScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(TdrSpacing.s2))
-            Text(
-                stringResource(R.string.card_acquired, uiState.acquiredDateText, uiState.teamName),
-                style = type.caption.copy(lineHeight = 18.sp),
-                color = colors.inkMuted,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(TdrShapes.md)
-                    .background(colors.bgSubtle)
-                    .padding(horizontal = 14.dp, vertical = TdrSpacing.s3),
-            )
+            uiState.acquiredDateText?.let { date ->
+                Spacer(Modifier.height(TdrSpacing.s2))
+                Text(
+                    if (uiState.teamName.isNotBlank()) {
+                        stringResource(R.string.card_acquired, date, uiState.teamName)
+                    } else {
+                        stringResource(R.string.card_acquired_no_team, date)
+                    },
+                    style = type.caption.copy(lineHeight = 18.sp),
+                    color = colors.inkMuted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(TdrShapes.md)
+                        .background(colors.bgSubtle)
+                        .padding(horizontal = 14.dp, vertical = TdrSpacing.s3),
+                )
+            }
         }
     }
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
-private fun CardDetailScreenPreview() {
+private fun CardDetailContentPreview() {
     TdrTheme {
-        CardDetailScreen(
+        CardDetailContent(
             CardDetailUiState(
                 name = "오산",
                 nameEn = "Osan",
@@ -185,5 +236,21 @@ private fun CardDetailScreenPreview() {
             ),
             onBack = {},
         )
+    }
+}
+
+@Preview(name = "아직 없는 카드", widthDp = 390, heightDp = 844)
+@Composable
+private fun CardDetailContentNotOwnedPreview() {
+    TdrTheme {
+        CardDetailContent(requireNotNull(cardDetailUiState(routeFor(1), "daegu", owned = emptyList())), onBack = {})
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun CardDetailFallbackPreview() {
+    TdrTheme {
+        CardDetailFallback(DataError.Unavailable, onBack = {}, onRetry = {})
     }
 }
