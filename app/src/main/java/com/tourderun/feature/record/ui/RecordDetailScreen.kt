@@ -47,6 +47,9 @@ import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
+import com.tourderun.core.data.DataError
 import com.tourderun.domain.model.LatLngValue
 
 /** S12 기록 상세 상태. 제목·메모만 고칠 수 있다. */
@@ -81,6 +84,7 @@ fun RecordDetailScreen(
     when (val state = load) {
         RecordDetailLoad.Loading -> Unit
         RecordDetailLoad.Gone -> LaunchedEffect(Unit) { onBack() }
+        is RecordDetailLoad.Failed -> RecordDetailFailed(state.error, onBack, viewModel::retry, modifier)
         is RecordDetailLoad.Ready -> RecordDetailContent(
             uiState = state.ui,
             onBack = onBack,
@@ -92,6 +96,22 @@ fun RecordDetailScreen(
             onDeleteDismiss = viewModel::onDeleteDismiss,
             modifier = modifier,
         )
+    }
+}
+
+/** S12 불러오기 실패. 뒤로 가기와 실패 + 다시 시도. 상태 없음(Preview 대상). */
+@Composable
+fun RecordDetailFailed(error: DataError, onBack: () -> Unit, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgCanvas)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3),
+    ) {
+        TdrTopBar(onBack = onBack)
+        LoadFailed(error.loadFailedMessageRes(), onRetry)
     }
 }
 
@@ -219,5 +239,13 @@ private fun RecordDetailScreenPreview() {
             ),
             {}, {}, {}, {}, {}, {}, {},
         )
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun RecordDetailFailedPreview() {
+    TdrTheme {
+        RecordDetailFailed(DataError.Unavailable, onBack = {}, onRetry = {})
     }
 }

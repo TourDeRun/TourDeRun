@@ -4,16 +4,19 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunRepository
 import com.tourderun.core.navigation.RecordDetailRoute
 import com.tourderun.domain.record.RunRecord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
@@ -24,6 +27,9 @@ sealed interface RecordDetailLoad {
     /** 기록이 없다(지웠거나 처음부터 없음). 화면을 닫는다. */
     data object Gone : RecordDetailLoad
 
+    /** 리스너가 첫 값 전에 실패했다. 닫지 않고 실패 + 다시 시도를 보인다. */
+    data class Failed(val error: DataError) : RecordDetailLoad
+
     data class Ready(val ui: RecordDetailUiState) : RecordDetailLoad
 }
 
@@ -31,8 +37,7 @@ sealed interface RecordDetailLoad {
  * 리스너 값 → S12 상태.
  *
  * - `Ready(null)`(지웠거나 처음부터 없음)일 때만 [RecordDetailLoad.Gone]으로 화면을 닫는다.
- * - [Loaded.Failed]는 닫지 않고 [RecordDetailLoad.Loading]에 머문다(첫 값 전 실패만 오므로 직전 상태도 Loading이다).
- *   TODO(REC-02): 불러오기 실패 화면
+ * - [Loaded.Failed]는 닫지 않고 [RecordDetailLoad.Failed]로 실패 + 다시 시도를 보인다(첫 값 전 실패만 온다).
  */
 internal fun recordDetailLoad(
     loaded: Loaded<RunRecord?>,
@@ -40,7 +45,7 @@ internal fun recordDetailLoad(
     draftMemo: String?,
     showDeleteConfirm: Boolean,
 ): RecordDetailLoad = when (loaded) {
-    is Loaded.Failed -> RecordDetailLoad.Loading
+    is Loaded.Failed -> RecordDetailLoad.Failed(loaded.error)
     is Loaded.Ready -> loaded.value
         ?.let { RecordDetailLoad.Ready(recordDetailUiState(it, draftTitle, draftMemo, showDeleteConfirm)) }
         ?: RecordDetailLoad.Gone
@@ -51,7 +56,9 @@ internal fun recordDetailLoad(
  *
  * 수정·삭제는 오프라인 대기 쓰기라 기다리지 않는다. 쓰기를 시작하면 리스너가 바로 새 값을 주므로
  * 저장 뒤에는 고치던 값을 비우고, 삭제 뒤에는 기록이 null이 되면서 [RecordDetailLoad.Gone]으로 화면이 닫힌다.
+ * 불러오지 못하면 [retry]로 다시 구독한다.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class RecordDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -61,9 +68,20 @@ class RecordDetailViewModel @Inject constructor(
     private val runId = savedStateHandle.toRoute<RecordDetailRoute>().runId
     private val edit = MutableStateFlow(Edit())
 
-    val uiState: StateFlow<RecordDetailLoad> = combine(runRepository.observeRun(runId), edit) { loaded, edit ->
+    /** 다시 시도할 때마다 1씩 늘린다. 값이 바뀌면 리스너를 새로 붙인다. */
+    private val attempt = MutableStateFlow(0)
+
+    val uiState: StateFlow<RecordDetailLoad> = combine(
+        attempt.flatMapLatest { runRepository.observeRun(runId) },
+        edit,
+    ) { loaded, edit ->
         recordDetailLoad(loaded, edit.title, edit.memo, edit.showDeleteConfirm)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordDetailLoad.Loading)
+
+    /** 불러오기 실패 후 다시 시도. */
+    fun retry() {
+        attempt.update { it + 1 }
+    }
 
     fun onTitleChange(title: String) = edit.update { it.copy(title = title) }
 

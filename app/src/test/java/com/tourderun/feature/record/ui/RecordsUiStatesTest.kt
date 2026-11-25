@@ -135,12 +135,68 @@ class RecordsUiStatesTest {
         assertEquals(RunRepository.PAGE_SIZE, limits.value)
     }
 
-    @Test fun `실패는 건너뛰어 불러오는 중에 머문다`() {
+    @Test fun `첫 목록 전 실패 → 불러오는 중을 끝내고 실패 표시`() {
         val recorder = Recorder(mapOf("a" to Loaded.Failed(DataError.PermissionDenied)))
 
         val states = collect(MutableStateFlow("a"), MutableStateFlow(RunRepository.PAGE_SIZE), recorder)
 
-        assertEquals(listOf(RecordsUiState.Loading), states)
+        assertEquals(RecordsUiState.Loading, states.first())
+        val last = states.last()
+        assertEquals(DataError.PermissionDenied, last.loadError)
+        assertEquals(false, last.isLoading)
+        assertTrue(last.runs.isEmpty())
+        assertEquals(false, last.canLoadMore)
+    }
+
+    @Test fun `더 불러오기 실패 → 받아 둔 목록은 두고 실패 표시, 더 불러오기 멈춤`() {
+        val results = mutableMapOf<Long, Loaded<List<RunRecord>>>(
+            RunRepository.PAGE_SIZE to Loaded.Ready(samples, isFromCache = false),
+            40L to Loaded.Failed(DataError.Unavailable),
+        )
+        val limits = MutableStateFlow(RunRepository.PAGE_SIZE)
+
+        val states = collect(MutableStateFlow("a"), limits, LimitRecorder(results)) { limits.value = 40L }
+
+        val last = states.last()
+        assertEquals(samples.map { it.id }, last.runs.map { it.runId })
+        assertEquals(DataError.Unavailable, last.loadError)
+        assertEquals(false, last.canLoadMore)
+    }
+
+    @Test fun `받은 목록에는 실패 표시가 없다`() {
+        val recorder = Recorder(mapOf("a" to Loaded.Ready(samples, isFromCache = false)))
+
+        val states = collect(MutableStateFlow("a"), MutableStateFlow(RunRepository.PAGE_SIZE), recorder)
+
+        assertEquals(null, states.last().loadError)
+    }
+
+    /** 개수별로 다른 결과를 주는 가짜 조회. */
+    private class LimitRecorder(private val byLimit: Map<Long, Loaded<List<RunRecord>>>) {
+        fun observe(@Suppress("UNUSED_PARAMETER") uid: String, limit: Long): Flow<Loaded<List<RunRecord>>> =
+            flowOf(requireNotNull(byLimit[limit]) { "모르는 개수: $limit" })
+    }
+
+    private fun collect(
+        uids: MutableStateFlow<String?>,
+        limits: MutableStateFlow<Long>,
+        recorder: LimitRecorder,
+        block: suspend () -> Unit = {},
+    ): List<RecordsUiState> = runBlocking {
+        val states = mutableListOf<RecordsUiState>()
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            recordsUiStates(
+                uids = uids,
+                limits = limits,
+                observeRuns = recorder::observe,
+                onUidChanged = { limits.value = RunRepository.PAGE_SIZE },
+            ).toList(states)
+        }
+        settle()
+        block()
+        settle()
+        job.cancel()
+        states
     }
 
     private companion object {

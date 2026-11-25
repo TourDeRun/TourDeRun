@@ -59,6 +59,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.MascotFace
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrIcons
@@ -72,6 +73,8 @@ import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.ui.model.StageProgressUi
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.model.toNextCityText
@@ -99,13 +102,27 @@ fun RoadViewScreen(
     modifier: Modifier = Modifier,
     viewModel: RoadViewViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val state = uiState
-    if (state == null) {
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
         // 받기 전이거나 팀이 없을 때: 지도 바탕색만
-        Box(modifier.fillMaxSize().background(TdrTheme.colors.bgMap))
-    } else {
-        RoadViewContent(state, modifier)
+        RoadViewLoad.Loading -> Box(modifier.fillMaxSize().background(TdrTheme.colors.bgMap))
+        is RoadViewLoad.Failed -> RoadViewFailed(state.error, viewModel::retry, modifier)
+        is RoadViewLoad.Content -> RoadViewContent(state.ui, modifier)
+    }
+}
+
+/** S08 불러오기 실패(JRN-03). 상태 없음(Preview 대상). */
+@Composable
+fun RoadViewFailed(error: DataError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgCanvas)
+            .statusBarsPadding()
+            .padding(horizontal = TdrSpacing.s5),
+        contentAlignment = Alignment.Center,
+    ) {
+        LoadFailed(error.loadFailedMessageRes(), onRetry)
     }
 }
 
@@ -411,5 +428,13 @@ private fun RoadViewScreenPreview() {
                 map = roadMapUi(routeFor(1), PreviewSamples.team.distanceM, PreviewSamples.rivals.take(2)),
             ),
         )
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun RoadViewFailedPreview() {
+    TabScreenPreview(TdrTab.Road) {
+        RoadViewFailed(DataError.Unavailable, onRetry = {})
     }
 }
