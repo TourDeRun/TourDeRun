@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.CardHeader
 import com.tourderun.core.designsystem.component.MascotFace
 import com.tourderun.core.designsystem.component.MemberAvatar
@@ -50,6 +51,8 @@ import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.RivalTeamUi
 import com.tourderun.core.ui.model.StageProgressUi
@@ -89,9 +92,14 @@ data class HomeUiState(
     val behindIsOtherStage: Boolean = false,
     /** 기기 캐시 값을 보여 주는 중. */
     val isOffline: Boolean = false,
+    /** 이번 주 통계를 불러오지 못했다. 이번 주 카드 자리에 실패 + 다시 시도를 보인다. */
+    val weeklyError: DataError? = null,
 )
 
-/** S07 홈. 하단 탭(홈)은 AppNavHost가 붙인다. 상태를 받기 전과 팀이 없을 때는 바탕만 보인다. */
+/**
+ * S07 홈. 하단 탭(홈)은 AppNavHost가 붙인다. 상태를 받기 전과 팀이 없을 때는 바탕만 보인다.
+ * 경쟁 상황을 불러오지 못하면 실패 + 다시 시도를 보인다(JRN-03).
+ */
 @Composable
 fun HomeScreen(
     onTeamClick: () -> Unit,
@@ -100,8 +108,34 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    uiState?.let { HomeContent(it, onTeamClick, onStageRankClick, onWeeklyStatsClick, modifier) }
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
+        HomeLoad.Loading -> Box(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas))
+        is HomeLoad.Failed -> HomeFailed(state.error, viewModel::retry, modifier)
+        is HomeLoad.Content -> HomeContent(
+            uiState = state.ui,
+            onTeamClick = onTeamClick,
+            onStageRankClick = onStageRankClick,
+            onWeeklyStatsClick = onWeeklyStatsClick,
+            onRetryWeekly = viewModel::retryWeekly,
+            modifier = modifier,
+        )
+    }
+}
+
+/** S07 불러오기 실패. 상태 없음(Preview 대상). */
+@Composable
+fun HomeFailed(error: DataError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgCanvas)
+            .statusBarsPadding()
+            .padding(horizontal = TdrSpacing.s5),
+        contentAlignment = Alignment.Center,
+    ) {
+        LoadFailed(error.loadFailedMessageRes(), onRetry)
+    }
 }
 
 /** S07 화면 내용. 상태 없음(Preview 대상). */
@@ -111,6 +145,7 @@ fun HomeContent(
     onTeamClick: () -> Unit,
     onStageRankClick: () -> Unit,
     onWeeklyStatsClick: () -> Unit,
+    onRetryWeekly: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
@@ -126,7 +161,13 @@ fun HomeContent(
         TeamHeaderCard(uiState.team, uiState.isOffline, onTeamClick)
         StageCard(uiState.stage, uiState.rank, uiState.totalTeams)
         RaceCard(uiState, onStageRankClick)
-        uiState.weekly?.let { WeeklyCard(it, onWeeklyStatsClick) }
+        val weekly = uiState.weekly
+        val weeklyError = uiState.weeklyError
+        if (weekly != null) {
+            WeeklyCard(weekly, onWeeklyStatsClick)
+        } else if (weeklyError != null) {
+            TdrCard { LoadFailed(weeklyError.loadFailedMessageRes(), onRetryWeekly) }
+        }
         if (uiState.members.isNotEmpty()) {
             MembersChartCard(uiState.members, uiState.team.distanceM, onTeamClick)
         }
@@ -455,7 +496,36 @@ private fun HomeScreenPreview() {
                 weekly = WeeklySummaryUi(42_500, 9, 6_100, 38, 11),
                 members = PreviewSamples.members,
             ),
-            {}, {}, {},
+            {}, {}, {}, {},
         )
+    }
+}
+
+@Preview(name = "이번 주 통계 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeScreenWeeklyFailedPreview() {
+    TabScreenPreview(TdrTab.Home) {
+        HomeContent(
+            HomeUiState(
+                team = PreviewSamples.team,
+                stage = PreviewSamples.stage,
+                rank = 2,
+                totalTeams = 5,
+                ahead = PreviewSamples.rivals[0],
+                behind = PreviewSamples.rivals[1],
+                weekly = null,
+                members = emptyList(),
+                weeklyError = DataError.Unavailable,
+            ),
+            {}, {}, {}, {},
+        )
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeFailedPreview() {
+    TabScreenPreview(TdrTab.Home) {
+        HomeFailed(DataError.PermissionDenied, onRetry = {})
     }
 }

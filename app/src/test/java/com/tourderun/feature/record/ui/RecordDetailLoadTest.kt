@@ -12,10 +12,10 @@ class RecordDetailLoadTest {
 
     private val record = FakeRunRepository.SAMPLE_RUNS.first()
 
-    @Test fun `Failed → 닫히지 않고 불러오는 중`() {
+    @Test fun `Failed → 닫히지 않고 실패 표시`() {
         val load = recordDetailLoad(Loaded.Failed(DataError.Unavailable), null, null, false)
 
-        assertEquals(RecordDetailLoad.Loading, load)
+        assertEquals(RecordDetailLoad.Failed(DataError.Unavailable), load)
     }
 
     @Test fun `Ready(null) → 닫힘`() {
