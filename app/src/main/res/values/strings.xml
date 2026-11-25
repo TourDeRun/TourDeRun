@@ -371,6 +371,7 @@
     <string name="collection_next">팀이 %1$skm 더 달리면 획득</string>
     <string name="collection_locked">스테이지 %1$d 도착 · %2$dkm</string>
     <string name="collection_locked_desc">잠김</string>
+    <string name="collection_passed">팀이 이미 지나간 도시예요</string>
 
     <!-- S18 지역 카드 상세 -->
     <string name="card_stage_badge">스테이지 %1$d 도착 · %2$s에서 %3$dkm</string>

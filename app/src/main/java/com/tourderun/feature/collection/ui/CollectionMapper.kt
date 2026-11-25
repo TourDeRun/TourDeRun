@@ -13,7 +13,9 @@ import java.time.ZoneId
  *
  * - 가진 카드 → [RegionCardStatus.Collected](받은 날짜. 시각이 없으면 날짜 없이)
  * - 팀이 다음에 도착할 도시이고 아직 없으면 → [RegionCardStatus.Next](남은 거리)
- * - 그 밖에 없는 카드 → [RegionCardStatus.Locked]. 팀에 들어오기 전에 팀이 지난 도시도 여기에 든다(카드 대상 아님)
+ * - 팀이 이미 도착한 도시인데 없는 카드 → [RegionCardStatus.Passed]. 팀에 들어오기 전에 팀이 지나간 도시라 카드 대상이 아니다
+ *   (`newCardCityIds` 규칙). 출발 도시(서울)는 제외
+ * - 그 밖에 없는 카드 → [RegionCardStatus.Locked]
  *
  * @param teamDistanceM 지금 팀 거리. 팀이 없으면 null(다음 카드를 표시하지 않는다)
  */
@@ -25,7 +27,9 @@ fun collectionUiState(
 ): CollectionUiState {
     val ownedById = owned.associateBy { it.cityId }
     // 다음 도착 도시의 cities 번호(출발 도시가 0). 완주했거나 팀이 없으면 null.
-    val nextIndex = teamDistanceM?.let { arrivals(it, route) + 1 }?.takeIf { it < route.cities.size }
+    // 팀 도착 수(출발 도시 제외). cities 번호 1..arrived가 팀이 이미 도착한 도시다. 팀이 없으면 0.
+    val arrived = teamDistanceM?.let { arrivals(it, route) } ?: 0
+    val nextIndex = teamDistanceM?.let { arrived + 1 }?.takeIf { it < route.cities.size }
     return CollectionUiState(
         routeFrom = route.cities.first().nameKo,
         routeTo = route.cities.last().nameKo,
@@ -33,6 +37,7 @@ fun collectionUiState(
             val card = ownedById[city.id]
             val status = when {
                 card != null -> RegionCardStatus.Collected(card.earnedAtMs.takeIf { it > 0 }?.let { Format.monthDay(it, zone) })
+                index in 1..arrived -> RegionCardStatus.Passed
                 index == nextIndex && teamDistanceM != null ->
                     RegionCardStatus.Next(route.cumulativeEndM[index - 1] - teamDistanceM)
                 else -> RegionCardStatus.Locked(

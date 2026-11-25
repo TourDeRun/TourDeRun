@@ -45,10 +45,30 @@ class CollectionMapperTest {
         assertEquals(RegionCardStatus.Locked(4, 125), statuses(state)["sejong"])
     }
 
-    @Test fun `가입 전에 팀이 지난 도시는 잠김`() {
+    @Test fun `가입 전에 팀이 지나간 도시는 지나간 도시로 표시`() {
         val state = collectionUiState(route, owned, teamDistanceM = 66_800)
 
-        assertEquals(RegionCardStatus.Locked(2, 48), statuses(state)["osan"])
+        assertEquals(RegionCardStatus.Passed, statuses(state)["osan"])
+    }
+
+    @Test fun `19000m 팀에 중간 참여해 안양 카드가 없으면 안양은 지나간 도시`() {
+        val state = collectionUiState(route, owned.take(1), teamDistanceM = 19_000)
+
+        assertEquals(RegionCardStatus.Passed, statuses(state)["anyang"])
+        assertEquals(RegionCardStatus.Next(48_000 - 19_000), statuses(state)["osan"])
+    }
+
+    @Test fun `완주 팀에 참여했으면 서울 말고 모두 지나간 도시`() {
+        val state = collectionUiState(route, owned.take(1), teamDistanceM = 350_000)
+
+        assertEquals(RegionCardStatus.Collected("10월 28일"), statuses(state)["seoul"])
+        assertTrue(state.cards.drop(1).all { it.status == RegionCardStatus.Passed })
+    }
+
+    @Test fun `팀이 없으면 지나간 도시가 없다`() {
+        val state = collectionUiState(route, emptyList(), teamDistanceM = null)
+
+        assertTrue(state.cards.none { it.status == RegionCardStatus.Passed })
     }
 
     @Test fun `19000m는 안양 도착이라 다음 카드는 오산`() {
@@ -67,7 +87,6 @@ class CollectionMapperTest {
         val state = collectionUiState(route, owned, teamDistanceM = 350_000)
 
         assertTrue(state.cards.none { it.status is RegionCardStatus.Next })
-        assertEquals(RegionCardStatus.Locked(7, 350), statuses(state)["busan"])
     }
 
     @Test fun `팀이 없으면 다음 카드가 없다`() {

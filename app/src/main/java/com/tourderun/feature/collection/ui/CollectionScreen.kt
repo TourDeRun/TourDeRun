@@ -41,6 +41,7 @@ import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
+import com.tourderun.core.data.card.OwnedCard
 import com.tourderun.core.ui.Format
 import com.tourderun.core.ui.LoadFailed
 import com.tourderun.core.ui.loadFailedMessageRes
@@ -56,6 +57,9 @@ sealed interface RegionCardStatus {
 
     /** 아직 없는 카드. [stageNumber]가 0이면 출발 도시. */
     data class Locked(val stageNumber: Int, val cumulativeKm: Int) : RegionCardStatus
+
+    /** 팀에 들어오기 전에 팀이 이미 지나간 도시. 카드 대상이 아니라 받을 수 없다(EXT-01). */
+    data object Passed : RegionCardStatus
 }
 
 data class RegionCardUi(
@@ -203,6 +207,7 @@ private fun RegionCardTile(card: RegionCardUi, onClick: () -> Unit) {
                     } else {
                         stringResource(R.string.collection_locked, status.stageNumber, status.cumulativeKm)
                     }
+                    RegionCardStatus.Passed -> stringResource(R.string.collection_passed)
                 },
                 style = type.micro,
                 color = if (next) colors.brand else colors.inkMuted,
@@ -240,5 +245,16 @@ private fun CollectionContentPreview() {
 private fun CollectionContentEmptyPreview() {
     TdrTheme {
         CollectionContent(collectionUiState(routeFor(1), owned = emptyList(), teamDistanceM = 0), {}, {})
+    }
+}
+
+@Preview(name = "중간 참여(지나간 도시)", widthDp = 390, heightDp = 900)
+@Composable
+private fun CollectionContentJoinedLatePreview() {
+    TdrTheme {
+        CollectionContent(
+            collectionUiState(routeFor(1), owned = listOf(OwnedCard("seoul", 0, "뛰뛰크루")), teamDistanceM = 66_800),
+            {}, {},
+        )
     }
 }
