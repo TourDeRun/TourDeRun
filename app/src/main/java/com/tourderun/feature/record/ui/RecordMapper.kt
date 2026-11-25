@@ -43,7 +43,7 @@ fun recordsUiState(runs: List<RunRecord>, limit: Long, zone: ZoneId = SEOUL): Re
  * 불러온 기록만 더하면 한 쪽(20개)을 넘을 때 실제보다 작기 때문이다.
  * [stats]가 null(읽기 전·실패)이거나 불러오는 중이면 그대로 둔다.
  *
- * 누적 값은 기록을 지워도 줄지 않는다(팀 거리와 같은 원칙). 그래서 지운 뒤에는 총 횟수가 목록 개수보다 클 수 있다.
+ * 기록을 지우면 누적 값도 같은 배치에서 그만큼 빠진다(REC-05 `runDeletePlan`). 팀 거리는 줄지 않는다.
  */
 fun RecordsUiState.withUserTotals(stats: MyStats?): RecordsUiState =
     if (stats == null || isLoading) this

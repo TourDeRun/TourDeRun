@@ -8,6 +8,7 @@ import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.RunFields
+import com.tourderun.core.data.firestore.batchOf
 import com.tourderun.core.data.firestore.runListOf
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.data.firestore.titleMemoFields
@@ -62,9 +63,9 @@ class FirestoreRunRepository @Inject constructor(
             }
         }
 
-    // 팀 거리·주간 통계·기여는 빼지 않는다(M-01). runs 문서만 지운다.
-    override fun delete(runId: String): Result<Unit> = startWrite("기록 삭제") {
-        runs.document(runId).delete()
+    // runs 삭제와 내 누적 값 빼기를 한 배치로. 팀 거리·주간 통계·기여는 빼지 않는다(M-01).
+    override fun delete(uid: String, runId: String, distanceM: Long): Result<Unit> = startWrite("기록 삭제") {
+        firestore.batchOf(runDeletePlan(runId, uid, distanceM)).commit()
             .addOnFailureListener { Log.w(TAG, "기록 삭제 거부", it) }
     }
 

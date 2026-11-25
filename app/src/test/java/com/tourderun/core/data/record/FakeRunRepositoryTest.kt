@@ -67,7 +67,7 @@ class FakeRunRepositoryTest {
         val repo = FakeRunRepository(samples)
         val id = samples.first().id
 
-        repo.delete(id)
+        repo.delete(UID, id, samples.first().distanceM)
 
         assertNull((repo.observeRun(id).first() as Loaded.Ready).value)
     }
