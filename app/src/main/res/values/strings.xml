@@ -173,7 +173,9 @@
     <string name="home_members_title">팀원 누적 기록</string>
     <string name="home_members_total">팀 거리 %1$skm</string>
     <string name="home_members_chart_desc">팀원별 누적 거리 막대 그래프: %1$s</string>
-    <string name="home_members_chart_item">%1$s %2$skm</string>
+    <string name="home_members_chart_item">%1$s %2$skm %3$d%%</string>
+    <string name="home_members_former">이전 팀원</string>
+    <string name="percent_value">%1$d%%</string>
     <string name="home_mvp_hint">왕관 = 이번 주 MVP</string>
 
     <!-- S08 로드뷰 -->
