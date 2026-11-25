@@ -26,7 +26,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
 import com.tourderun.core.designsystem.component.TdrTab
@@ -232,16 +231,12 @@ fun AppNavHost(
 
             composable<CollectionRoute> {
                 CollectionScreen(
-                    uiState = TempUiStates.collection,
                     onBack = back,
                     onCardClick = { navController.navigate(CardDetailRoute(it.cityId)) },
                 )
             }
-            composable<CardDetailRoute> { entry ->
-                CardDetailScreen(
-                    uiState = TempUiStates.cardDetail(entry.toRoute<CardDetailRoute>().cityId),
-                    onBack = back,
-                )
+            composable<CardDetailRoute> {
+                CardDetailScreen(onBack = back)
             }
         }
 

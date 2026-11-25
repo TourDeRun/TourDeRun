@@ -1,7 +1,10 @@
 package com.tourderun.core.ui
 
+import com.tourderun.domain.stats.SEOUL
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Locale
 import kotlin.math.abs
 
@@ -47,4 +50,10 @@ object Format {
     /** 346 → "5'46\"". 0 이하면 "-'--\"". */
     fun pace(secondsPerKm: Long): String =
         if (secondsPerKm <= 0) "-'--\"" else String.format(Locale.US, "%d'%02d\"", secondsPerKm / 60, secondsPerKm % 60)
+
+    /** epoch ms → "10월 28일" (기본 한국 시간). */
+    fun monthDay(epochMs: Long, zone: ZoneId = SEOUL): String {
+        val date = Instant.ofEpochMilli(epochMs).atZone(zone)
+        return "${date.monthValue}월 ${date.dayOfMonth}일"
+    }
 }
