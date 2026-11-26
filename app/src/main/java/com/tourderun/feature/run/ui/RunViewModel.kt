@@ -5,12 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tourderun.core.data.Clock
 import com.tourderun.core.data.record.RunSaver
-import com.tourderun.core.data.team.MyTeam
 import com.tourderun.core.data.team.MyTeamSource
-import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.domain.model.LatLngValue
-import com.tourderun.domain.model.TeamStanding
-import com.tourderun.domain.route.routeFor
 import com.tourderun.domain.run.isTooShortToSave
 import com.tourderun.feature.run.session.RunPhase
 import com.tourderun.feature.run.session.RunSessionManager
@@ -21,6 +17,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -55,22 +52,16 @@ class RunViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<RunScreenUiState> = combine(manager.state, myTeamSource.observeMyTeam(), path) { state, team, path ->
-        when {
-            state.phase == RunPhase.IDLE && team == null -> RunScreenUiState.NoTeam
-            state.phase == RunPhase.IDLE -> RunScreenUiState.Ready(
-                stageProgressUi(requireNotNull(team).standing.distanceM, routeFor(team.season)),
-            )
-            state.phase == RunPhase.COUNTDOWN -> RunScreenUiState.Countdown(state.countdownSec)
-            state.phase == RunPhase.FINISHED -> RunScreenUiState.Finished(
-                distanceM = state.distanceM,
-                movingSec = state.movingSec,
-                tooShort = isTooShortToSave(state.distanceM, state.movingSec),
-            )
-            // 측정 중에 팀 정보가 사라지면(팀에서 내보내짐 등) 이번 러닝 거리만 보인다.
-            team == null -> RunScreenUiState.Running(runningUiState(state, NO_TEAM, path))
-            else -> RunScreenUiState.Running(runningUiState(state, team, path))
-        }
+    /** 종료를 눌렀는데 기준 미달이라 확인 창을 띄운 상태(일시정지 중). */
+    private val tooShortPrompt = MutableStateFlow(false)
+
+    val uiState: StateFlow<RunScreenUiState> = combine(
+        manager.state,
+        myTeamSource.observeMyTeam(),
+        path,
+        tooShortPrompt,
+    ) { state, team, path, prompt ->
+        runScreenUiState(state, team, path, prompt)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RunScreenUiState.Loading)
 
     /** 권한 확인 뒤 시작 버튼. 카운트다운을 시작하고 GPS 준비를 위해 서비스를 바로 띄운다. */
@@ -97,16 +88,26 @@ class RunViewModel @Inject constructor(
         }
     }
 
-    /** 길게 눌러 종료. 기준 미달(M-05)이면 화면에 선택지를 띄우고, 아니면 결과 화면으로 간다. */
+    /**
+     * 일시정지 중 종료. 기준 미달(M-05)이면 종료하지 않고 확인 창을 띄운다(일시정지 유지).
+     * 기준을 넘으면 종료하고 결과 화면으로 간다.
+     */
     fun stop() {
+        val state = manager.state.value
+        if (state.phase != RunPhase.PAUSED) return
+        if (isTooShortToSave(state.distanceM, state.movingSec)) {
+            tooShortPrompt.value = true
+            return
+        }
         viewModelScope.launch {
             val result = manager.finish(clock.nowMs()) ?: return@launch
-            if (!isTooShortToSave(result.distanceM, result.movingSec)) events.send(RunEvent.OpenResult)
+            events.send(RunEvent.OpenResult)
         }
     }
 
-    /** 짧은 러닝 안내에서 "계속하기". 종료 시각부터 지금까지는 일시정지로 본다. */
+    /** 짧은 러닝 확인 창에서 "계속 달리기". 일시정지(또는 종료) 시각부터 지금까지는 일시정지로 본다. */
     fun continueRun() {
+        tooShortPrompt.value = false
         viewModelScope.launch { events.send(RunEvent.RequestResume) }
     }
 
@@ -125,8 +126,14 @@ class RunViewModel @Inject constructor(
         viewModelScope.launch { manager.stopForServiceFailure(clock.nowMs()) }
     }
 
-    /** 종료된 러닝을 저장하지 않고 버린다. */
+    /** 확인 창 바깥을 누르거나 뒤로 가기: 창만 닫고 일시정지를 유지한다. */
+    fun dismissTooShort() {
+        tooShortPrompt.value = false
+    }
+
+    /** 일시정지·종료된 러닝을 저장하지 않고 버린다. */
     fun discard() {
+        tooShortPrompt.value = false
         val runId = manager.state.value.runId ?: return
         viewModelScope.launch {
             if (manager.discard(runId)) events.send(RunEvent.Close)
@@ -150,9 +157,5 @@ class RunViewModel @Inject constructor(
         const val TAG = "TDR/run"
         const val MINI_MAP_REFRESH_MS = 5_000L
         const val RUN_ID_LENGTH = 20
-        val NO_TEAM = MyTeam(
-            season = 1,
-            standing = TeamStanding(teamId = "", name = "", distanceM = 0, reachedAtMs = 0),
-        )
     }
 }

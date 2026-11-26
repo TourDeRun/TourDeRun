@@ -35,6 +35,7 @@ import com.tourderun.R
 import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.component.TdrConfirmDialog
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
@@ -85,6 +86,7 @@ fun RunRoute(
         onCancelCountdown = viewModel::cancelCountdown,
         onPauseToggle = viewModel::togglePause,
         onStop = viewModel::stop,
+        onDismissTooShort = viewModel::dismissTooShort,
         onContinue = viewModel::continueRun,
         onDiscard = viewModel::discard,
         onOpenResult = viewModel::openResult,
@@ -158,6 +160,7 @@ fun RunContent(
     onCancelCountdown: () -> Unit,
     onPauseToggle: () -> Unit,
     onStop: () -> Unit,
+    onDismissTooShort: () -> Unit,
     onContinue: () -> Unit,
     onDiscard: () -> Unit,
     onOpenResult: () -> Unit,
@@ -165,7 +168,10 @@ fun RunContent(
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
-        is RunScreenUiState.Running -> RunningScreen(uiState.running, onPauseToggle, onStop, modifier)
+        is RunScreenUiState.Running -> {
+            RunningScreen(uiState.running, onPauseToggle, onStop, modifier)
+            if (uiState.tooShortPrompt) TooShortDialog(uiState.running, onContinue, onDiscard, onDismissTooShort)
+        }
         else -> TdrTheme(darkTheme = true) {
             RunFrame(modifier) {
                 when (uiState) {
@@ -173,7 +179,7 @@ fun RunContent(
                     RunScreenUiState.NoTeam -> NoTeamContent(onClose)
                     is RunScreenUiState.Ready -> ReadyContent(uiState, onStart, onClose)
                     is RunScreenUiState.Countdown -> CountdownContent(uiState.sec, onCancelCountdown)
-                    is RunScreenUiState.Finished -> FinishedContent(uiState, onContinue, onDiscard, onOpenResult)
+                    is RunScreenUiState.Finished -> FinishedContent(uiState, onDiscard, onOpenResult)
                     is RunScreenUiState.Running -> Unit
                 }
             }
@@ -260,49 +266,65 @@ private fun ColumnScope.CountdownContent(sec: Int, onCancel: () -> Unit) {
 @Composable
 private fun ColumnScope.FinishedContent(
     uiState: RunScreenUiState.Finished,
-    onContinue: () -> Unit,
     onDiscard: () -> Unit,
     onOpenResult: () -> Unit,
 ) {
     val type = TdrTheme.typography
     val km = Format.km(uiState.distanceM.roundToLong(), decimals = 2)
     val time = Format.duration(uiState.movingSec)
-    if (uiState.tooShort) {
-        Text(stringResource(R.string.run_too_short_title), style = type.titleLg)
-        Text(stringResource(R.string.run_too_short_body, km, time), style = type.body, color = TdrTheme.colors.inkMuted)
-        Spacer(Modifier.weight(1f))
-        TdrButton(stringResource(R.string.run_too_short_continue), onContinue)
-        TdrButton(stringResource(R.string.run_too_short_discard), onDiscard, style = TdrButtonStyle.OutlineDanger)
-    } else {
-        // 종료 후 결과 화면을 닫았거나 앱을 다시 연 경우. 저장(REC-01)은 결과 화면에서 한다.
-        Text(stringResource(R.string.run_finished_title), style = type.titleLg)
-        Text(stringResource(R.string.run_finished_body, km, time), style = type.body, color = TdrTheme.colors.inkMuted)
-        Spacer(Modifier.weight(1f))
-        TdrButton(stringResource(R.string.run_finished_open), onOpenResult)
-        TdrButton(stringResource(R.string.run_too_short_discard), onDiscard, style = TdrButtonStyle.OutlineDanger)
+    // 종료 후 결과 화면을 닫았거나 앱을 다시 연 경우. 저장(REC-01)은 결과 화면에서 한다.
+    Text(stringResource(R.string.run_finished_title), style = type.titleLg)
+    Text(stringResource(R.string.run_finished_body, km, time), style = type.body, color = TdrTheme.colors.inkMuted)
+    Spacer(Modifier.weight(1f))
+    TdrButton(stringResource(R.string.run_finished_open), onOpenResult)
+    TdrButton(stringResource(R.string.run_too_short_discard), onDiscard, style = TdrButtonStyle.OutlineDanger)
+}
+
+/** M-05 기준 미달로 종료를 누른 경우. 바깥을 누르면 창만 닫히고 일시정지가 유지된다. */
+@Composable
+private fun TooShortDialog(run: RunningUiState, onContinue: () -> Unit, onDiscard: () -> Unit, onDismiss: () -> Unit) {
+    TdrTheme(darkTheme = true) {
+        TdrConfirmDialog(
+            title = stringResource(R.string.run_too_short_title),
+            body = stringResource(
+                R.string.run_too_short_body,
+                Format.km(run.distanceM.roundToLong(), decimals = 2),
+                Format.duration(run.movingSec),
+            ),
+            confirmText = stringResource(R.string.run_too_short_discard),
+            onConfirm = onDiscard,
+            onDismiss = onDismiss,
+            danger = true,
+            dismissText = stringResource(R.string.run_too_short_continue),
+            onDismissClick = onContinue,
+        )
     }
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun RunReadyPreview() {
-    RunContent(RunScreenUiState.Ready(stageProgressUi(66_800, routeFor(1))), {}, {}, {}, {}, {}, {}, {}, {})
+    RunContent(RunScreenUiState.Ready(stageProgressUi(66_800, routeFor(1))), {}, {}, {}, {}, {}, {}, {}, {}, {})
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun RunCountdownPreview() {
-    RunContent(RunScreenUiState.Countdown(3), {}, {}, {}, {}, {}, {}, {}, {})
+    RunContent(RunScreenUiState.Countdown(3), {}, {}, {}, {}, {}, {}, {}, {}, {})
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun RunTooShortPreview() {
-    RunContent(RunScreenUiState.Finished(42.0, 35, tooShort = true), {}, {}, {}, {}, {}, {}, {}, {})
+    RunContent(
+        RunScreenUiState.Running(
+            RunningUiState(42.0, 35, 0, 0, isPaused = true, stageWithRun = stageProgressUi(66_800, routeFor(1))),
+            tooShortPrompt = true,
+        ), {}, {}, {}, {}, {}, {}, {}, {}, {})
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun RunNoTeamPreview() {
-    RunContent(RunScreenUiState.NoTeam, {}, {}, {}, {}, {}, {}, {}, {})
+    RunContent(RunScreenUiState.NoTeam, {}, {}, {}, {}, {}, {}, {}, {}, {})
 }

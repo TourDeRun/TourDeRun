@@ -207,7 +207,6 @@
     <string name="run_stop">러닝 종료 (길게 누르기)</string>
     <string name="run_pause">일시정지</string>
     <string name="run_resume">다시 시작</string>
-    <string name="run_stop_hint">종료는\n길게 눌러요</string>
     <string name="run_ready_title">달릴 준비 됐나요?</string>
     <string name="run_ready_stage">지금 스테이지 %1$d · %2$s → %3$s</string>
     <string name="run_start">시작</string>

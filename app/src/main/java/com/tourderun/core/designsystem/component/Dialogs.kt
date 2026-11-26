@@ -18,6 +18,8 @@ import com.tourderun.core.designsystem.theme.TdrTheme
  * @param confirmText 동작 이름 ("삭제"). "확인"을 쓰지 않는다
  * @param body 결과 설명. 없으면 생략
  * @param danger 되돌릴 수 없는 동작이면 확인 글자를 빨갛게
+ * @param dismissText 왼쪽 버튼 글자. 기본 "취소"
+ * @param onDismissClick 왼쪽 버튼 동작. 기본은 [onDismiss](바깥 누르기·뒤로 가기와 같다)
  */
 @Composable
 fun TdrConfirmDialog(
@@ -28,6 +30,8 @@ fun TdrConfirmDialog(
     modifier: Modifier = Modifier,
     body: String? = null,
     danger: Boolean = false,
+    dismissText: String = stringResource(R.string.action_cancel),
+    onDismissClick: () -> Unit = onDismiss,
 ) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
@@ -42,8 +46,8 @@ fun TdrConfirmDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle)
+            TextButton(onClick = onDismissClick) {
+                Text(dismissText, color = colors.ink, style = type.subtitle)
             }
         },
         containerColor = colors.bgSurface,
