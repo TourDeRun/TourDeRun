@@ -161,7 +161,15 @@ fun HomeContent(
             .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = TdrSpacing.s5),
         verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
     ) {
-        TeamHeaderCard(uiState.team, uiState.isOffline, onTeamClick)
+        if (uiState.isOffline) {
+            // 팀 카드가 맨 아래로 내려가 오프라인 표시는 맨 위에 따로 둔다.
+            Pill(
+                stringResource(R.string.home_offline),
+                background = colors.inkMuted,
+                contentColor = colors.inkOnBrand,
+                modifier = Modifier.align(Alignment.End),
+            )
+        }
         StageCard(uiState.stage, uiState.rank, uiState.totalTeams)
         RaceCard(uiState, onStageRankClick)
         val weekly = uiState.weekly
@@ -171,35 +179,7 @@ fun HomeContent(
         } else if (weeklyError != null) {
             TdrCard { LoadFailed(weeklyError.loadFailedMessageRes(), onRetryWeekly) }
         }
-        if (uiState.members.isNotEmpty()) {
-            MembersChartCard(uiState.members, uiState.team.distanceM, onTeamClick)
-        }
-    }
-}
-
-@Composable
-private fun TeamHeaderCard(team: TeamUi, isOffline: Boolean, onClick: () -> Unit) {
-    val type = TdrTheme.typography
-    TdrCard(onClick = onClick, contentPadding = PaddingValues(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s35)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
-            TeamImage(team.appearance, size = 44.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
-                Text(team.name, style = type.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    stringResource(R.string.home_team_summary, team.season, team.memberCount, Format.teamKm(team.distanceM)),
-                    style = type.caption,
-                    color = TdrTheme.colors.inkMuted,
-                )
-            }
-            if (isOffline) {
-                Pill(
-                    stringResource(R.string.home_offline),
-                    background = TdrTheme.colors.inkMuted,
-                    contentColor = TdrTheme.colors.inkOnBrand,
-                )
-            }
-            Icon(TdrIcons.ChevronRight, contentDescription = null, tint = TdrTheme.colors.inkSubtle, modifier = Modifier.size(18.dp))
-        }
+        TeamCard(uiState.team, uiState.members, onTeamClick)
     }
 }
 
@@ -401,7 +381,32 @@ internal fun membersChart(members: List<MemberUi>, teamDistanceM: Long): Members
  * 나간 팀원이 남긴 거리가 있으면 회색 "이전 팀원" 막대를 끝에 더한다(S14와 같은 표시).
  */
 @Composable
-private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onClick: () -> Unit) {
+private fun TeamCard(team: TeamUi, members: List<MemberUi>, onClick: () -> Unit) {
+    val colors = TdrTheme.colors
+    val type = TdrTheme.typography
+    TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
+            TeamImage(team.appearance, size = 44.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
+                Text(team.name, style = type.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    stringResource(R.string.home_team_summary, team.season, team.memberCount, Format.teamKm(team.distanceM)),
+                    style = type.caption,
+                    color = colors.inkMuted,
+                )
+            }
+        }
+        // 팀원 목록을 받기 전에는 막대만 숨긴다.
+        if (members.isNotEmpty()) MembersChart(members, team.distanceM)
+        Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.home_team_detail), style = type.captionBold, color = colors.inkMuted)
+            Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun MembersChart(members: List<MemberUi>, teamDistanceM: Long) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val chart = membersChart(members, teamDistanceM)
@@ -414,8 +419,7 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
             stringResource(R.string.home_members_chart_item, bar.member?.nickname ?: formerName, bar.km, bar.percent)
         }.joinToString(", "),
     )
-    TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
-        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, chart.totalKm))
+    Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -468,17 +472,17 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
     }
 }
 
-@Preview(name = "팀원 카드 · 이전 팀원 있음", widthDp = 390)
+@Preview(name = "팀 카드 · 이전 팀원 있음", widthDp = 390)
 @Composable
-private fun MembersChartCardFormerPreview() {
+private fun TeamCardFormerPreview() {
     TdrTheme {
         // 팀 거리 66.8km 중 두 명이 50.8km, 나간 팀원이 16.0km
-        MembersChartCard(
+        TeamCard(
+            team = PreviewSamples.team.copy(memberCount = 2, distanceM = 66_800),
             members = listOf(
                 MemberUi("u1", "민지", TeamColor.BLUE, 30_800, isLeader = true, isMvp = true, percent = 46),
                 MemberUi("u2", "서준", TeamColor.NAVY, 20_000, percent = 30),
             ),
-            teamDistanceM = 66_800,
             onClick = {},
         )
     }
