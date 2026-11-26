@@ -128,7 +128,7 @@ fun TeamEditContent(
         TdrTopBar(title = stringResource(R.string.team_edit_title), onBack = onBack) {
             TdrTopBarTextAction(stringResource(R.string.action_save), onSave, enabled = uiState.canSave)
         }
-        Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s1), contentAlignment = Alignment.Center) {
             val shape = RoundedCornerShape(32.dp)
             TeamImage(
                 TeamAppearance(uiState.color, uiState.icon),

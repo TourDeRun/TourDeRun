@@ -105,6 +105,21 @@ fun TdrIconButton(
     }
 }
 
+/** 이름 옆 연필 버튼(프로필 닉네임, 팀 이름). 보이는 칸은 32dp, 터치 영역은 44dp. */
+@Composable
+fun TdrEditIconButton(onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier) {
+    IconButton(onClick = onClick, modifier = modifier.size(TdrSize.touch)) {
+        Surface(shape = TdrShapes.sm, color = TdrTheme.colors.bgSubtle, modifier = Modifier.size(32.dp)) {
+            Icon(
+                TdrIcons.Edit,
+                contentDescription = contentDescription,
+                tint = TdrTheme.colors.inkMuted,
+                modifier = Modifier.padding(TdrSpacing.s2),
+            )
+        }
+    }
+}
+
 @Preview(widthDp = 360)
 @Composable
 private fun TdrButtonPreview() {

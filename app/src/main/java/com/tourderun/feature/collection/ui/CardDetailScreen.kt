@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -134,7 +133,7 @@ fun CardDetailContent(
                     .padding(start = TdrSpacing.s3, top = TdrSpacing.s3)
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.9f)),
+                    .background(colors.bgSurface.copy(alpha = 0.9f)),
             ) {
                 Icon(TdrIcons.Back, contentDescription = stringResource(R.string.action_back), tint = colors.ink, modifier = Modifier.size(22.dp))
             }
@@ -143,7 +142,7 @@ fun CardDetailContent(
                     stringResource(R.string.card_photo_credit, credit),
                     style = type.micro.copy(fontSize = 10.sp, lineHeight = 12.sp),
                     color = colors.inkMuted,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = TdrSpacing.s3, bottom = 10.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = TdrSpacing.s3, bottom = TdrSpacing.s25),
                 )
             }
         }
@@ -154,7 +153,7 @@ fun CardDetailContent(
                 .padding(TdrSpacing.s5),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
                 Pill(
                     if (uiState.stageNumber != null) {
                         stringResource(R.string.card_stage_badge, uiState.stageNumber, uiState.startCity, uiState.distanceFromStartKm)
@@ -176,7 +175,7 @@ fun CardDetailContent(
                 )
             }
             Text(uiState.description, style = type.body.copy(fontSize = 14.sp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
                 Text(stringResource(R.string.card_landmarks), style = type.subtitle)
                 uiState.landmarks.forEachIndexed { i, landmark ->
                     Row(horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
@@ -186,7 +185,7 @@ fun CardDetailContent(
                         ) {
                             Text((i + 1).toString(), style = type.caption.copy(fontWeight = FontWeight.ExtraBold), color = colors.inkOnBrand)
                         }
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                             Text(landmark.name, style = type.bodySm.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold))
                             Text(landmark.description, style = type.label.copy(fontWeight = FontWeight.Normal), color = colors.inkMuted)
                         }
@@ -207,7 +206,7 @@ fun CardDetailContent(
                         .fillMaxWidth()
                         .clip(TdrShapes.md)
                         .background(colors.bgSubtle)
-                        .padding(horizontal = 14.dp, vertical = TdrSpacing.s3),
+                        .padding(horizontal = TdrSpacing.s35, vertical = TdrSpacing.s3),
                 )
             }
         }

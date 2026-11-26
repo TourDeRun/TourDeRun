@@ -17,8 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -118,7 +118,7 @@ internal fun TeamModalCard(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
             IconTile(icon, background = iconBackground, tint = iconTint)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                 Text(title, style = TdrTheme.typography.title, modifier = Modifier.semantics { heading() })
                 Text(subtitle, style = TdrTheme.typography.caption, color = colors.inkMuted)
             }

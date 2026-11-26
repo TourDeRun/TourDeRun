@@ -120,9 +120,9 @@ private fun WeeklyBody(uiState: WeeklyStatsUiState.Content) {
     val p = uiState.period
     Text(
         if (p.startMonth == p.endMonth) {
-            stringResource(R.string.weekly_period_same_month, p.weekId, p.startMonth, p.startDay, p.endDay)
+            stringResource(R.string.weekly_period_same_month, p.startMonth, p.startDay, p.endDay)
         } else {
-            stringResource(R.string.weekly_period, p.weekId, p.startMonth, p.startDay, p.endMonth, p.endDay)
+            stringResource(R.string.weekly_period, p.startMonth, p.startDay, p.endMonth, p.endDay)
         },
         style = type.caption,
         color = colors.inkMuted,
@@ -228,7 +228,7 @@ private fun CompareBar(label: String, value: String, fraction: Float, color: Col
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val shape = RoundedCornerShape(6.dp)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
         Text(
             label,
             style = type.caption.copy(fontWeight = if (emphasize) FontWeight.Bold else FontWeight.Normal),

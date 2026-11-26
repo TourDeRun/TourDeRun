@@ -141,7 +141,7 @@ fun InviteCodeContent(
                 face = MascotFace.Open,
                 contentDescription = stringResource(R.string.team_image_desc, uiState.teamName),
             )
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
                 Text(stringResource(R.string.invite_created), style = type.label.copy(fontWeight = type.bodySm.fontWeight), color = colors.inkMuted)
                 Text(uiState.teamName, style = type.titleLg.copy(fontSize = 26.sp, lineHeight = 34.sp))
                 Text(
@@ -163,7 +163,7 @@ fun InviteCodeContent(
 private fun MemberSlots(count: Int, max: Int) {
     val colors = TdrTheme.colors
     val desc = stringResource(R.string.invite_members_desc, count, max)
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = TdrSpacing.s1), verticalAlignment = Alignment.CenterVertically) {
         Text(
             stringResource(R.string.invite_members, count, max),
             style = TdrTheme.typography.caption,
@@ -172,7 +172,7 @@ private fun MemberSlots(count: Int, max: Int) {
         )
         Row(
             Modifier.clearAndSetSemantics { contentDescription = desc },
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s1),
         ) {
             repeat(max) { i ->
                 Box(

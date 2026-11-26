@@ -119,7 +119,7 @@ fun StageClearScreen(
             ) {
                 Pill(
                     stringResource(R.string.clear_badge, uiState.clearedStage),
-                    background = Color.White.copy(alpha = 0.16f),
+                    background = colors.onBrandChip,
                     contentColor = onBrand,
                     style = type.label.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.enter(entered, delayMs = 0),
@@ -135,7 +135,7 @@ fun StageClearScreen(
                 Column(
                     Modifier.enter(entered, delayMs = STEP_MS * 2),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(TdrSpacing.s15),
                 ) {
                     Text(
                         stringResource(R.string.clear_title, uiState.arrivedCity),
@@ -165,9 +165,9 @@ fun StageClearScreen(
                 horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
             ) {
                 if (uiState.card != null) {
-                    ClearButton(stringResource(R.string.clear_view_card), onViewCard, Color.White.copy(alpha = 0.16f), onBrand, Modifier.weight(1f))
+                    ClearButton(stringResource(R.string.clear_view_card), onViewCard, colors.onBrandChip, onBrand, Modifier.weight(1f))
                 }
-                ClearButton(stringResource(R.string.action_confirm), onConfirm, Color.White, colors.brand, Modifier.weight(1f))
+                ClearButton(stringResource(R.string.action_confirm), onConfirm, colors.bgSurface, colors.brand, Modifier.weight(1f))
             }
         }
     }
@@ -272,7 +272,7 @@ private fun RegionCardMini(card: EarnedCardUi, modifier: Modifier = Modifier) {
         ) {
             Text(stringResource(R.string.card_photo_placeholder), style = TdrTheme.typography.caption, color = colors.inkMuted)
         }
-        Column(Modifier.padding(TdrSpacing.s3), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(TdrSpacing.s3), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
             Text(card.cityName, style = TdrTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 24.sp), color = colors.ink)
             Text(
                 stringResource(R.string.clear_card_sub, card.cityNameEn, card.index, card.total),

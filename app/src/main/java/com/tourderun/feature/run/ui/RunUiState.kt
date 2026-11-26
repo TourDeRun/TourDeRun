@@ -5,8 +5,10 @@ import com.tourderun.core.ui.model.StageProgressUi
 import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.domain.model.GpsPoint
 import com.tourderun.domain.model.LatLngValue
+import com.tourderun.domain.model.TeamStanding
 import com.tourderun.domain.record.thinEvenly
 import com.tourderun.domain.route.routeFor
+import com.tourderun.domain.run.isTooShortToSave
 import com.tourderun.feature.run.session.RunPhase
 import com.tourderun.feature.run.session.RunState
 import kotlin.math.roundToLong
@@ -19,17 +21,17 @@ sealed interface RunScreenUiState {
     data object NoTeam : RunScreenUiState
 
     /** 시작 전: 권한 안내와 시작 버튼. */
-    data class Ready(val stage: StageProgressUi) : RunScreenUiState
+    data class Ready(val stage: StageProgressUi, val season: Int = 1) : RunScreenUiState
 
     data class Countdown(val sec: Int) : RunScreenUiState
 
-    data class Running(val running: RunningUiState) : RunScreenUiState
-
     /**
-     * 종료했지만 아직 저장·정리되지 않은 러닝.
-     * [tooShort]이면 M-05 기준 미달이라 "계속하기 / 저장 없이 종료"를 고르게 한다.
+     * @property tooShortPrompt 종료를 눌렀는데 M-05 기준 미달이라 "계속 달리기 / 저장 없이 종료" 확인 창을 띄운다.
      */
-    data class Finished(val distanceM: Double, val movingSec: Long, val tooShort: Boolean) : RunScreenUiState
+    data class Running(val running: RunningUiState, val tooShortPrompt: Boolean = false) : RunScreenUiState
+
+    /** 종료했지만 아직 저장·정리되지 않은 러닝(결과 화면을 닫았거나 앱을 다시 연 경우). 기준 미달은 [Running.tooShortPrompt]로 보인다. */
+    data class Finished(val distanceM: Double, val movingSec: Long) : RunScreenUiState
 }
 
 /** 화면이 처리하는 일회성 이벤트. 서비스 시작은 Context가 필요해 화면에서 한다. */
@@ -66,3 +68,31 @@ fun runningUiState(state: RunState, team: MyTeam, path: List<LatLngValue>): Runn
         path = path,
     )
 }
+
+/**
+ * 매니저 상태 + 내 팀 + 미니 지도 경로 + 짧은 러닝 확인 창 여부 → 러닝 화면 상태.
+ * 확인 창은 일시정지 중에만 보인다. 기준 미달인 채 종료돼 있으면(앱 재시작 복구 등) 항상 확인 창을 띄운다.
+ */
+fun runScreenUiState(state: RunState, team: MyTeam?, path: List<LatLngValue>, tooShortPrompt: Boolean): RunScreenUiState {
+    val runTeam = team ?: NO_TEAM
+    return when {
+        state.phase == RunPhase.IDLE && team == null -> RunScreenUiState.NoTeam
+        state.phase == RunPhase.IDLE -> RunScreenUiState.Ready(
+            stageProgressUi(requireNotNull(team).standing.distanceM, routeFor(team.season)),
+            team.season,
+        )
+        state.phase == RunPhase.COUNTDOWN -> RunScreenUiState.Countdown(state.countdownSec)
+        // 앱을 다시 열었더니 기준 미달인 채 종료돼 있으면(복구 등) 측정 화면 위에 같은 확인 창을 띄운다.
+        state.phase == RunPhase.FINISHED && isTooShortToSave(state.distanceM, state.movingSec) ->
+            RunScreenUiState.Running(runningUiState(state, runTeam, path).copy(isPaused = true), tooShortPrompt = true)
+        state.phase == RunPhase.FINISHED -> RunScreenUiState.Finished(state.distanceM, state.movingSec)
+        // 측정 중에 팀 정보가 사라지면(팀에서 내보내짐 등) 이번 러닝 거리만 보인다.
+        else -> RunScreenUiState.Running(
+            runningUiState(state, runTeam, path),
+            tooShortPrompt = tooShortPrompt && state.phase == RunPhase.PAUSED,
+        )
+    }
+}
+
+/** 측정 중에 팀 정보가 사라졌을 때 쓰는 빈 팀(이번 러닝 거리만 보인다). */
+private val NO_TEAM = MyTeam(season = 1, standing = TeamStanding(teamId = "", name = "", distanceM = 0, reachedAtMs = 0))

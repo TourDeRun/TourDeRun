@@ -88,7 +88,7 @@
     <string name="terms_view_desc">%1$s 보기</string>
     <string name="terms_summary_title">개인정보 수집·이용 요약</string>
     <string name="terms_summary_items_label">수집 항목</string>
-    <string name="terms_summary_items">구글 계정 식별자, 닉네임, 러닝 기록(거리·시간·페이스), 달린 경로 위치</string>
+    <string name="terms_summary_items">Google 계정 식별자, 닉네임, 러닝 기록(거리·시간·페이스), 달린 경로 위치</string>
     <string name="terms_summary_purpose_label">이용 목적</string>
     <string name="terms_summary_purpose">로그인, 러닝 측정·기록, 팀 거리와 스테이지 순위 계산</string>
     <string name="terms_summary_location_label">위치 정보</string>
@@ -125,7 +125,7 @@
     <string name="create_team_name_placeholder">뛰뛰크루</string>
     <string name="team_icon_label">대표 아이콘</string>
     <string name="team_color_label">팀 색상</string>
-    <string name="create_team_helper">팀 이름 2~12자 · 이름과 이미지는 팀장이 나중에 바꿀 수 있어요</string>
+    <string name="create_team_helper">팀 이름 2~12자 · 이름과 대표 이미지는 팀장이 나중에 바꿀 수 있어요</string>
     <string name="create_team_submit">팀 만들기</string>
     <string name="create_team_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
     <string name="create_team_error_failed">팀을 만들지 못했어요. 잠시 후 다시 시도해 주세요</string>
@@ -136,7 +136,7 @@
     <string name="join_subtitle">팀장에게 받은 6자리 코드를 입력해요</string>
     <string name="join_code_label">초대 코드 6자리</string>
     <string name="join_preview_info">팀원 %1$d / %2$d명 · 스테이지 %3$d · %4$s → %5$s</string>
-    <string name="join_notice">참여 전에 달린 기록은 팀 거리에 더해지지 않아요 · 인터넷 연결이 필요해요</string>
+    <string name="join_notice">참가 전에 달린 기록은 팀 거리에 더해지지 않아요. 참가하려면 인터넷 연결이 필요해요.</string>
     <string name="join_submit">참가하기</string>
     <string name="join_error_not_found">코드를 다시 확인해 주세요</string>
     <string name="join_error_full">인원이 가득 찼어요</string>
@@ -148,21 +148,23 @@
     <string name="invite_created">팀이 만들어졌어요!</string>
     <string name="invite_season">시즌 %1$d · %2$s → %3$s %4$dkm에 도전해요</string>
     <string name="invite_members">팀원 %1$d / %2$d · 코드는 팀원에게만 보여요</string>
-    <string name="invite_members_desc">%2$d자리 중 %1$d자리 참여</string>
+    <string name="invite_members_desc">%2$d자리 중 %1$d자리 참가</string>
     <string name="invite_depart">출발하기</string>
     <string name="invite_copied">초대 코드를 복사했어요</string>
     <string name="invite_share_text">Tour De Run에서 같이 달려요! %1$s 팀 초대 코드: %2$s</string>
 
     <!-- S07 홈 -->
     <string name="home_team_summary">시즌 %1$d · 팀원 %2$d명 · 팀 거리 %3$skm</string>
-    <string name="home_teams_prefix">%1$d팀 중 </string>
+    <string name="home_teams_prefix">"%1$d팀 중 "</string>
     <string name="home_stage_done">%1$s / %2$dkm</string>
     <string name="home_race_title">스테이지 경쟁</string>
-    <string name="home_race_all">순위 전체 ›</string>
+    <string name="home_race_all">전체 보기 ›</string>
     <string name="home_race_ahead">앞 팀 · %1$s</string>
     <string name="home_race_us">우리 팀</string>
     <string name="home_race_behind">뒤 팀 · %1$s</string>
     <string name="home_race_none">없음</string>
+    <string name="home_race_gap_ahead">%1$skm 앞</string>
+    <string name="home_race_gap_behind">%1$skm 뒤</string>
     <string name="home_race_ahead_other">다음 스테이지 · %1$s</string>
     <string name="home_race_behind_other">이전 스테이지 · %1$s</string>
     <string name="home_race_empty">아직 경쟁하는 팀이 없어요</string>
@@ -171,8 +173,7 @@
     <string name="home_weekly_diff">지난주보다 %1$skm</string>
     <string name="home_weekly_top">전체 %1$d팀 중 상위 %2$d%%</string>
     <string name="home_weekly_first">이번 주 첫 러닝을 시작해 보세요</string>
-    <string name="home_members_title">팀원 누적 기록</string>
-    <string name="home_members_total">팀 거리 %1$skm</string>
+    <string name="home_team_detail">팀 상세</string>
     <string name="home_members_chart_desc">팀원별 누적 거리 막대 그래프: %1$s</string>
     <string name="home_members_chart_item">%1$s %2$skm %3$d%%</string>
     <string name="home_members_former">이전 팀원</string>
@@ -181,10 +182,11 @@
 
     <!-- S08 로드뷰 -->
     <string name="road_header">스테이지 %1$d / %2$d · %3$d팀 중 %4$d위</string>
-    <string name="road_view_all">전체 보기</string>
-    <string name="road_view_stage">스테이지 보기</string>
-    <string name="road_city_next">%1$s · %2$dkm</string>
-    <string name="road_city_arrived">%1$s · %2$dkm 도착</string>
+    <string name="road_view_all">전체 경로</string>
+    <string name="road_view_stage">현재 스테이지</string>
+    <string name="road_city_next">%1$s · %2$dkm 지점</string>
+    <string name="road_city_arrived">%1$s 도착</string>
+    <string name="road_team_distance">%1$s · %2$skm</string>
     <string name="road_our_team">%1$s · 우리 팀</string>
     <string name="road_next_city">다음 도시</string>
     <string name="road_legend_done">지나온 길</string>
@@ -195,19 +197,20 @@
     <string name="run_status_paused">일시정지</string>
     <string name="run_gps_ok">GPS 정상</string>
     <string name="run_gps_weak">GPS 약함</string>
-    <string name="run_km_label">킬로미터</string>
+    <string name="run_km_label">km</string>
     <string name="run_current_pace">현재 페이스</string>
-    <string name="run_team_adding">팀 이동 거리에 더해지는 중</string>
+    <string name="run_team_adding">팀 거리에 더하는 중</string>
     <string name="run_to_next">%1$s까지 %2$skm 남았어요</string>
     <string name="run_team_info">팀 거리 %1$skm · 스테이지 %2$d %3$s → %4$s의 %5$d%%</string>
     <string name="run_minimap">경로 미니 지도</string>
     <string name="run_stop">러닝 종료 (길게 누르기)</string>
     <string name="run_pause">일시정지</string>
     <string name="run_resume">다시 시작</string>
-    <string name="run_stop_hint">종료는\n길게 눌러요</string>
     <string name="run_ready_title">달릴 준비 됐나요?</string>
     <string name="run_ready_stage">지금 스테이지 %1$d · %2$s → %3$s</string>
     <string name="run_start">시작</string>
+    <string name="run_ready_route_desc">서울에서 부산까지 경로. 지금 %1$s → %2$s 구간</string>
+    <string name="run_permission_start_title">달리려면 위치 권한이 필요해요</string>
     <string name="run_close">닫기</string>
     <string name="run_no_team_title">팀이 있어야 달릴 수 있어요</string>
     <string name="run_no_team_body">혼자 달리고 싶다면 1인 팀을 만들어 주세요. 팀에 들어간 뒤 달린 거리부터 팀 여정에 더해져요.</string>
@@ -241,7 +244,7 @@
     <!-- S10 러닝 결과 -->
     <string name="result_title">수고했어요! 팀이 %1$skm 더 갔어요</string>
     <string name="result_team_distance">팀 거리</string>
-    <string name="result_stage_line">스테이지 %1$d · %2$s → %3$s · </string>
+    <string name="result_stage_line">"스테이지 %1$d · %2$s → %3$s · "</string>
     <string name="result_stage_progress_desc">스테이지 %1$d 진행률</string>
     <string name="result_overtake_title">%1$s 팀을 추월했어요! %2$d위 → %3$d위</string>
     <string name="result_overtake_sub">앞 팀과 %1$s 차이였는데, 이제 %2$s 앞서요</string>
@@ -267,7 +270,7 @@
     <!-- S12 기록 상세 -->
     <string name="record_map_desc">달린 경로 지도</string>
     <string name="record_title_label">제목</string>
-    <string name="record_memo_label">메모 (0~200자)</string>
+    <string name="record_memo_label">메모 (최대 200자)</string>
     <string name="record_locked">거리와 시간은 바꿀 수 없어요</string>
     <string name="record_delete_title">삭제하면 되돌릴 수 없어요</string>
     <string name="record_delete_body">내 누적 기록에서는 빠지고, 팀 거리는 줄지 않아요</string>
@@ -338,10 +341,10 @@
     <string name="rank_header_range">스테이지 %1$d · %2$dkm ~ %3$dkm</string>
     <string name="rank_header_title">%1$s → %2$s · %3$d팀 중 %4$d위</string>
     <string name="rank_leader">선두</string>
-    <string name="rank_gap">앞 팀과 −%1$skm</string>
+    <string name="rank_gap">앞 팀과 %1$skm 차이</string>
     <string name="rank_members">%1$d명 · %2$s</string>
     <string name="rank_our_team">%1$s (우리 팀)</string>
-    <string name="rank_notice">같은 거리면 먼저 도달한 팀이 앞이에요. 다른 팀은 이름·이미지·인원·거리만 보여요.</string>
+    <string name="rank_notice">같은 거리면 먼저 도달한 팀이 앞이에요. 다른 팀은 이름·대표 이미지·인원·거리만 보여요.</string>
     <string name="rank_offline">오프라인</string>
     <string name="rank_alone">이 스테이지에는 아직 우리 팀뿐이에요.</string>
     <string name="rank_no_team">팀에 들어가면 같은 스테이지 팀 순위를 볼 수 있어요.</string>
@@ -359,8 +362,8 @@
     <string name="weekly_last_week">지난주</string>
     <string name="weekly_this_week">이번 주</string>
     <string name="weekly_notice">주는 월요일 0시에 시작해요(한국 시간). 자정을 넘긴 러닝은 시작한 날 기준이에요.</string>
-    <string name="weekly_period_same_month">%1$s · %2$d월 %3$d일(월) ~ %4$d일(일)</string>
-    <string name="weekly_period">%1$s · %2$d월 %3$d일(월) ~ %4$d월 %5$d일(일)</string>
+    <string name="weekly_period_same_month">%1$d월 %2$d일(월) ~ %3$d일(일)</string>
+    <string name="weekly_period">%1$d월 %2$d일(월) ~ %3$d월 %4$d일(일)</string>
     <string name="weekly_vs_last_same">지난주와 같아요</string>
     <string name="weekly_no_last_week">지난주 기록 없음</string>
     <string name="weekly_first_run">이번 주 첫 러닝을 시작해 보세요</string>

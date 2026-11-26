@@ -41,6 +41,9 @@ object Format {
     fun signedKm(meters: Long, decimals: Int = 1): String =
         (if (meters >= 0) "+" else "−") + km(abs(meters), decimals)
 
+    /** 34 → "34%" */
+    fun percent(value: Int): String = "$value%"
+
     /** 1_122 → "0:18:42" */
     fun duration(seconds: Long): String {
         val s = seconds.coerceAtLeast(0)

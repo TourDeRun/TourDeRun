@@ -63,8 +63,8 @@ fun TdrTopBar(
 
 /** 상단바 오른쪽 글자 버튼 ("수정", "저장"). */
 @Composable
-fun TdrTopBarTextAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
-    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.offset(x = 12.dp)) {
+fun TdrTopBarTextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = modifier.offset(x = 12.dp)) {
         Text(
             text,
             style = TdrTheme.typography.subtitle,

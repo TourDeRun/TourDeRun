@@ -2,12 +2,13 @@ package com.tourderun.feature.journey.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,13 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -40,11 +37,15 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
@@ -70,6 +71,7 @@ import com.tourderun.core.designsystem.component.latLngBoundsOf
 import com.tourderun.core.designsystem.component.rememberTdrMapProperties
 import com.tourderun.core.designsystem.component.toLatLng
 import com.tourderun.core.designsystem.theme.TdrShapes
+import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
@@ -77,6 +79,7 @@ import com.tourderun.core.ui.LoadFailed
 import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.ui.model.StageProgressUi
 import com.tourderun.core.ui.model.TeamUi
+import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.core.ui.model.toNextCityText
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
@@ -95,7 +98,7 @@ data class RoadViewUiState(
 /**
  * S08 로드뷰 (JRN-04): Google 지도 위 전체 경로와 도시, 우리 팀·다른 팀 위치.
  * 처음에는 지금 스테이지가 화면에 맞게 보이고, 위 카드의 버튼으로 전체 경로와 오간다.
- * 팀 표시를 누르면 팀 이름과 거리가 말풍선으로 뜬다.
+ * 팀 이름과 거리는 표시 옆 라벨로 보인다(우리 팀은 오른쪽, 다른 팀은 왼쪽). 도시 라벨은 지나온 도시는 위, 나머지는 아래.
  */
 @Composable
 fun RoadViewScreen(
@@ -150,7 +153,7 @@ fun RoadViewContent(
                 .statusBarsPadding()
                 .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3)
                 .shadow(12.dp, TdrShapes.lg),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s35),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -160,17 +163,22 @@ fun RoadViewContent(
                     color = colors.inkMuted,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(
-                    onClick = { showAll = !showAll },
-                    shape = TdrShapes.full,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                    modifier = Modifier.height(32.dp),
-                    colors = ButtonDefaults.textButtonColors(containerColor = colors.brandSoft),
+                // 보이는 칩은 작게 두고 터치 영역만 최소 크기로 넓힌다.
+                Box(
+                    Modifier
+                        .defaultMinSize(minWidth = TdrSize.touch, minHeight = TdrSize.touch)
+                        .clip(TdrShapes.full)
+                        .clickable(role = Role.Button) { showAll = !showAll },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         stringResource(if (showAll) R.string.road_view_stage else R.string.road_view_all),
-                        style = type.caption.copy(fontWeight = FontWeight.Bold),
+                        style = type.captionBold,
                         color = colors.brand,
+                        modifier = Modifier
+                            .clip(TdrShapes.full)
+                            .background(colors.brandSoft)
+                            .padding(horizontal = TdrSpacing.s25, vertical = TdrSpacing.s15),
                     )
                 }
             }
@@ -185,17 +193,17 @@ fun RoadViewContent(
                 .onSizeChanged { bottomCardPx = it.height }
                 .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, bottom = TdrSpacing.s4)
                 .shadow(12.dp, TdrShapes.lg),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s3),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                     Text(stringResource(R.string.road_next_city), style = type.caption, color = colors.inkMuted)
                     Text(
                         stage.toNextCityText(),
                         style = type.subtitle.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold),
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
                     LegendItem(colors.brand, stringResource(R.string.road_legend_done))
                     LegendItem(colors.routeRemaining, stringResource(R.string.road_legend_left))
                 }
@@ -206,7 +214,7 @@ fun RoadViewContent(
 
 @Composable
 private fun LegendItem(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
         Box(Modifier.width(16.dp).height(4.dp).clip(TdrShapes.full).background(color))
         Text(label, style = TdrTheme.typography.micro, color = TdrTheme.colors.inkMuted)
     }
@@ -263,11 +271,12 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
         )
 
         map.cities.forEach { city ->
-            val label = stringResource(
-                if (city.kind == CityPinKind.ARRIVED) R.string.road_city_arrived else R.string.road_city_next,
-                city.name,
-                city.cumulativeKm,
-            )
+            val arrived = city.kind == CityPinKind.ARRIVED
+            val label = if (arrived) {
+                stringResource(R.string.road_city_arrived, city.name)
+            } else {
+                stringResource(R.string.road_city_next, city.name, city.cumulativeKm)
+            }
             // 전체 보기에서는 지나온 도시들이 서로 붙어 라벨이 겹치므로, 지나온 도시는 체크 표시만 남긴다.
             val showLabel = !showAll || city.kind != CityPinKind.ARRIVED
             MarkerComposable(
@@ -277,7 +286,8 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
                 state = remember(city.position) { MarkerState(city.position.toLatLng()) },
                 anchor = PinCenter,
             ) {
-                CenteredPin(labelHeight = 28.dp, icon = { CityIcon(city.kind) }) {
+                // 지나온 도시 라벨은 위에 둔다. 도시를 막 지난 팀 표시(경로상 아래쪽)에 가려지지 않게.
+                CenteredPin(labelHeight = 28.dp, labelAbove = arrived, icon = { CityIcon(city.kind) }) {
                     when {
                         !showLabel -> Unit
                         city.kind == CityPinKind.NEXT ->
@@ -289,20 +299,31 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
         }
 
         map.rivals.forEach { rival ->
+            val rivalLabel = stringResource(R.string.road_team_distance, rival.team.name, Format.teamKm(rival.team.distanceM))
             MarkerComposable(
                 rival.team,
+                showAll,
                 state = remember(rival.position) { MarkerState(rival.position.toLatLng()) },
                 anchor = PinCenter,
-                title = rival.team.name,
-                snippet = stringResource(R.string.km_value, Format.teamKm(rival.team.distanceM)),
                 zIndex = 1f,
+                onClick = { true },
             ) {
-                TeamImage(
-                    rival.team.appearance,
-                    size = 38.dp,
-                    circle = true,
-                    modifier = Modifier.border(2.dp, colors.bgSurface, CircleShape),
-                )
+                SidePin(
+                    labelOnStart = true,
+                    icon = {
+                        TeamImage(
+                            rival.team.appearance,
+                            size = 38.dp,
+                            circle = true,
+                            modifier = Modifier.border(2.dp, colors.bgSurface, CircleShape),
+                        )
+                    },
+                ) {
+                    // 전체 경로에서는 팀들이 붙어 라벨이 겹치므로 표시만 남긴다.
+                    if (!showAll) {
+                        MarkerLabel(rivalLabel, colors.bgSurface, rival.team.appearance.color.textColor, TdrShapes.full)
+                    }
+                }
             }
         }
 
@@ -311,14 +332,11 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
             uiState.team,
             state = remember(map.ourPosition) { MarkerState(map.ourPosition.toLatLng()) },
             anchor = PinCenter,
-            title = uiState.team.name,
-            snippet = ourKm,
-            // 말풍선이 그림 맨 위(빈 칸)가 아니라 아이콘 바로 위에서 뜨게 한다.
-            infoWindowAnchor = Offset(0.5f, OUR_LABEL_HEIGHT / (OUR_LABEL_HEIGHT * 2 + OUR_ICON_SIZE)),
             zIndex = 2f,
+            onClick = { true },
         ) {
-            CenteredPin(
-                labelHeight = OUR_LABEL_HEIGHT.dp,
+            SidePin(
+                labelOnStart = false,
                 icon = {
                     TeamImage(
                         uiState.team.appearance,
@@ -330,13 +348,15 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
                 },
             ) {
                 Column(
-                    Modifier.clip(TdrShapes.md).background(colors.brand).padding(horizontal = 10.dp, vertical = 6.dp),
+                    Modifier.clip(TdrShapes.md).background(colors.brand).padding(horizontal = TdrSpacing.s25, vertical = TdrSpacing.s15),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         stringResource(R.string.road_our_team, uiState.team.name),
-                        style = TdrTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+                        style = TdrTheme.typography.captionBold,
                         color = colors.inkOnBrand,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         ourKm,
@@ -354,11 +374,37 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
  * 아이콘 아래 라벨 칸과 같은 높이의 빈 칸을 위에도 둬 아이콘이 그림 한가운데에 오게 한다.
  */
 @Composable
-private fun CenteredPin(labelHeight: Dp, icon: @Composable () -> Unit, label: @Composable () -> Unit) {
+private fun CenteredPin(
+    labelHeight: Dp,
+    icon: @Composable () -> Unit,
+    labelAbove: Boolean = false,
+    label: @Composable () -> Unit,
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(labelHeight))
+        Box(Modifier.height(labelHeight).padding(bottom = TdrSpacing.s1), contentAlignment = Alignment.BottomCenter) {
+            if (labelAbove) label()
+        }
         icon()
-        Box(Modifier.height(labelHeight).padding(top = TdrSpacing.s1), contentAlignment = Alignment.TopCenter) { label() }
+        Box(Modifier.height(labelHeight).padding(top = TdrSpacing.s1), contentAlignment = Alignment.TopCenter) {
+            if (!labelAbove) label()
+        }
+    }
+}
+
+/**
+ * 아이콘 옆에 라벨을 두는 표시 틀(팀). [CenteredPin]과 같은 이유로 양옆에 같은 너비의 칸을 둬서
+ * 아이콘이 그림 한가운데에 오게 한다. 라벨은 [SideLabelWidth]를 넘으면 말줄임.
+ */
+@Composable
+private fun SidePin(labelOnStart: Boolean, icon: @Composable () -> Unit, label: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(SideLabelWidth).padding(end = TdrSpacing.s15), contentAlignment = Alignment.CenterEnd) {
+            if (labelOnStart) label()
+        }
+        icon()
+        Box(Modifier.width(SideLabelWidth).padding(start = TdrSpacing.s15), contentAlignment = Alignment.CenterStart) {
+            if (!labelOnStart) label()
+        }
     }
 }
 
@@ -386,13 +432,14 @@ private fun CityIcon(kind: CityPinKind) {
 private fun MarkerLabel(text: String, background: Color, color: Color, shape: Shape) {
     Text(
         text,
-        style = TdrTheme.typography.micro.copy(fontWeight = FontWeight.Bold),
+        style = TdrTheme.typography.microBold,
         color = color,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .clip(shape)
             .background(background)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = TdrSpacing.s2, vertical = TdrSpacing.s1),
     )
 }
 
@@ -413,7 +460,9 @@ private val PinCenter = Offset(0.5f, 0.5f)
 private val FocusEdge = 72.dp
 private const val DEFAULT_ZOOM = 10f
 private const val OUR_ICON_SIZE = 58f
-private const val OUR_LABEL_HEIGHT = 50f
+
+/** 팀 라벨 칸 너비. 팀 이름 12자 + 거리가 들어갈 만큼. */
+private val SideLabelWidth = 152.dp
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
@@ -426,6 +475,23 @@ private fun RoadViewScreenPreview() {
                 rank = 2,
                 totalTeams = 5,
                 map = roadMapUi(routeFor(1), PreviewSamples.team.distanceM, PreviewSamples.rivals.take(2)),
+            ),
+        )
+    }
+}
+
+/** 빈 상태: 출발 전(0km), 지도에 다른 팀 없음. */
+@Preview(widthDp = 390, heightDp = 844)
+@Composable
+private fun RoadViewScreenEmptyPreview() {
+    TabScreenPreview(TdrTab.Road) {
+        RoadViewContent(
+            RoadViewUiState(
+                team = PreviewSamples.team.copy(memberCount = 1, distanceM = 0),
+                stage = stageProgressUi(0, routeFor(1)),
+                rank = 1,
+                totalTeams = 1,
+                map = roadMapUi(routeFor(1), 0, emptyList()),
             ),
         )
     }

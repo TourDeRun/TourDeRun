@@ -4,11 +4,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 
-/** 간격 토큰 (space-1 ~ space-8). */
+/** 간격 토큰 (space-1 ~ space-8). 반 단계(s05·s15·s25·s35)는 글줄 사이·칩 안쪽처럼 촘촘한 곳에 쓴다. */
 object TdrSpacing {
+    val s05 = 2.dp
     val s1 = 4.dp
+    val s15 = 6.dp
     val s2 = 8.dp
+    val s25 = 10.dp
     val s3 = 12.dp
+    val s35 = 14.dp
     val s4 = 16.dp
     val s5 = 20.dp
     val s6 = 24.dp
@@ -35,4 +39,8 @@ object TdrSize {
     val buttonMd = 48.dp
     /** 터치 영역 최소. */
     val touch = 44.dp
+    /** 러닝 시작·일시정지 원형 버튼. */
+    val runButton = 80.dp
+    /** [runButton] 안 아이콘. */
+    val runButtonIcon = 28.dp
 }

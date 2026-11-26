@@ -27,13 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.tourderun.R
+import com.tourderun.core.designsystem.theme.TdrSpacing
 
 private fun Context.activityOrNull(): Activity? = when (this) {
     is Activity -> this
@@ -84,7 +84,7 @@ fun RunPermissionGate(
         ((fineDenied && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)) ||
             (notificationDenied && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)))
 
-    Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier.fillMaxWidth().padding(TdrSpacing.s4), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
         Text(stringResource(R.string.run_permission_explanation))
         if (granted) {
             Button(onClick = onReady) { Text(continueLabel) }

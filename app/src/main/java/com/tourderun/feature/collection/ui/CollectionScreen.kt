@@ -136,7 +136,7 @@ fun CollectionContent(
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(Modifier.padding(horizontal = 2.dp), verticalAlignment = Alignment.Bottom) {
+                Row(Modifier.padding(horizontal = TdrSpacing.s05), verticalAlignment = Alignment.Bottom) {
                     Text(
                         stringResource(R.string.collection_count, uiState.collected, uiState.cards.size),
                         style = type.statSm,
@@ -191,7 +191,7 @@ private fun RegionCardTile(card: RegionCardUi, onClick: () -> Unit) {
                 )
             }
         }
-        Column(Modifier.padding(horizontal = TdrSpacing.s3, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(horizontal = TdrSpacing.s3, vertical = TdrSpacing.s25), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
             Text(
                 card.name,
                 style = type.subtitle.copy(fontWeight = FontWeight.ExtraBold, lineHeight = 20.sp),

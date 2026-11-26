@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +40,7 @@ import com.tourderun.R
 import com.tourderun.core.designsystem.component.CardHeader
 import com.tourderun.core.designsystem.component.Mascot
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.component.TdrEditIconButton
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.valueWithUnit
@@ -105,25 +105,13 @@ fun ProfileScreen(
         // 내 정보
         TdrCard(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25),
         ) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
                 Mascot(size = 88.dp, contentDescription = stringResource(R.string.profile_character_desc))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                     Text(uiState.nickname, style = type.statSm)
-                    IconButton(onClick = onEditNickname, modifier = Modifier.size(44.dp)) {
-                        Box(
-                            Modifier.size(32.dp).clip(TdrShapes.sm).background(colors.bgSubtle),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                TdrIcons.Edit,
-                                contentDescription = stringResource(R.string.profile_edit_nickname),
-                                tint = colors.inkMuted,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
+                    TdrEditIconButton(onEditNickname, stringResource(R.string.profile_edit_nickname))
                 }
                 if (uiState.teamName != null) {
                     TextButton(onClick = onTeamClick, modifier = Modifier.offset(y = (-6).dp)) {
@@ -161,7 +149,7 @@ fun ProfileScreen(
         }
 
         // 내 기록
-        TdrCard(onClick = onRecordsClick, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        TdrCard(onClick = onRecordsClick, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
             CardHeader(stringResource(R.string.records_title), trailing = stringResource(R.string.profile_view_all))
             uiState.latestRun?.let { run ->
                 RunRow(run, onClick = { onRunClick(run) }, inCard = false)
@@ -171,9 +159,9 @@ fun ProfileScreen(
         // 지역 도감 (P1)
         uiState.collection?.let { c ->
             TdrCard(onClick = onCollectionClick) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
                     CardStack()
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                         Text(stringResource(R.string.profile_collection, c.collected, c.total), style = type.subtitle.copy(lineHeight = 20.sp))
                         Text(
                             c.nextCity?.let { stringResource(R.string.profile_collection_next, it) }
@@ -202,7 +190,7 @@ fun ProfileScreen(
             stringResource(R.string.profile_account_notice),
             style = type.micro.copy(lineHeight = 16.sp),
             color = colors.inkMuted,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = TdrSpacing.s1),
         )
     }
 
@@ -233,7 +221,7 @@ private fun ProfileStat(value: String, unit: String, label: String, modifier: Mo
     Column(
         modifier.clip(TdrShapes.md).background(colors.bgSubtle).padding(TdrSpacing.s3),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05),
     ) {
         Text(valueWithUnit(value, unit, unitColor = colors.inkMuted), style = TdrTheme.typography.statMd)
         Text(label, style = TdrTheme.typography.micro, color = colors.inkMuted)
@@ -266,7 +254,7 @@ private fun CardStack() {
                     .offset(x = (-10 * i).dp)
                     .size(width = 28.dp, height = 38.dp)
                     .border(2.dp, colors.bgSurface, shape)
-                    .padding(2.dp)
+                    .padding(TdrSpacing.s05)
                     .clip(shape)
                     .background(c),
             )

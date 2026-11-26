@@ -163,7 +163,7 @@ private fun RankRow(row: RankRowUi, gap: String) {
             .background(if (row.isOurTeam) colors.brandSoft else colors.bgSurface)
             .padding(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s3),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s25),
     ) {
         Text(
             row.rank.toString(),

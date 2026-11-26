@@ -43,5 +43,9 @@ data class TdrTypography(
     val bodySm: TextStyle = style(13, 20, FontWeight.Normal),
     val label: TextStyle = style(13, 18, FontWeight.SemiBold),
     val caption: TextStyle = style(12, 16, FontWeight.Normal),
+    /** 칩·강조 보조 글자. */
+    val captionBold: TextStyle = style(12, 16, FontWeight.Bold),
     val micro: TextStyle = style(11, 14, FontWeight.Normal),
+    /** 지도 라벨·배지. */
+    val microBold: TextStyle = style(11, 14, FontWeight.Bold),
 )

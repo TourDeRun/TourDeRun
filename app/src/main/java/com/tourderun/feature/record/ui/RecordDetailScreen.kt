@@ -14,24 +14,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
 import com.tourderun.core.designsystem.component.RouteMap
 import com.tourderun.core.designsystem.component.SampleRoutePoints
@@ -40,6 +37,7 @@ import com.tourderun.core.designsystem.component.StatRow
 import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.component.TdrConfirmDialog
 import com.tourderun.core.designsystem.component.TdrTextField
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.component.valueWithUnit
@@ -159,7 +157,7 @@ fun RecordDetailContent(
                     .clip(TdrShapes.lg)
                     .semantics { contentDescription = mapDesc },
             )
-            TdrCard(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            TdrCard(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
                 TdrTextField(
                     value = uiState.title,
                     onValueChange = onTitleChange,
@@ -168,7 +166,7 @@ fun RecordDetailContent(
                     minHeight = 44.dp,
                     textStyle = type.subtitle.copy(fontSize = 16.sp),
                 )
-                StatRow(Modifier.padding(vertical = 4.dp)) {
+                StatRow(Modifier.padding(vertical = TdrSpacing.s1)) {
                     StatColumn(valueWithUnit(Format.km(uiState.distanceM, decimals = 2), km, unitSize = 11), stringResource(R.string.stat_distance), Modifier.weight(1f), type.statSm)
                     StatColumn(AnnotatedString(Format.duration(uiState.movingSec)), stringResource(R.string.stat_time), Modifier.weight(1f), type.statSm)
                     StatColumn(AnnotatedString(Format.pace(uiState.paceSecPerKm)), stringResource(R.string.stat_avg_pace), Modifier.weight(1f), type.statSm)
@@ -203,22 +201,13 @@ fun RecordDetailContent(
     }
 
     if (uiState.showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = onDeleteDismiss,
-            title = { Text(stringResource(R.string.record_delete_title), style = type.title) },
-            text = { Text(stringResource(R.string.record_delete_body), style = type.body, color = colors.inkMuted) },
-            confirmButton = {
-                TextButton(onClick = onDeleteConfirm) {
-                    Text(stringResource(R.string.action_delete), color = colors.danger, style = type.subtitle)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDeleteDismiss) {
-                    Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle, textAlign = TextAlign.Center)
-                }
-            },
-            containerColor = colors.bgSurface,
-            shape = TdrShapes.lg,
+        TdrConfirmDialog(
+            title = stringResource(R.string.record_delete_title),
+            body = stringResource(R.string.record_delete_body),
+            confirmText = stringResource(R.string.action_delete),
+            danger = true,
+            onConfirm = onDeleteConfirm,
+            onDismiss = onDeleteDismiss,
         )
     }
 }
