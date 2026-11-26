@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,6 +51,7 @@ import com.tourderun.core.ui.model.RunRowUi
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
 import com.tourderun.feature.record.ui.RunRow
+import com.tourderun.core.designsystem.theme.TdrSize
 
 /** S13 프로필 상태. */
 data class ProfileUiState(
@@ -104,7 +104,7 @@ fun ProfileScreen(
     ) {
         // 내 정보
         TdrCard(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+            contentPadding = PaddingValues(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s5),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25),
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
@@ -170,7 +170,7 @@ fun ProfileScreen(
                             color = colors.inkMuted,
                         )
                     }
-                    Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
+                    Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(TdrSize.iconSm))
                 }
             }
         }
@@ -183,8 +183,6 @@ fun ProfileScreen(
             modifier = Modifier.semantics { paneTitle = accountLabel },
         ) {
             AccountRow(stringResource(R.string.profile_logout), colors.ink, onLogout)
-            HorizontalDivider(color = colors.border)
-            AccountRow(stringResource(R.string.profile_withdraw), colors.danger, onWithdraw)
         }
         Text(
             stringResource(R.string.profile_account_notice),
@@ -192,6 +190,10 @@ fun ProfileScreen(
             color = colors.inkMuted,
             modifier = Modifier.padding(horizontal = TdrSpacing.s1),
         )
+        // 탈퇴는 로그아웃과 떨어뜨려 잘못 누르지 않게 한다.
+        TextButton(onClick = onWithdraw, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(stringResource(R.string.profile_withdraw), style = type.caption, color = colors.danger)
+        }
     }
 
     if (uiState.showLogoutConfirm) {

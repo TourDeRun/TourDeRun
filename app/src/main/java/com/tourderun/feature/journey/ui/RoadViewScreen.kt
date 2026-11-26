@@ -421,7 +421,7 @@ private fun CityIcon(kind: CityPinKind) {
                 Modifier.size(36.dp).background(colors.bgSurface, CircleShape).border(2.dp, colors.brand, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(TdrIcons.Flag, contentDescription = null, tint = colors.brand, modifier = Modifier.size(18.dp))
+                Icon(TdrIcons.Flag, contentDescription = null, tint = colors.brand, modifier = Modifier.size(TdrSize.iconSm))
             }
         CityPinKind.LATER ->
             Box(Modifier.size(14.dp).background(colors.bgSurface, CircleShape).border(3.dp, colors.routeRemaining, CircleShape))

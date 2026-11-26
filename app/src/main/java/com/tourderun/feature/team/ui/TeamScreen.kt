@@ -335,23 +335,25 @@ fun TeamContent(
                         },
                     )
                 }
-                TdrButton(
-                    text = stringResource(R.string.invite_code_share),
-                    onClick = onShareInvite,
-                    style = TdrButtonStyle.Soft,
-                    height = TdrSize.touch,
-                )
+                if (team.memberCount >= team.maxMembers) {
+                    // 정원이 차면 더 초대할 수 없다.
+                    Text(stringResource(R.string.team_full), style = type.caption, color = colors.inkMuted)
+                } else {
+                    TdrButton(
+                        text = stringResource(R.string.invite_code_share),
+                        onClick = onShareInvite,
+                        style = TdrButtonStyle.Soft,
+                        height = TdrSize.touch,
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(TdrSpacing.s3))
-        TdrButton(
-            text = stringResource(R.string.team_leave),
-            onClick = onLeave,
-            style = TdrButtonStyle.OutlineDanger,
-            height = TdrSize.buttonMd,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // 화면에서 가장 눈에 띄는 버튼이 되지 않게 글자 버튼으로 둔다.
+        TextButton(onClick = onLeave, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(stringResource(R.string.team_leave), style = type.subtitle, color = colors.danger)
+        }
         Text(
             stringResource(R.string.team_leave_notice),
             style = type.micro.copy(lineHeight = 16.sp),
