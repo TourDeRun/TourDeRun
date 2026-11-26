@@ -1,17 +1,29 @@
 package com.tourderun.feature.run.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -36,7 +49,9 @@ import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrConfirmDialog
+import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.theme.TdrShapes
+import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
@@ -138,11 +153,16 @@ internal fun RunStartFailedDialog(onDismiss: () -> Unit) {
  * (일시정지 또는 종료 결과) 그대로다. S09와 복구 안내(RunRecoveryHost)가 같이 쓴다.
  */
 @Composable
-internal fun RunPermissionDialog(onReady: () -> Unit, onDismiss: () -> Unit) {
+internal fun RunPermissionDialog(
+    onReady: () -> Unit,
+    onDismiss: () -> Unit,
+    title: String = stringResource(R.string.run_permission_resume_title),
+    continueLabel: String = stringResource(R.string.run_resume),
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.run_permission_resume_title), style = TdrTheme.typography.title) },
-        text = { RunPermissionGate(onReady = onReady, continueLabel = stringResource(R.string.run_resume)) },
+        title = { Text(title, style = TdrTheme.typography.title) },
+        text = { RunPermissionGate(onReady = onReady, continueLabel = continueLabel) },
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_cancel), color = TdrTheme.colors.ink, style = TdrTheme.typography.subtitle)
@@ -214,12 +234,17 @@ private fun ColumnScope.ReadyContent(uiState: RunScreenUiState.Ready, onStart: (
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
     val stage = uiState.stage
-    Text(stringResource(R.string.run_ready_title), style = type.titleLg)
-    TdrCard(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
-        Text(
-            stringResource(R.string.run_ready_stage, stage.stageNumber, stage.fromCity, stage.toCity),
-            style = type.subtitle,
-        )
+    val context = LocalContext.current
+    // 권한이 있으면 ▶가 바로 시작하고, 없을 때만 권한 안내 창을 띄운다.
+    var askPermission by rememberSaveable { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.run_ready_title), style = type.titleLg, modifier = Modifier.weight(1f))
+        IconButton(onClick = onClose) {
+            Icon(TdrIcons.Close, contentDescription = stringResource(R.string.run_close), tint = colors.inkMuted)
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
+        Text(stringResource(R.string.run_ready_stage, stage.stageNumber, stage.fromCity, stage.toCity), style = type.subtitle)
         Text(
             if (stage.finished) {
                 stringResource(R.string.stage_finished, stage.toCity)
@@ -230,26 +255,60 @@ private fun ColumnScope.ReadyContent(uiState: RunScreenUiState.Ready, onStart: (
             color = colors.inkMuted,
         )
     }
-    RunPermissionGate(
-        onReady = onStart,
-        continueLabel = stringResource(R.string.run_start),
-        modifier = Modifier.fillMaxWidth(),
+    RouteJourneyAnimation(
+        route = routeFor(uiState.season),
+        teamDistanceM = stage.teamDistanceM,
+        contentDescription = stringResource(R.string.run_ready_route_desc, stage.fromCity, stage.toCity),
+        modifier = Modifier.weight(1f).fillMaxWidth(),
     )
+    Surface(
+        onClick = { if (context.hasRunPermissions()) onStart() else askPermission = true },
+        modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .size(TdrSize.runButton)
+            .shadow(TdrSpacing.s3, CircleShape, ambientColor = colors.brand, spotColor = colors.brand),
+        shape = CircleShape,
+        color = colors.brand,
+        contentColor = colors.inkOnBrand,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(TdrIcons.Play, contentDescription = stringResource(R.string.run_start), modifier = Modifier.size(TdrSize.runButtonIcon))
+        }
+    }
     BatteryOptimizationTip(Modifier.fillMaxWidth())
-    Spacer(Modifier.weight(1f))
-    TdrButton(stringResource(R.string.run_close), onClose, style = TdrButtonStyle.Outline)
+    if (askPermission) {
+        RunPermissionDialog(
+            title = stringResource(R.string.run_permission_start_title),
+            continueLabel = stringResource(R.string.run_start),
+            onReady = {
+                askPermission = false
+                onStart()
+            },
+            onDismiss = { askPermission = false },
+        )
+    }
 }
 
 @Composable
 private fun ColumnScope.CountdownContent(sec: Int, onCancel: () -> Unit) {
     val type = TdrTheme.typography
     Spacer(Modifier.weight(1f))
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    // 숫자가 바뀔 때마다 크게 나타났다가 작아지며 사라진다.
+    AnimatedContent(
+        targetState = sec.coerceAtLeast(1),
+        transitionSpec = {
+            (scaleIn(initialScale = 1.6f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut())
+        },
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+        label = "countdown",
+    ) { n ->
         Text(
-            sec.coerceAtLeast(1).toString(),
+            n.toString(),
             style = type.runHero,
             color = TdrTheme.colors.brandBright,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
     Text(

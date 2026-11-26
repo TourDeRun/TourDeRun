@@ -21,7 +21,7 @@ sealed interface RunScreenUiState {
     data object NoTeam : RunScreenUiState
 
     /** 시작 전: 권한 안내와 시작 버튼. */
-    data class Ready(val stage: StageProgressUi) : RunScreenUiState
+    data class Ready(val stage: StageProgressUi, val season: Int = 1) : RunScreenUiState
 
     data class Countdown(val sec: Int) : RunScreenUiState
 
@@ -79,6 +79,7 @@ fun runScreenUiState(state: RunState, team: MyTeam?, path: List<LatLngValue>, to
         state.phase == RunPhase.IDLE && team == null -> RunScreenUiState.NoTeam
         state.phase == RunPhase.IDLE -> RunScreenUiState.Ready(
             stageProgressUi(requireNotNull(team).standing.distanceM, routeFor(team.season)),
+            team.season,
         )
         state.phase == RunPhase.COUNTDOWN -> RunScreenUiState.Countdown(state.countdownSec)
         // 앱을 다시 열었더니 기준 미달인 채 종료돼 있으면(복구 등) 측정 화면 위에 같은 확인 창을 띄운다.

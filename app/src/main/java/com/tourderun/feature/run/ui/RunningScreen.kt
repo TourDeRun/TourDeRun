@@ -37,6 +37,7 @@ import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.theme.TdrShapes
+import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
@@ -212,8 +213,8 @@ private fun RunControls(isPaused: Boolean, onPauseToggle: () -> Unit, onStop: ()
         Surface(
             onClick = onPauseToggle,
             modifier = Modifier
-                .size(80.dp)
-                .shadow(12.dp, CircleShape, ambientColor = colors.brand, spotColor = colors.brand),
+                .size(TdrSize.runButton)
+                .shadow(TdrSpacing.s3, CircleShape, ambientColor = colors.brand, spotColor = colors.brand),
             shape = CircleShape,
             color = colors.brand,
             contentColor = colors.inkOnBrand,
@@ -222,7 +223,7 @@ private fun RunControls(isPaused: Boolean, onPauseToggle: () -> Unit, onStop: ()
                 Icon(
                     if (isPaused) TdrIcons.Play else TdrIcons.Pause,
                     contentDescription = stringResource(if (isPaused) R.string.run_resume else R.string.run_pause),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(TdrSize.runButtonIcon),
                 )
             }
         }
