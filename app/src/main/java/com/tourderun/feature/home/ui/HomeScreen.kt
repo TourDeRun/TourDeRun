@@ -68,6 +68,7 @@ import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
 import com.tourderun.domain.route.routeFor
 import kotlin.math.abs
+import com.tourderun.core.designsystem.theme.TdrSize
 
 /** 이번 주 요약 (S16 주간 통계로 들어가는 카드). */
 data class WeeklySummaryUi(
@@ -249,6 +250,13 @@ private fun StageCard(stage: StageProgressUi, rank: Int, totalTeams: Int) {
     }
 }
 
+/** 앞·뒤 팀과의 거리 차. 0.1km 단위로 같으면 "같은 거리"(0.0km 앞은 어색하다). */
+@Composable
+private fun raceGap(diffM: Long, labelRes: Int): String {
+    val km = Format.km(abs(diffM))
+    return if (km == Format.km(0)) stringResource(R.string.home_race_tie) else stringResource(labelRes, km)
+}
+
 @Composable
 private fun RaceCard(uiState: HomeUiState, onClick: () -> Unit) {
     val colors = TdrTheme.colors
@@ -266,7 +274,7 @@ private fun RaceCard(uiState: HomeUiState, onClick: () -> Unit) {
                     if (uiState.aheadIsOtherStage) R.string.home_race_ahead_other else R.string.home_race_ahead,
                     uiState.ahead?.name ?: stringResource(R.string.home_race_none),
                 ),
-                value = uiState.ahead?.let { stringResource(R.string.home_race_gap_ahead, Format.km(abs(it.distanceM - ourM))) } ?: "-",
+                value = uiState.ahead?.let { raceGap(it.distanceM - ourM, R.string.home_race_gap_ahead) } ?: "-",
                 valueColor = uiState.ahead?.appearance?.color?.textColor ?: colors.inkMuted,
                 background = colors.bgSubtle,
                 labelColor = colors.inkMuted,
@@ -285,7 +293,7 @@ private fun RaceCard(uiState: HomeUiState, onClick: () -> Unit) {
                     if (uiState.behindIsOtherStage) R.string.home_race_behind_other else R.string.home_race_behind,
                     uiState.behind?.name ?: stringResource(R.string.home_race_none),
                 ),
-                value = uiState.behind?.let { stringResource(R.string.home_race_gap_behind, Format.km(abs(it.distanceM - ourM))) } ?: "-",
+                value = uiState.behind?.let { raceGap(it.distanceM - ourM, R.string.home_race_gap_behind) } ?: "-",
                 valueColor = uiState.behind?.appearance?.color?.textColor ?: colors.inkMuted,
                 background = colors.bgSubtle,
                 labelColor = colors.inkMuted,
@@ -347,7 +355,7 @@ private fun WeeklyCard(weekly: WeeklySummaryUi, onClick: () -> Unit) {
                     Text(sub, style = type.caption, color = colors.highlightInk)
                 }
             }
-            Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.highlightInk, modifier = Modifier.size(18.dp))
+            Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.highlightInk, modifier = Modifier.size(TdrSize.iconSm))
         }
     }
 }
@@ -412,7 +420,7 @@ private fun TeamCard(team: TeamUi, members: List<MemberUi>, onClick: () -> Unit,
             }
             Row(Modifier.align(Alignment.Top), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.home_team_detail), style = type.captionBold, color = colors.inkMuted)
-                Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
+                Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(TdrSize.iconSm))
             }
         }
         // 카드가 늘어나도 팀원 아이콘은 바닥에 두고 막대가 위로 자라게 한다.
@@ -451,7 +459,7 @@ private fun MembersChart(members: List<MemberUi>, teamDistanceM: Long) {
                 val barColor = m?.color ?: TeamColor.GRAY
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     if (m?.isMvp == true) {
-                        Icon(TdrIcons.Crown, contentDescription = null, tint = colors.mvp, modifier = Modifier.padding(bottom = TdrSpacing.s05).size(18.dp))
+                        Icon(TdrIcons.Crown, contentDescription = null, tint = colors.mvp, modifier = Modifier.padding(bottom = TdrSpacing.s05).size(TdrSize.iconSm))
                     }
                     Text(
                         bar.km + stringResource(R.string.unit_km),
@@ -462,7 +470,8 @@ private fun MembersChart(members: List<MemberUi>, teamDistanceM: Long) {
                     Box(
                         Modifier
                             .width(40.dp)
-                            .height((140f * bar.distanceM / maxM).dp)
+                            // 0km여도 막대 자리가 보이게 최소 높이를 둔다.
+                            .height((140f * bar.distanceM / maxM).dp.coerceAtLeast(TdrSpacing.s2))
                             .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
                             .background(barColor.color),
                     )
