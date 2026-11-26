@@ -403,15 +403,15 @@ private fun TeamCard(team: TeamUi, members: List<MemberUi>, onClick: () -> Unit,
                     color = colors.inkMuted,
                 )
             }
+            Row(Modifier.align(Alignment.Top), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.home_team_detail), style = type.captionBold, color = colors.inkMuted)
+                Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
+            }
         }
+        // 카드가 늘어나도 팀원 아이콘은 바닥에 두고 막대가 위로 자라게 한다.
+        Spacer(Modifier.weight(1f))
         // 팀원 목록을 받기 전에는 막대만 숨긴다.
         if (members.isNotEmpty()) MembersChart(members, team.distanceM)
-        // 카드가 늘어나면 "팀 상세"는 카드 맨 아래에 붙인다.
-        Spacer(Modifier.weight(1f))
-        Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.home_team_detail), style = type.captionBold, color = colors.inkMuted)
-            Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
-        }
     }
 }
 
