@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -53,11 +54,11 @@ import com.tourderun.core.designsystem.component.TdrButton
 import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrProgressBar
+import com.tourderun.core.designsystem.component.TdrEditIconButton
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.data.DataError
 import com.tourderun.core.ui.LoadFailed
 import com.tourderun.core.ui.loadFailedMessageRes
-import com.tourderun.core.designsystem.component.TdrTopBarTextAction
 import com.tourderun.core.designsystem.component.TeamImage
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSize
@@ -283,15 +284,17 @@ fun TeamContent(
             .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = TdrSpacing.s8),
         verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
     ) {
-        TdrTopBar(title = stringResource(R.string.team_title), onBack = onBack) {
-            if (uiState.isLeader) TdrTopBarTextAction(stringResource(R.string.action_edit), onEdit)
-        }
+        TdrTopBar(title = stringResource(R.string.team_title), onBack = onBack)
 
         TdrCard {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
                 TeamImage(team.appearance, size = 64.dp)
                 Column(verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
-                    Text(team.name, style = type.statSm)
+                    // 팀 정보 수정(TEAM-05)은 팀장만. 프로필 닉네임 수정처럼 이름 옆 연필로 연다.
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
+                        Text(team.name, style = type.statSm, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        if (uiState.isLeader) TdrEditIconButton(onEdit, stringResource(R.string.team_edit_title))
+                    }
                     Text(
                         stringResource(R.string.team_members_count, team.memberCount, team.maxMembers, team.season),
                         style = type.caption,

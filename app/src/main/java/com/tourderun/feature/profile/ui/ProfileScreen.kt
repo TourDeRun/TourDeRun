@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +40,7 @@ import com.tourderun.R
 import com.tourderun.core.designsystem.component.CardHeader
 import com.tourderun.core.designsystem.component.Mascot
 import com.tourderun.core.designsystem.component.TdrCard
+import com.tourderun.core.designsystem.component.TdrEditIconButton
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.valueWithUnit
@@ -111,19 +111,7 @@ fun ProfileScreen(
                 Mascot(size = 88.dp, contentDescription = stringResource(R.string.profile_character_desc))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
                     Text(uiState.nickname, style = type.statSm)
-                    IconButton(onClick = onEditNickname, modifier = Modifier.size(44.dp)) {
-                        Box(
-                            Modifier.size(32.dp).clip(TdrShapes.sm).background(colors.bgSubtle),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                TdrIcons.Edit,
-                                contentDescription = stringResource(R.string.profile_edit_nickname),
-                                tint = colors.inkMuted,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
+                    TdrEditIconButton(onEditNickname, stringResource(R.string.profile_edit_nickname))
                 }
                 if (uiState.teamName != null) {
                     TextButton(onClick = onTeamClick, modifier = Modifier.offset(y = (-6).dp)) {
