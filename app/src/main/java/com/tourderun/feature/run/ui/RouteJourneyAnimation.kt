@@ -102,7 +102,8 @@ fun RouteJourneyAnimation(
             drawText(
                 label,
                 color = if (reached) colors.ink else colors.inkMuted,
-                topLeft = Offset(p.x + TdrSpacing.s25.toPx(), p.y - label.size.height / 2f),
+                // 팀 표시(반지름 10dp)보다 바깥에서 시작한다.
+                topLeft = Offset(p.x + TdrSpacing.s4.toPx(), p.y - label.size.height / 2f),
             )
         }
 

@@ -94,13 +94,13 @@ private fun RunningContent(
             .background(colors.bgCanvas)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = 36.dp),
+            .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = TdrSpacing.s8 + TdrSpacing.s1),
         verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
-                    .size(8.dp)
+                    .size(TdrSpacing.s2)
                     .background(if (uiState.isPaused) colors.inkMuted else colors.live, CircleShape),
             )
             Text(
@@ -200,13 +200,13 @@ private fun RunControls(isPaused: Boolean, onPauseToggle: () -> Unit, onStop: ()
             Surface(
                 onClick = onStop,
                 enabled = isPaused,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(TdrSize.runButtonSm),
                 shape = CircleShape,
                 color = if (isPaused) colors.danger else colors.bgSubtle,
                 contentColor = if (isPaused) colors.inkOnBrand else colors.inkSubtle,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(TdrIcons.Stop, contentDescription = stringResource(R.string.run_stop), modifier = Modifier.size(18.dp))
+                    Icon(TdrIcons.Stop, contentDescription = stringResource(R.string.run_stop), modifier = Modifier.size(TdrSize.iconSm))
                 }
             }
         }
@@ -233,7 +233,7 @@ private fun RunControls(isPaused: Boolean, onPauseToggle: () -> Unit, onStop: ()
 }
 
 /** 종료 버튼 칸 너비. 일시정지 버튼이 가운데에 오게 반대편도 같은 너비를 비운다. */
-private val StopSlotWidth = 88.dp
+private val StopSlotWidth = TdrSize.runButton + TdrSpacing.s2
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable

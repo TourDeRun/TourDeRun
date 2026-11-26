@@ -14,9 +14,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,7 +30,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.tourderun.R
+import com.tourderun.core.designsystem.component.TdrButton
+import com.tourderun.core.designsystem.component.TdrButtonStyle
+import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
+import com.tourderun.core.designsystem.theme.TdrTheme
 
 private fun Context.activityOrNull(): Activity? = when (this) {
     is Activity -> this
@@ -84,24 +85,24 @@ fun RunPermissionGate(
         ((fineDenied && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)) ||
             (notificationDenied && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)))
 
-    Column(modifier.fillMaxWidth().padding(TdrSpacing.s4), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
-        Text(stringResource(R.string.run_permission_explanation))
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
+        Text(stringResource(R.string.run_permission_explanation), style = TdrTheme.typography.body, color = TdrTheme.colors.inkMuted)
         if (granted) {
-            Button(onClick = onReady) { Text(continueLabel) }
+            TdrButton(continueLabel, onReady, Modifier.fillMaxWidth(), height = TdrSize.buttonMd)
         } else {
-            Button(onClick = {
+            TdrButton(stringResource(R.string.run_permission_request), onClick = {
                 preferences.edit().putBoolean("requested", true).apply()
                 requested = true
                 val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
                 if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
                 launcher.launch(permissions.toTypedArray())
-            }) { Text(stringResource(R.string.run_permission_request)) }
+            }, modifier = Modifier.fillMaxWidth(), height = TdrSize.buttonMd)
             if (showSettings) {
-                OutlinedButton(onClick = {
+                TdrButton(stringResource(R.string.run_permission_settings), onClick = {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
                     if (activity == null) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(intent)
-                }) { Text(stringResource(R.string.run_permission_settings)) }
+                }, modifier = Modifier.fillMaxWidth(), style = TdrButtonStyle.Outline, height = TdrSize.buttonMd)
             }
         }
     }

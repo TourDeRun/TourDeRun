@@ -328,15 +328,30 @@ private fun ColumnScope.FinishedContent(
     onDiscard: () -> Unit,
     onOpenResult: () -> Unit,
 ) {
+    val colors = TdrTheme.colors
     val type = TdrTheme.typography
-    val km = Format.km(uiState.distanceM.roundToLong(), decimals = 2)
-    val time = Format.duration(uiState.movingSec)
     // 종료 후 결과 화면을 닫았거나 앱을 다시 연 경우. 저장(REC-01)은 결과 화면에서 한다.
-    Text(stringResource(R.string.run_finished_title), style = type.titleLg)
-    Text(stringResource(R.string.run_finished_body, km, time), style = type.body, color = TdrTheme.colors.inkMuted)
     Spacer(Modifier.weight(1f))
-    TdrButton(stringResource(R.string.run_finished_open), onOpenResult)
-    TdrButton(stringResource(R.string.run_too_short_discard), onDiscard, style = TdrButtonStyle.OutlineDanger)
+    Text(stringResource(R.string.run_finished_title), style = type.titleLg, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    TdrCard {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s1)) {
+                Text(Format.km(uiState.distanceM.roundToLong(), decimals = 2), style = type.statLg)
+                Text(stringResource(R.string.unit_km), style = type.subtitle, color = colors.inkMuted)
+            }
+            Text(Format.duration(uiState.movingSec), style = type.subtitle, color = colors.inkMuted)
+        }
+    }
+    Text(
+        stringResource(R.string.run_finished_hint),
+        style = type.caption,
+        color = colors.inkMuted,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.weight(1f))
+    TdrButton(stringResource(R.string.run_finished_open), onOpenResult, Modifier.fillMaxWidth())
+    TdrButton(stringResource(R.string.run_too_short_discard), onDiscard, Modifier.fillMaxWidth(), style = TdrButtonStyle.OutlineDanger)
 }
 
 /** M-05 기준 미달로 종료를 누른 경우. 바깥을 누르면 창만 닫히고 일시정지가 유지된다. */

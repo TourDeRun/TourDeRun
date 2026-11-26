@@ -221,11 +221,10 @@
     <string name="run_too_short_continue">계속 달리기</string>
     <string name="run_too_short_discard">저장 없이 종료</string>
     <string name="run_finished_title">저장하지 않은 러닝이 있어요</string>
-    <string name="run_finished_body">%1$skm · %2$s. 결과 화면에서 저장해 주세요.</string>
     <string name="run_finished_open">결과 보기</string>
-    <string name="run_battery_title">화면을 끄면 측정이 멈추나요?</string>
-    <string name="run_battery_body">절전 기능이 측정을 멈출 수 있어요. 배터리 최적화 목록에서 Tour De Run을 \'최적화 안 함\'으로 바꿔 주세요.</string>
-    <string name="run_battery_open">배터리 설정 열기</string>
+    <string name="run_finished_hint">결과 화면에서 저장해야 기록과 팀 거리에 더해져요.</string>
+    <string name="run_battery_title">절전 기능이 화면을 끄면 측정을 멈출 수 있어요</string>
+    <string name="run_battery_open">배터리 설정</string>
     <string name="run_notification_channel">러닝 측정</string>
     <string name="run_notification_countdown">곧 측정을 시작해요</string>
     <string name="run_notification_running">측정 중 · %1$skm</string>

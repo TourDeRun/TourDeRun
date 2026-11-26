@@ -43,4 +43,8 @@ object TdrSize {
     val runButton = 80.dp
     /** [runButton] 안 아이콘. */
     val runButtonIcon = 28.dp
+    /** 러닝 종료처럼 작은 원형 버튼. */
+    val runButtonSm = 56.dp
+    /** 줄 끝 화살표·작은 버튼 안 아이콘. */
+    val iconSm = 18.dp
 }

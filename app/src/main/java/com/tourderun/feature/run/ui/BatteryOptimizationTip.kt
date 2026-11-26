@@ -5,25 +5,27 @@ import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
 import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.tourderun.R
-import com.tourderun.core.designsystem.component.TdrButton
-import com.tourderun.core.designsystem.component.TdrButtonStyle
-import com.tourderun.core.designsystem.component.TdrCard
-import com.tourderun.core.designsystem.theme.TdrSize
+import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 
@@ -50,20 +52,28 @@ fun BatteryOptimizationTip(modifier: Modifier = Modifier) {
     }
     if (ignoring) return
 
-    TdrCard(modifier, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
-        Text(stringResource(R.string.run_battery_title), style = TdrTheme.typography.subtitle)
-        Text(stringResource(R.string.run_battery_body), style = TdrTheme.typography.caption, color = TdrTheme.colors.inkMuted)
-        TdrButton(
-            text = stringResource(R.string.run_battery_open),
-            onClick = {
-                try {
-                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                } catch (_: ActivityNotFoundException) {
-                    context.startActivity(Intent(Settings.ACTION_SETTINGS))
-                }
-            },
-            style = TdrButtonStyle.Soft,
-            height = TdrSize.touch,
+    // 시작 화면의 주인공은 ▶ 버튼이라 한 줄 안내 + 글자 버튼으로 작게 둔다.
+    Row(
+        modifier
+            .clip(TdrShapes.md)
+            .background(TdrTheme.colors.bgSurface)
+            .padding(start = TdrSpacing.s4, end = TdrSpacing.s1),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.run_battery_title),
+            style = TdrTheme.typography.caption,
+            color = TdrTheme.colors.inkMuted,
+            modifier = Modifier.weight(1f),
         )
+        TextButton(onClick = {
+            try {
+                context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (_: ActivityNotFoundException) {
+                context.startActivity(Intent(Settings.ACTION_SETTINGS))
+            }
+        }) {
+            Text(stringResource(R.string.run_battery_open), style = TdrTheme.typography.captionBold, color = TdrTheme.colors.brandBright)
+        }
     }
 }
