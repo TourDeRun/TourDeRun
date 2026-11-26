@@ -3,6 +3,8 @@ package com.tourderun.feature.home.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -152,12 +154,17 @@ fun HomeContent(
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
-    Column(
+    BoxWithConstraints(
         modifier
             .fillMaxSize()
             .background(colors.bgCanvas)
-            .statusBarsPadding()
+            .statusBarsPadding(),
+    ) {
+    // 내용이 화면보다 짧으면 팀 카드가 남은 높이를 채워 아래 여백이 생기지 않게 한다(길면 그대로 스크롤).
+    Column(
+        Modifier
             .verticalScroll(rememberScrollState())
+            .heightIn(min = maxHeight)
             .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = TdrSpacing.s5),
         verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
     ) {
@@ -179,7 +186,8 @@ fun HomeContent(
         } else if (weeklyError != null) {
             TdrCard { LoadFailed(weeklyError.loadFailedMessageRes(), onRetryWeekly) }
         }
-        TeamCard(uiState.team, uiState.members, onTeamClick)
+        TeamCard(uiState.team, uiState.members, onTeamClick, Modifier.weight(1f))
+    }
     }
 }
 
@@ -381,10 +389,10 @@ internal fun membersChart(members: List<MemberUi>, teamDistanceM: Long): Members
  * 나간 팀원이 남긴 거리가 있으면 회색 "이전 팀원" 막대를 끝에 더한다(S14와 같은 표시).
  */
 @Composable
-private fun TeamCard(team: TeamUi, members: List<MemberUi>, onClick: () -> Unit) {
+private fun TeamCard(team: TeamUi, members: List<MemberUi>, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
-    TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
+    TdrCard(modifier, onClick = onClick, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
             TeamImage(team.appearance, size = 44.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TdrSpacing.s05)) {
@@ -398,6 +406,8 @@ private fun TeamCard(team: TeamUi, members: List<MemberUi>, onClick: () -> Unit)
         }
         // 팀원 목록을 받기 전에는 막대만 숨긴다.
         if (members.isNotEmpty()) MembersChart(members, team.distanceM)
+        // 카드가 늘어나면 "팀 상세"는 카드 맨 아래에 붙인다.
+        Spacer(Modifier.weight(1f))
         Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.home_team_detail), style = type.captionBold, color = colors.inkMuted)
             Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
