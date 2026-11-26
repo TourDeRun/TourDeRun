@@ -29,8 +29,13 @@ interface RunRepository {
      */
     fun updateTitleMemo(runId: String, title: String, memo: String?): Result<Unit>
 
-    /** `runs` 문서만 지운다. 팀 거리·주간 통계·기여는 빼지 않는다(M-01). */
-    fun delete(runId: String): Result<Unit>
+    /**
+     * 기록 삭제 (REC-05). `runs` 문서를 지우고 같은 배치에서 내 누적 거리·러닝 횟수(`users`)를 그만큼 뺀다([runDeletePlan]).
+     * 팀 거리·주간 통계·기여는 빼지 않는다(M-01).
+     *
+     * @param distanceM 지우는 기록의 저장 거리
+     */
+    fun delete(uid: String, runId: String, distanceM: Long): Result<Unit>
 
     companion object {
         /** 목록 한 번에 늘리는 개수 (REC-02). */

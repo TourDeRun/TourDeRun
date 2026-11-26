@@ -251,9 +251,11 @@ class FirestoreSessionRepository @Inject constructor(
             .snapshotFlow(TAG)
             .map { loaded ->
                 loaded.mapReady {
+                    // 같은 기록을 두 기기에서 오프라인으로 지우면 두 번 빠져 음수가 될 수 있다(REC-05 한계).
+                    // 화면에는 0 아래로 내려가지 않게 한다
                     MyStats(
-                        totalM = it.getLong(UserFields.TOTAL_M) ?: 0L,
-                        runCount = it.getLong(UserFields.RUN_COUNT) ?: 0L,
+                        totalM = (it.getLong(UserFields.TOTAL_M) ?: 0L).coerceAtLeast(0L),
+                        runCount = (it.getLong(UserFields.RUN_COUNT) ?: 0L).coerceAtLeast(0L),
                     )
                 }
             }

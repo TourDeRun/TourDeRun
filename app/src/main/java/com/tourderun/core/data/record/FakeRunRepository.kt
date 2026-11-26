@@ -77,7 +77,7 @@ class FakeRunRepository(
             }
         }
 
-    override fun delete(runId: String): Result<Unit> {
+    override fun delete(uid: String, runId: String, distanceM: Long): Result<Unit> {
         runs.update { list -> list.filterNot { it.id == runId } }
         return Result.success(Unit)
     }

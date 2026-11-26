@@ -7,6 +7,8 @@ import androidx.navigation.toRoute
 import com.tourderun.core.data.DataError
 import com.tourderun.core.data.Loaded
 import com.tourderun.core.data.record.RunRepository
+import com.tourderun.core.data.session.SessionRepository
+import com.tourderun.core.data.session.uid
 import com.tourderun.core.navigation.RecordDetailRoute
 import com.tourderun.domain.record.RunRecord
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -63,6 +66,7 @@ internal fun recordDetailLoad(
 class RecordDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val runRepository: RunRepository,
+    private val session: SessionRepository,
 ) : ViewModel() {
 
     private val runId = savedStateHandle.toRoute<RecordDetailRoute>().runId
@@ -71,10 +75,15 @@ class RecordDetailViewModel @Inject constructor(
     /** 다시 시도할 때마다 1씩 늘린다. 값이 바뀌면 리스너를 새로 붙인다. */
     private val attempt = MutableStateFlow(0)
 
-    val uiState: StateFlow<RecordDetailLoad> = combine(
-        attempt.flatMapLatest { runRepository.observeRun(runId) },
-        edit,
-    ) { loaded, edit ->
+    /** 리스너가 마지막으로 준 기록. 삭제할 때 거리를 여기서 읽는다. null이면 아직 첫 값 전. */
+    private val loadedRun: StateFlow<Loaded<RunRecord?>?> = attempt
+        .flatMapLatest { runRepository.observeRun(runId) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** 삭제 쓰기를 이미 시작했는지. 두 번 누르면 누적 값이 두 번 빠지므로 한 번만 보낸다. */
+    private var deleteStarted = false
+
+    val uiState: StateFlow<RecordDetailLoad> = combine(loadedRun.filterNotNull(), edit) { loaded, edit ->
         recordDetailLoad(loaded, edit.title, edit.memo, edit.showDeleteConfirm)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordDetailLoad.Loading)
 
@@ -101,7 +110,11 @@ class RecordDetailViewModel @Inject constructor(
 
     fun onDeleteConfirm() {
         edit.update { it.copy(showDeleteConfirm = false) }
-        runRepository.delete(runId)
+        if (deleteStarted) return
+        val run = (loadedRun.value as? Loaded.Ready)?.value ?: return
+        val uid = session.state.value.uid ?: return
+        // 내 누적 거리·횟수도 같은 배치에서 뺀다(REC-05). 시작에 실패하면 다시 누를 수 있게 둔다
+        deleteStarted = runRepository.delete(uid, runId, run.distanceM).isSuccess
     }
 
     /** 고치는 중인 값. null이면 아직 손대지 않은 칸. */

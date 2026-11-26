@@ -115,7 +115,7 @@ fun RecordDetailFailed(error: DataError, onBack: () -> Unit, onRetry: () -> Unit
     }
 }
 
-/** S12 화면 내용. 상태 없음(Preview 대상). 삭제는 확인 대화상자를 거친다 (팀 거리는 줄지 않는다). */
+/** S12 화면 내용. 상태 없음(Preview 대상). 삭제는 확인 대화상자를 거친다 (내 누적 값만 줄고 팀 거리는 줄지 않는다). */
 @Composable
 fun RecordDetailContent(
     uiState: RecordDetailUiState,

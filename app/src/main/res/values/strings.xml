@@ -270,7 +270,7 @@
     <string name="record_memo_label">메모 (0~200자)</string>
     <string name="record_locked">거리와 시간은 바꿀 수 없어요</string>
     <string name="record_delete_title">삭제하면 되돌릴 수 없어요</string>
-    <string name="record_delete_body">팀 거리는 줄지 않아요</string>
+    <string name="record_delete_body">내 누적 기록에서는 빠지고, 팀 거리는 줄지 않아요</string>
 
     <!-- S13 프로필 -->
     <string name="profile_character_desc">기본 캐릭터 뛰뛰</string>
