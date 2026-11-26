@@ -33,8 +33,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
 import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.Pill
-import com.tourderun.core.designsystem.component.TdrButton
-import com.tourderun.core.designsystem.component.TdrButtonStyle
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrTopBar
 import com.tourderun.core.designsystem.component.TeamAppearance
@@ -45,6 +43,8 @@ import com.tourderun.core.designsystem.component.valueWithUnit
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.ui.model.stageProgressUi
 import com.tourderun.domain.route.routeFor
 
@@ -104,30 +104,10 @@ fun StageRankContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
             )
 
-            is StageRankUiState.Failed -> FailedBody(uiState.error, onRetry)
+            is StageRankUiState.Failed -> LoadFailed(uiState.error.loadFailedMessageRes(), onRetry)
 
             is StageRankUiState.Content -> RankBody(uiState)
         }
-    }
-}
-
-/** 불러오기 실패: 실패 종류에 맞는 문구와 다시 시도 버튼. */
-@Composable
-private fun FailedBody(error: DataError, onRetry: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = TdrSpacing.s8),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(TdrSpacing.s4),
-    ) {
-        Text(
-            stringResource(
-                if (error == DataError.Unavailable) R.string.rank_failed_unavailable else R.string.rank_failed_other,
-            ),
-            style = TdrTheme.typography.body,
-            color = TdrTheme.colors.inkMuted,
-            textAlign = TextAlign.Center,
-        )
-        TdrButton(text = stringResource(R.string.rank_retry), onClick = onRetry, style = TdrButtonStyle.Outline)
     }
 }
 

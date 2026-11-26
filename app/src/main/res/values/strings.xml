@@ -13,6 +13,7 @@
     <string name="unit_km_spaced">" km"</string>
     <string name="unit_times_spaced">" 회"</string>
     <string name="km_value">%1$skm</string>
+    <string name="m_value">%1$sm</string>
     <string name="route_format">%1$s → %2$s</string>
     <string name="stage_of">스테이지 %1$d / %2$d</string>
     <string name="rank_value">%1$d위</string>
@@ -27,6 +28,12 @@
     <string name="role_member">팀원</string>
     <string name="mvp_badge">이번 주 MVP</string>
     <string name="month_label">%1$d월</string>
+
+    <!-- 공용: 불러오기 실패 (core/ui/LoadFailed) -->
+    <string name="load_failed_unavailable">연결을 확인해 주세요</string>
+    <string name="load_failed_other">요청을 처리할 수 없어요</string>
+    <string name="value_unknown">–</string>
+    <string name="action_retry">다시 시도</string>
 
     <!-- 하단 탭 -->
     <string name="tab_home">홈</string>
@@ -64,6 +71,9 @@
     <string name="login_tagline">같이 달린 거리로\n전국을 여행해요</string>
     <string name="login_google">Google로 시작하기</string>
     <string name="login_hint">처음이라면 약관 동의 후 닉네임만 정하면 돼요</string>
+    <string name="login_error_no_account">이 기기에 구글 계정이 없어요. 설정에서 계정을 추가해 주세요</string>
+    <string name="login_error_failed">로그인하지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="login_error_network">인터넷 연결을 확인해 주세요</string>
 
     <!-- S01-1 약관 동의 -->
     <string name="terms_step">1 / 2</string>
@@ -87,6 +97,9 @@
     <string name="terms_summary_retention">회원 탈퇴 시 바로 삭제해요</string>
     <string name="terms_continue">동의하고 계속하기</string>
     <string name="terms_need_all">필수 항목에 모두 동의해 주세요</string>
+    <string name="terms_service_body">제1조 (목적)\n이 약관은 Tour De Run(이하 \"서비스\")을 이용하는 데 필요한 사항을 정합니다. 서비스는 대학 캡스톤 프로젝트로 만든 러닝 앱이며, 시연·학습 목적으로 운영됩니다.\n\n제2조 (서비스 내용)\n1. 팀원(1~4명)이 달린 거리를 합쳐 서울에서 부산까지 7개 스테이지를 여행합니다.\n2. 같은 스테이지의 다른 팀과 거리로 순위를 겨룹니다.\n3. 러닝 측정, 기록 보기, 팀 만들기·참여, 지역 카드 모으기를 제공합니다.\n\n제3조 (계정)\n1. 구글 계정으로 로그인하고, 닉네임(2~10자)을 정해 가입합니다.\n2. 한 사람은 한 번에 한 팀에만 속할 수 있습니다.\n\n제4조 (팀)\n1. 팀 거리는 팀원이 저장한 러닝 거리의 합이며, 한 번 더해진 거리는 기록 삭제·팀 탈퇴·회원 탈퇴 후에도 줄어들지 않습니다.\n2. 나간 팀원의 거리는 \"이전 팀원\"으로 표시됩니다.\n3. 팀장은 팀 정보를 바꾸고 팀원을 내보낼 수 있습니다. 팀장이 나가면 가장 먼저 가입한 팀원이 팀장이 됩니다.\n\n제5조 (이용자의 의무)\n1. 실제로 달린 기록만 저장해야 하며, 차량 이동 등 비정상적인 기록을 만들어서는 안 됩니다.\n2. 다른 사람을 불쾌하게 하는 닉네임·팀 이름을 써서는 안 됩니다.\n3. 러닝 중에는 주변 안전을 먼저 살펴야 하며, 서비스는 러닝 중 사고에 책임지지 않습니다.\n\n제6조 (서비스의 변경·중단)\n시연·학습 목적의 서비스이므로 기능이 바뀌거나, 프로젝트가 끝나면 예고 후 운영을 멈출 수 있습니다.\n\n제7조 (회원 탈퇴)\n프로필에서 언제든 탈퇴할 수 있습니다. 탈퇴하면 계정 정보와 러닝 기록이 지워지며 되돌릴 수 없습니다. 다만 제4조 1항의 팀 거리는 남습니다.</string>
+    <string name="terms_privacy_body">1. 수집하는 항목\n- 구글 계정 식별자(로그인용)\n- 닉네임\n- 러닝 기록: 시작·종료 시각, 거리, 시간, 페이스, 제목·메모\n- 달린 경로의 위치(위도·경도)\n- 약관 동의 시각, 가입 시각\n\n2. 이용 목적\n- 로그인과 본인 확인\n- 러닝 측정과 기록 저장·보기\n- 팀 거리, 스테이지 위치, 순위, 주간 통계 계산\n- 지역 카드 지급\n\n3. 공개 범위\n- 달린 경로와 개별 러닝 기록은 나만 봅니다.\n- 같은 팀원에게는 닉네임, 기여 거리, 이번 주 거리가 보입니다.\n- 다른 팀에는 팀 이름, 대표 이미지, 인원, 팀 거리만 보입니다.\n\n4. 보관과 파기\n- 회원 탈퇴 시 계정 정보와 러닝 기록(경로 포함)을 바로 지웁니다.\n- 팀 거리와 주간 통계에 이미 더해진 숫자는 팀 기록으로 남습니다.\n- 기기에 남아 있던 러닝 데이터도 탈퇴할 때 함께 지웁니다.\n\n5. 처리 위탁\n데이터는 Google Firebase(인증, 데이터베이스)에 저장됩니다. 그 밖의 제3자에게 제공하지 않습니다.\n\n6. 동의를 거부할 권리\n동의하지 않을 수 있으나, 이 항목은 서비스에 꼭 필요해서 동의하지 않으면 가입할 수 없습니다.</string>
+    <string name="terms_location_body">1. 수집 방법과 시점\n- 러닝을 측정하는 동안에만, \"앱 사용 중에만 허용\" 위치 권한으로 위치를 받습니다.\n- 앱을 쓰지 않을 때의 위치(백그라운드 위치)는 받지 않습니다.\n- 측정 중에는 알림이 계속 표시되어 위치를 쓰고 있음을 알려 줍니다.\n\n2. 이용 목적\n- 달린 거리와 페이스 계산\n- 내 러닝 경로를 지도에 보여 주기\n\n3. 공개 범위\n경로 위치는 나만 봅니다. 팀원과 다른 팀에는 거리만 보이고 위치는 보이지 않습니다.\n\n4. 보관과 파기\n- 위치는 러닝 기록과 함께 보관합니다.\n- 기록을 지우거나 회원 탈퇴하면 위치도 함께 지웁니다.\n\n5. 권한 철회\n기기 설정에서 언제든 위치 권한을 끌 수 있습니다. 권한이 없으면 러닝을 측정할 수 없습니다.</string>
 
     <!-- S02 닉네임 -->
     <string name="nickname_step">2 / 2</string>
@@ -96,6 +109,8 @@
     <string name="nickname_placeholder">2~10자</string>
     <string name="nickname_helper">2~10자, 한글·영문·숫자만 쓸 수 있어요 (공백 불가)</string>
     <string name="nickname_start">시작하기</string>
+    <string name="nickname_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="nickname_error_failed">저장하지 못했어요. 잠시 후 다시 시도해 주세요</string>
 
     <!-- S03 팀 시작 -->
     <string name="team_start_title">함께 달릴 팀이 필요해요</string>
@@ -112,6 +127,9 @@
     <string name="team_color_label">팀 색상</string>
     <string name="create_team_helper">팀 이름 2~12자 · 이름과 대표 이미지는 팀장이 나중에 바꿀 수 있어요</string>
     <string name="create_team_submit">팀 만들기</string>
+    <string name="create_team_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="create_team_error_failed">팀을 만들지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="create_team_error_already">이미 팀이 있어요</string>
 
     <!-- S05 초대 코드 입력 -->
     <string name="join_title">초대 코드로 참가</string>
@@ -121,6 +139,10 @@
     <string name="join_notice">참가 전에 달린 기록은 팀 거리에 더해지지 않아요. 참가하려면 인터넷 연결이 필요해요.</string>
     <string name="join_submit">참가하기</string>
     <string name="join_error_not_found">코드를 다시 확인해 주세요</string>
+    <string name="join_error_full">인원이 가득 찼어요</string>
+    <string name="join_error_already">지금 팀에서 나온 뒤 참여할 수 있어요</string>
+    <string name="join_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="join_error_failed">참여하지 못했어요. 잠시 후 다시 시도해 주세요</string>
 
     <!-- S06 초대 코드 공유 -->
     <string name="invite_created">팀이 만들어졌어요!</string>
@@ -128,6 +150,8 @@
     <string name="invite_members">팀원 %1$d / %2$d · 코드는 팀원에게만 보여요</string>
     <string name="invite_members_desc">%2$d자리 중 %1$d자리 참가</string>
     <string name="invite_depart">출발하기</string>
+    <string name="invite_copied">초대 코드를 복사했어요</string>
+    <string name="invite_share_text">Tour De Run에서 같이 달려요! %1$s 팀 초대 코드: %2$s</string>
 
     <!-- S07 홈 -->
     <string name="home_team_summary">시즌 %1$d · 팀원 %2$d명 · 팀 거리 %3$skm</string>
@@ -152,7 +176,9 @@
     <string name="home_members_title">팀원 누적 기록</string>
     <string name="home_members_total">팀 거리 %1$skm</string>
     <string name="home_members_chart_desc">팀원별 누적 거리 막대 그래프: %1$s</string>
-    <string name="home_members_chart_item">%1$s %2$skm</string>
+    <string name="home_members_chart_item">%1$s %2$skm %3$d%%</string>
+    <string name="home_members_former">이전 팀원</string>
+    <string name="percent_value">%1$d%%</string>
     <string name="home_mvp_hint">왕관 = 이번 주 MVP</string>
 
     <!-- S08 로드뷰 -->
@@ -181,7 +207,39 @@
     <string name="run_stop">러닝 종료 (길게 누르기)</string>
     <string name="run_pause">일시정지</string>
     <string name="run_resume">다시 시작</string>
-    <string name="run_stop_hint">길게 눌러 종료</string>
+    <string name="run_stop_hint">종료는\n길게 눌러요</string>
+    <string name="run_ready_title">달릴 준비 됐나요?</string>
+    <string name="run_ready_stage">지금 스테이지 %1$d · %2$s → %3$s</string>
+    <string name="run_start">시작</string>
+    <string name="run_close">닫기</string>
+    <string name="run_no_team_title">팀이 있어야 달릴 수 있어요</string>
+    <string name="run_no_team_body">혼자 달리고 싶다면 1인 팀을 만들어 주세요. 팀에 들어간 뒤 달린 거리부터 팀 여정에 더해져요.</string>
+    <string name="run_countdown_gps">GPS를 준비하고 있어요</string>
+    <string name="run_countdown_cancel">취소</string>
+    <string name="run_too_short_title">너무 짧아 저장되지 않아요</string>
+    <string name="run_too_short_body">%1$skm · %2$s 달렸어요. 100m 이상, 1분 이상 달려야 기록과 팀 거리에 더해져요.</string>
+    <string name="run_too_short_continue">계속 달리기</string>
+    <string name="run_too_short_discard">저장 없이 종료</string>
+    <string name="run_finished_title">저장하지 않은 러닝이 있어요</string>
+    <string name="run_finished_body">%1$skm · %2$s. 결과 화면에서 저장해 주세요.</string>
+    <string name="run_finished_open">결과 보기</string>
+    <string name="run_battery_title">화면을 끄면 측정이 멈추나요?</string>
+    <string name="run_battery_body">절전 기능이 측정을 멈출 수 있어요. 배터리 최적화 목록에서 Tour De Run을 \'최적화 안 함\'으로 바꿔 주세요.</string>
+    <string name="run_battery_open">배터리 설정 열기</string>
+    <string name="run_notification_channel">러닝 측정</string>
+    <string name="run_notification_countdown">곧 측정을 시작해요</string>
+    <string name="run_notification_running">측정 중 · %1$skm</string>
+    <string name="run_notification_paused">일시정지 · %1$skm · %2$s</string>
+    <string name="run_permission_resume_title">다시 시작하려면 위치 권한이 필요해요</string>
+    <string name="run_start_failed">측정을 시작하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="run_recovery_title">종료되지 않은 러닝이 있어요</string>
+    <string name="run_recovery_body">%1$skm · %2$s까지 측정됐어요. 앱이 꺼져 있던 시간은 일시정지로 계산해요.</string>
+    <string name="run_recovery_resume">이어하기</string>
+    <string name="run_recovery_save">지금까지 저장</string>
+    <string name="run_recovery_save_again">다시 저장</string>
+    <string name="run_recovery_rejected_title">저장하지 못한 러닝이 있어요</string>
+    <string name="run_recovery_rejected_body">%1$skm · %2$s 러닝이 서버에 저장되지 않았어요. 다시 저장하거나 버릴 수 있어요.</string>
+    <string name="run_recovery_discard">버리기</string>
 
     <!-- S10 러닝 결과 -->
     <string name="result_title">수고했어요! 팀이 %1$skm 더 갔어요</string>
@@ -189,7 +247,7 @@
     <string name="result_stage_line">"스테이지 %1$d · %2$s → %3$s · "</string>
     <string name="result_stage_progress_desc">스테이지 %1$d 진행률</string>
     <string name="result_overtake_title">%1$s 팀을 추월했어요! %2$d위 → %3$d위</string>
-    <string name="result_overtake_sub">앞 팀과 %1$skm 차이였는데, 이제 %2$skm 앞서요</string>
+    <string name="result_overtake_sub">앞 팀과 %1$s 차이였는데, 이제 %2$s 앞서요</string>
 
     <!-- JRN-05 스테이지 클리어 -->
     <string name="clear_badge">스테이지 %1$d 클리어</string>
@@ -199,6 +257,7 @@
     <string name="clear_finished">서울 → 부산 완주! 시즌 1을 마쳤어요</string>
     <string name="clear_card_sub">%1$s · 지역 카드 %2$d / %3$d</string>
     <string name="clear_card_got">지역 카드를 얻었어요</string>
+    <string name="clear_cards_got">지역 카드 %1$d장을 얻었어요</string>
     <string name="clear_view_card">카드 보기</string>
     <string name="card_photo_placeholder">대표 사진</string>
 
@@ -213,13 +272,15 @@
     <string name="record_title_label">제목</string>
     <string name="record_memo_label">메모 (최대 200자)</string>
     <string name="record_locked">거리와 시간은 바꿀 수 없어요</string>
-    <string name="record_delete_title">이 기록을 삭제할까요?</string>
-    <string name="record_delete_body">삭제하면 되돌릴 수 없어요. 팀 거리는 줄지 않아요.</string>
+    <string name="record_delete_title">삭제하면 되돌릴 수 없어요</string>
+    <string name="record_delete_body">내 누적 기록에서는 빠지고, 팀 거리는 줄지 않아요</string>
 
     <!-- S13 프로필 -->
     <string name="profile_character_desc">기본 캐릭터 뛰뛰</string>
     <string name="profile_edit_nickname">닉네임 수정</string>
+    <string name="profile_nickname_error">저장하지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="profile_team_role">%1$s · %2$s ›</string>
+    <string name="profile_team_only">%1$s ›</string>
     <string name="profile_total_distance">내 누적 거리</string>
     <string name="profile_run_count">러닝 횟수</string>
     <string name="profile_view_all">전체 보기 ›</string>
@@ -228,13 +289,19 @@
     <string name="profile_collection_done">모든 카드를 모았어요</string>
     <string name="profile_account">계정</string>
     <string name="profile_logout">로그아웃</string>
+    <string name="profile_logout_title">로그아웃할까요?</string>
+    <string name="profile_logout_body">다시 로그인하면 팀과 기록이 그대로 있어요</string>
     <string name="profile_withdraw">회원 탈퇴</string>
-    <string name="profile_logout_confirm_title">로그아웃할까요?</string>
-    <string name="profile_logout_confirm_body">기록은 그대로 남아요.</string>
-    <string name="profile_withdraw_confirm_title">정말 탈퇴할까요?</string>
-    <string name="profile_withdraw_confirm_body">내 기록이 모두 삭제되고 되돌릴 수 없어요. 팀 거리는 줄지 않아요.</string>
-    <string name="profile_withdraw_confirm_action">탈퇴하기</string>
-    <string name="profile_account_notice">회원 탈퇴는 Google 재인증 후 진행돼요. 러닝 측정 중에는 로그아웃·탈퇴를 할 수 없어요.</string>
+    <string name="run_busy_active">러닝을 마친 뒤에 할 수 있어요</string>
+    <string name="run_busy_saving">러닝 기록을 저장하는 중이에요. 인터넷에 연결되어 저장이 끝나면 할 수 있어요</string>
+    <string name="run_busy_rejected">저장하지 못한 러닝이 있어요. 다시 저장하거나 기록을 버린 뒤 진행해 주세요</string>
+    <string name="withdraw_title">정말 탈퇴할까요?</string>
+    <string name="withdraw_body">내 러닝 기록과 계정 정보가 지워지고 되돌릴 수 없어요. 내가 달린 거리는 팀에 남아요. 계속하려면 구글 계정을 한 번 더 확인해요.</string>
+    <string name="withdraw_confirm">탈퇴하기</string>
+    <string name="withdraw_error_reauth">구글 계정을 확인하지 못했어요. 다시 시도해 주세요</string>
+    <string name="withdraw_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="withdraw_error_failed">탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="profile_account_notice">회원 탈퇴는 구글 재인증 후 진행돼요. 러닝 측정 중에는 로그아웃·탈퇴를 할 수 없어요.</string>
 
     <!-- S14 팀 -->
     <string name="team_title">팀</string>
@@ -242,22 +309,32 @@
     <string name="team_distance">팀 거리 %1$skm</string>
     <string name="team_members_title">팀원 · 기여 거리 순</string>
     <string name="team_member_sub">%1$skm · %2$d%%</string>
+    <string name="team_former_members">이전 팀원</string>
     <string name="team_kick">내보내기</string>
-    <string name="team_kick_desc">%1$s 내보내기</string>
+    <string name="team_member_menu_desc">%1$s 메뉴</string>
+    <string name="team_hand_over">팀장 넘기기</string>
+    <string name="team_hand_over_confirm_title">%1$s 님에게 팀장을 넘길까요?</string>
+    <string name="team_hand_over_confirm_body">넘기면 나는 팀원이 되고, 팀 수정·내보내기는 새 팀장만 할 수 있어요</string>
+    <string name="team_hand_over_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="team_hand_over_error_failed">넘기지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="team_kick_confirm_title">%1$s 님을 내보낼까요?</string>
+    <string name="team_kick_confirm_body">달린 거리는 팀에 남아요. 다시 들어오려면 초대 코드가 필요해요</string>
+    <string name="team_kick_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="team_kick_error_failed">내보내지 못했어요. 잠시 후 다시 시도해 주세요</string>
     <string name="team_invite_label">초대 코드 · 팀원에게만 보여요</string>
-    <string name="team_full">팀이 가득 찼어요</string>
     <string name="team_leave">팀 나가기</string>
     <string name="team_leave_confirm_title">팀에서 나갈까요?</string>
-    <string name="team_leave_confirm_body">내가 달린 거리는 팀에 남아요. 다시 참가하려면 초대 코드가 필요해요.</string>
-    <string name="team_leave_confirm_action">나가기</string>
-    <string name="team_kick_confirm_title">%1$s 님을 내보낼까요?</string>
-    <string name="team_kick_confirm_body">%1$s 님이 달린 거리는 팀에 남아요.</string>
-    <string name="team_leave_notice">팀장이 나가면 가장 먼저 참가한 팀원이 팀장이 돼요 · 나간 팀원의 거리는 팀에 남아요</string>
+    <string name="team_leave_confirm_body">내가 달린 거리는 팀에 남아요. 다시 들어오려면 초대 코드가 필요해요</string>
+    <string name="team_leave_confirm_last">마지막 팀원이라 나가면 팀이 없어져요</string>
+    <string name="team_leave_error_network">인터넷에 연결된 상태에서 다시 시도해 주세요</string>
+    <string name="team_leave_error_failed">나가지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="team_leave_notice">팀장이 나가면 가장 먼저 가입한 팀원이 팀장이 돼요 · 나간 팀원의 거리는 팀에 남아요</string>
 
     <!-- S14 팀 정보 수정 -->
     <string name="team_edit_title">팀 정보 수정</string>
-    <string name="team_edit_preview_desc">선택한 대표 이미지 미리보기</string>
-    <string name="team_edit_notice">아이콘과 색을 골라 대표 이미지를 만들어요. 팀장만 바꿀 수 있어요.</string>
+    <string name="team_edit_error_failed">저장하지 못했어요. 잠시 후 다시 시도해 주세요</string>
+    <string name="team_edit_preview_desc">선택한 팀 이미지 미리보기</string>
+    <string name="team_edit_notice">팀장만 바꿀 수 있어요. 사진 업로드 없이 아이콘 8개 × 색 8개 중에서 골라요.</string>
 
     <!-- S15 스테이지 순위 -->
     <string name="rank_title">스테이지 순위</string>
@@ -270,10 +347,7 @@
     <string name="rank_notice">같은 거리면 먼저 도달한 팀이 앞이에요. 다른 팀은 이름·대표 이미지·인원·거리만 보여요.</string>
     <string name="rank_offline">오프라인</string>
     <string name="rank_alone">이 스테이지에는 아직 우리 팀뿐이에요.</string>
-    <string name="rank_no_team">팀에 참가하면 같은 스테이지 팀 순위를 볼 수 있어요.</string>
-    <string name="rank_failed_unavailable">연결을 확인해 주세요</string>
-    <string name="rank_failed_other">요청을 처리할 수 없어요</string>
-    <string name="rank_retry">다시 시도</string>
+    <string name="rank_no_team">팀에 들어가면 같은 스테이지 팀 순위를 볼 수 있어요.</string>
 
     <!-- S16 주간 통계 -->
     <string name="weekly_title">주간 통계</string>
@@ -294,18 +368,17 @@
     <string name="weekly_no_last_week">지난주 기록 없음</string>
     <string name="weekly_first_run">이번 주 첫 러닝을 시작해 보세요</string>
     <string name="weekly_offline">오프라인</string>
-    <string name="weekly_no_team">팀에 참가하면 주간 통계를 볼 수 있어요.</string>
-    <string name="weekly_failed_unavailable">연결을 확인해 주세요</string>
-    <string name="weekly_failed_other">요청을 처리할 수 없어요</string>
-    <string name="weekly_retry">다시 시도</string>
+    <string name="weekly_no_team">팀에 들어가면 주간 통계를 볼 수 있어요.</string>
 
     <!-- S17 지역 도감 -->
     <string name="collection_title">지역 도감</string>
     <string name="collection_count">%1$d / %2$d장 모았어요</string>
     <string name="collection_got">%1$s 획득</string>
+    <string name="collection_got_no_date">획득</string>
     <string name="collection_next">팀이 %1$skm 더 달리면 획득</string>
     <string name="collection_locked">스테이지 %1$d 도착 · %2$dkm</string>
     <string name="collection_locked_desc">잠김</string>
+    <string name="collection_passed">팀이 이미 지나간 도시예요</string>
 
     <!-- S18 지역 카드 상세 -->
     <string name="card_stage_badge">스테이지 %1$d 도착 · %2$s에서 %3$dkm</string>
@@ -313,6 +386,7 @@
     <string name="card_photo_credit">사진 출처: %1$s</string>
     <string name="card_landmarks">랜드마크</string>
     <string name="card_acquired">%1$s 획득 · %2$s와 함께</string>
+    <string name="card_acquired_no_team">%1$s 획득</string>
     <string name="run_permission_explanation">러닝 거리를 측정하려면 정확한 위치가 필요해요. 측정 중에는 알림으로 진행 상황을 알려드려요.</string>
     <string name="run_permission_continue">계속하기</string>
     <string name="run_permission_request">권한 허용하기</string>

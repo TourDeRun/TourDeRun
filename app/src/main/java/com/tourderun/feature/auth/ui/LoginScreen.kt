@@ -1,5 +1,6 @@
 package com.tourderun.feature.auth.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -21,9 +22,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -32,6 +38,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
 import com.tourderun.core.designsystem.component.Mascot
 import com.tourderun.core.designsystem.component.MascotFrame
@@ -40,6 +48,8 @@ import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
+import com.tourderun.core.data.session.GoogleCredentialClient
+import kotlinx.coroutines.launch
 
 /** S01 로그인 화면 상태. */
 data class LoginUiState(
@@ -47,9 +57,43 @@ data class LoginUiState(
     val isLoading: Boolean = false,
 )
 
-/** S01 로그인. 신규 사용자는 약관 동의(S01-1)로, 기존 사용자는 홈으로 간다 (분기는 ViewModel). */
+/** S01 로그인. 계정 선택 창을 띄우고 결과를 ViewModel에 넘긴다. 화면 이동은 EntryGraph가 세션 상태를 보고 한다. */
 @Composable
 fun LoginScreen(
+    modifier: Modifier = Modifier,
+    viewModel: LoginViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current // Activity. 계정 창을 띄울 때 필요
+    val scope = rememberCoroutineScope() // 버튼 클릭에서 suspend 함수를 부르기 위한 범위
+    val client = remember { GoogleCredentialClient() }
+
+    // 일회성 이벤트 받기: 화면이 떠 있는 동안 계속 듣는다
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is LoginEvent.ShowMessage ->
+                    Toast.makeText(context, event.messageRes, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    LoginContent(
+        uiState = uiState,
+        onGoogleSignIn = {
+            viewModel.onAction(LoginAction.SignInStarted)
+            scope.launch {
+                val result = client.requestIdToken(context)
+                viewModel.onAction(LoginAction.CredentialReceived(result))
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+/** S01 로그인 화면 그리기만 한다 (상태 없음, Preview 대상). */
+@Composable
+fun LoginContent(
     uiState: LoginUiState,
     onGoogleSignIn: () -> Unit,
     modifier: Modifier = Modifier,
@@ -133,6 +177,6 @@ private fun AppIcon(modifier: Modifier, contentDescription: String) {
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
-private fun LoginScreenPreview() {
-    TdrTheme { LoginScreen(LoginUiState(), onGoogleSignIn = {}) }
+private fun LoginContentPreview() {
+    TdrTheme { LoginContent(LoginUiState(), onGoogleSignIn = {}) }
 }

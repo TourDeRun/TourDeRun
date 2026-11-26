@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.secrets)
 }
 
-// google-services.json(권민찬 공유)이 있을 때만 적용한다. 없어도 빌드·실행은 된다.
+// google-services.json(권민찬 공유)이 있을 때만 적용한다.
 if (file("google-services.json").exists()) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
 }
@@ -30,13 +30,16 @@ android {
             isMinifyEnabled = false
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -47,6 +50,10 @@ secrets {
     // 실제 키는 각자 local.properties의 MAPS_API_KEY, 없으면 DUMMY
     propertiesFileName = "local.properties"
     defaultPropertiesFileName = "local.defaults.properties"
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -73,7 +80,17 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.maps.compose)
+    implementation(libs.play.services.location)
+
+    // AUTH-01 구글 로그인 (Credential Manager)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)

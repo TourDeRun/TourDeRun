@@ -1,9 +1,191 @@
 rules_version = '2';
+
+// Tour De Run Firestore 보안 규칙 1차 (#79).
+// 기준: 기술 명세서 "보안 규칙" 절, 기능 명세서 12장. 배포는 권민찬만 한다.
+// 확인: firebase/ 폴더에서 `npm test` (에뮬레이터에서 test/rules.test.mjs 시나리오를 돌린다)
 service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      // 개발용: 로그인한 사용자만 읽고 쓸 수 있다. 11/23에 컬렉션별 규칙으로 바꾼다
-      allow read, write: if request.auth != null;
+  match /databases/{db}/documents {
+
+    // ---------- 공통 함수 ----------
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+
+    function userPath(u) { return /databases/$(db)/documents/users/$(u); }
+    function teamPath(t) { return /databases/$(db)/documents/teams/$(t); }
+    function memberPath(t, u) { return /databases/$(db)/documents/teams/$(t)/members/$(u); }
+    function runPath(r) { return /databases/$(db)/documents/runs/$(r); }
+    function codePath(c) { return /databases/$(db)/documents/inviteCodes/$(c); }
+
+    function isMember(t) { return signedIn() && exists(memberPath(t, me())); }
+    function isLeader(t) { return isMember(t) && get(memberPath(t, me())).data.role == 'leader'; }
+
+    // 수정 전후를 비교해 바뀐 필드가 keys 안에만 있는지 / keys가 하나도 안 바뀌었는지
+    function onlyChanged(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    function unchanged(keys) { return !request.resource.data.diff(resource.data).affectedKeys().hasAny(keys); }
+
+    // 같은 배치에서 새로 만든, 이 팀의 내 러닝인가 (REC-01 거리 증가를 러닝 하나와 짝짓는다)
+    function isNewRunOf(r, t) {
+      return !exists(runPath(r)) && existsAfter(runPath(r))
+        && getAfter(runPath(r)).data.uid == me()
+        && getAfter(runPath(r)).data.teamId == t;
+    }
+    function runM(r) { return getAfter(runPath(r)).data.distanceM; }
+    function prev(f) { return resource == null ? 0 : resource.data.get(f, 0); }
+    function prevMemberM() { return resource == null ? {} : resource.data.get('memberM', {}); }
+
+    function validNickname(n) { return n is string && n.size() >= 2 && n.size() <= 10; }
+    function validTeamName(n) { return n is string && n.size() >= 2 && n.size() <= 12; }
+    // 팀 아이콘·색은 0~7 번호 (M-06)
+    function validLook(d) {
+      return d.icon is int && d.icon >= 0 && d.icon <= 7
+        && d.color is int && d.color >= 0 && d.color <= 7;
+    }
+
+    // ---------- users ----------
+
+    match /users/{uid} {
+      allow read, delete: if signedIn() && uid == me();
+
+      // AUTH-02: 생성 시각·약관 동의 시각(D-08)은 서버 시각, 처음엔 팀 없음·거리 0
+      allow create: if signedIn() && uid == me()
+        && validNickname(request.resource.data.nickname)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.termsAgreedAt == request.time
+        && request.resource.data.teamId == null
+        && request.resource.data.totalM == 0
+        && request.resource.data.runCount == 0;
+
+      // 닉네임 수정, 팀 소속, 누적 거리, 지역 카드. 생성·약관 시각은 바꾸지 못한다
+      allow update: if signedIn() && uid == me()
+        && validNickname(request.resource.data.nickname)
+        && unchanged(['createdAt', 'termsAgreedAt']);
+    }
+
+    // ---------- runs ----------
+
+    match /runs/{runId} {
+      allow read, delete: if signedIn() && resource.data.uid == me();
+
+      allow create: if signedIn()
+        && request.resource.data.uid == me()
+        && request.resource.data.teamId == get(userPath(me())).data.teamId
+        && request.resource.data.distanceM is int
+        && request.resource.data.distanceM > 0
+        && request.resource.data.distanceM <= 100000;
+
+      // REC-04: 제목·메모만
+      allow update: if signedIn() && resource.data.uid == me()
+        && onlyChanged(['title', 'memo']);
+    }
+
+    // ---------- teams ----------
+
+    match /teams/{teamId} {
+      allow read: if signedIn();
+
+      // TEAM-01: 같은 배치에 내 members(팀장)가 생긴다
+      allow create: if signedIn()
+        && validTeamName(request.resource.data.name)
+        && validLook(request.resource.data)
+        && request.resource.data.memberCount == 1
+        && request.resource.data.distanceM == 0
+        && request.resource.data.season == 1
+        && request.resource.data.reachedAt == request.time
+        && request.resource.data.lastRunId == null
+        && getAfter(memberPath(teamId, me())).data.role == 'leader';
+
+      allow update: if
+        // TEAM-05: 이름·대표 이미지 (팀장만)
+        (isLeader(teamId) && onlyChanged(['name', 'icon', 'color'])
+          && validTeamName(request.resource.data.name) && validLook(request.resource.data))
+        // REC-01: 거리 반영 (같은 배치의 새 러닝 거리만큼만)
+        || (isMember(teamId) && onlyChanged(['distanceM', 'reachedAt', 'lastRunId'])
+            && isNewRunOf(request.resource.data.lastRunId, teamId)
+            && request.resource.data.distanceM == resource.data.distanceM + runM(request.resource.data.lastRunId)
+            && request.resource.data.reachedAt == request.time)
+        // TEAM-06·07: 내가 나가거나 팀장이 내보낼 때 인원 -1
+        || (isMember(teamId) && onlyChanged(['memberCount'])
+            && request.resource.data.memberCount == resource.data.memberCount - 1
+            && (!existsAfter(memberPath(teamId, me())) || isLeader(teamId)))
+        // TEAM-03: 참여 (아직 팀원이 아닌 내가 +1, 4명까지)
+        || (signedIn() && !isMember(teamId) && onlyChanged(['memberCount'])
+            && request.resource.data.memberCount == resource.data.memberCount + 1
+            && request.resource.data.memberCount <= 4
+            && existsAfter(memberPath(teamId, me())));
+
+      // TEAM-07: 마지막 1명이 나가며 삭제
+      allow delete: if isMember(teamId) && resource.data.memberCount == 1;
+
+      match /members/{uid} {
+        allow read: if isMember(teamId);
+
+        allow create: if signedIn() && uid == me()
+          && get(userPath(me())).data.teamId == null
+          && request.resource.data.contributionM == 0
+          && getAfter(codePath(request.resource.data.inviteCode)).data.teamId == teamId
+          && (
+            // 팀 만들기: 팀 문서도 이 배치에서 처음 생긴다
+            (!exists(teamPath(teamId)) && request.resource.data.role == 'leader'
+              && request.resource.data.seenArrivals == 0)
+            // 참여: 인원 +1, 4명 이하
+            || (exists(teamPath(teamId)) && request.resource.data.role == 'member'
+              && getAfter(teamPath(teamId)).data.memberCount == get(teamPath(teamId)).data.memberCount + 1
+              && getAfter(teamPath(teamId)).data.memberCount <= 4)
+          );
+
+        allow update: if signedIn() && (
+          // AUTH-03 닉네임, JRN-05 본 도착 수 (본 도착 수는 늘어나기만, 도시 7곳까지)
+          (uid == me() && onlyChanged(['nickname', 'seenArrivals'])
+              && request.resource.data.get('seenArrivals', 0) >= resource.data.get('seenArrivals', 0)
+              && request.resource.data.get('seenArrivals', 0) <= 7)
+          // REC-01: 기여 거리 (같은 배치의 새 러닝 거리만큼만)
+          || (uid == me() && onlyChanged(['contributionM', 'lastRunId'])
+              && isNewRunOf(request.resource.data.lastRunId, teamId)
+              && request.resource.data.contributionM == resource.data.contributionM + runM(request.resource.data.lastRunId))
+          // TEAM-08: 팀장이 다른 팀원을 팀장으로
+          || (isLeader(teamId) && uid != me() && onlyChanged(['role'])
+              && request.resource.data.role == 'leader')
+          // TEAM-08: 팀장을 넘기며 자신은 팀원으로. 앱은 위 쓰기와 같은 배치로만 보낸다
+          // (규칙은 누가 새 팀장인지 모르므로 그 짝까지는 확인하지 못한다)
+          || (uid == me() && isLeader(teamId) && onlyChanged(['role'])
+              && request.resource.data.role == 'member')
+        );
+
+        // 내가 나가거나(TEAM-07), 팀장이 내보낸다(TEAM-06)
+        allow delete: if signedIn() && (uid == me() || isLeader(teamId));
+      }
+    }
+
+    // ---------- inviteCodes ----------
+
+    match /inviteCodes/{code} {
+      // 코드를 아는 사람만 단건 조회. 목록 조회는 막는다
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && getAfter(memberPath(request.resource.data.teamId, me())).data.role == 'leader';
+      allow delete: if isMember(resource.data.teamId);
+    }
+
+    // ---------- teamStats ----------
+
+    match /teamStats/{statId} {
+      allow read: if signedIn();
+
+      // REC-01: 이번 주 문서에 새 러닝 거리만큼, 내 memberM 칸만
+      allow create, update: if isMember(request.resource.data.teamId)
+        && statId == request.resource.data.teamId + '_' + request.resource.data.periodId
+        && isNewRunOf(request.resource.data.lastRunId, request.resource.data.teamId)
+        && getAfter(runPath(request.resource.data.lastRunId)).data.periodId == request.resource.data.periodId
+        && request.resource.data.distanceM == prev('distanceM') + runM(request.resource.data.lastRunId)
+        && request.resource.data.runCount == prev('runCount') + 1
+        && request.resource.data.memberM.get(me(), 0)
+             == prevMemberM().get(me(), 0) + runM(request.resource.data.lastRunId)
+        && request.resource.data.memberM.diff(prevMemberM()).affectedKeys().hasOnly([me()]);
+
+      // TEAM-07: 마지막 1명이 팀을 지울 때
+      allow delete: if isMember(resource.data.teamId);
     }
   }
 }

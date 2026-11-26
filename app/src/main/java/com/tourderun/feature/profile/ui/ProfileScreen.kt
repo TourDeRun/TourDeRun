@@ -18,15 +18,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,7 +41,6 @@ import com.tourderun.R
 import com.tourderun.core.designsystem.component.CardHeader
 import com.tourderun.core.designsystem.component.Mascot
 import com.tourderun.core.designsystem.component.TdrCard
-import com.tourderun.core.designsystem.component.TdrConfirmDialog
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.valueWithUnit
@@ -59,12 +57,16 @@ import com.tourderun.feature.record.ui.RunRow
 data class ProfileUiState(
     val nickname: String,
     val teamName: String?,
-    val isLeader: Boolean,
-    val totalDistanceM: Long,
-    val runCount: Int,
+    /** null이면 아직 모름 → 역할 표시를 숨긴다. */
+    val isLeader: Boolean?,
+    /** null이면 아직 모르거나 읽기 실패 → "–" (0km와 구분). */
+    val totalDistanceM: Long?,
+    val runCount: Int?,
     val latestRun: RunRowUi?,
     /** 지역 도감(P1). 기능이 꺼져 있으면 null. */
     val collection: CollectionSummaryUi?,
+    /** AUTH-04 로그아웃 확인 창이 열려 있는지. */
+    val showLogoutConfirm: Boolean = false,
 )
 
 data class CollectionSummaryUi(
@@ -84,13 +86,13 @@ fun ProfileScreen(
     onRunClick: (RunRowUi) -> Unit,
     onCollectionClick: () -> Unit,
     onLogout: () -> Unit,
+    onLogoutConfirm: () -> Unit,
+    onLogoutDismiss: () -> Unit,
     onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
-    // 로그아웃·탈퇴는 확인을 거친 뒤에만 콜백을 부른다.
-    var confirm by rememberSaveable { mutableStateOf<ProfileConfirm?>(null) }
     Column(
         modifier
             .fillMaxSize()
@@ -102,7 +104,7 @@ fun ProfileScreen(
     ) {
         // 내 정보
         TdrCard(
-            contentPadding = PaddingValues(horizontal = TdrSpacing.s4, vertical = TdrSpacing.s5),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25),
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s25)) {
@@ -125,12 +127,17 @@ fun ProfileScreen(
                 }
                 if (uiState.teamName != null) {
                     TextButton(onClick = onTeamClick, modifier = Modifier.offset(y = (-6).dp)) {
+                        val isLeader = uiState.isLeader
                         Text(
-                            stringResource(
-                                R.string.profile_team_role,
-                                uiState.teamName,
-                                stringResource(if (uiState.isLeader) R.string.role_leader else R.string.role_member),
-                            ),
+                            if (isLeader == null) {
+                                stringResource(R.string.profile_team_only, uiState.teamName)
+                            } else {
+                                stringResource(
+                                    R.string.profile_team_role,
+                                    uiState.teamName,
+                                    stringResource(if (isLeader) R.string.role_leader else R.string.role_member),
+                                )
+                            },
                             style = type.caption,
                             color = colors.inkMuted,
                         )
@@ -138,13 +145,13 @@ fun ProfileScreen(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2)) {
                     ProfileStat(
-                        Format.km(uiState.totalDistanceM),
+                        uiState.totalDistanceM?.let { Format.km(it) } ?: stringResource(R.string.value_unknown),
                         stringResource(R.string.unit_km_spaced),
                         stringResource(R.string.profile_total_distance),
                         Modifier.weight(1f),
                     )
                     ProfileStat(
-                        uiState.runCount.toString(),
+                        uiState.runCount?.toString() ?: stringResource(R.string.value_unknown),
                         stringResource(R.string.unit_times_spaced),
                         stringResource(R.string.profile_run_count),
                         Modifier.weight(1f),
@@ -187,7 +194,9 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.Top,
             modifier = Modifier.semantics { paneTitle = accountLabel },
         ) {
-            AccountRow(stringResource(R.string.profile_logout), colors.ink) { confirm = ProfileConfirm.LOGOUT }
+            AccountRow(stringResource(R.string.profile_logout), colors.ink, onLogout)
+            HorizontalDivider(color = colors.border)
+            AccountRow(stringResource(R.string.profile_withdraw), colors.danger, onWithdraw)
         }
         Text(
             stringResource(R.string.profile_account_notice),
@@ -195,38 +204,28 @@ fun ProfileScreen(
             color = colors.inkMuted,
             modifier = Modifier.padding(horizontal = TdrSpacing.s1),
         )
-        // 탈퇴는 로그아웃과 떨어뜨려 잘못 누르지 않게 한다.
-        AccountRow(stringResource(R.string.profile_withdraw), colors.danger) { confirm = ProfileConfirm.WITHDRAW }
     }
 
-    when (confirm) {
-        ProfileConfirm.LOGOUT -> TdrConfirmDialog(
-            title = stringResource(R.string.profile_logout_confirm_title),
-            body = stringResource(R.string.profile_logout_confirm_body),
-            confirmText = stringResource(R.string.profile_logout),
-            onConfirm = {
-                confirm = null
-                onLogout()
+    if (uiState.showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = onLogoutDismiss,
+            title = { Text(stringResource(R.string.profile_logout_title), style = type.title) },
+            text = { Text(stringResource(R.string.profile_logout_body), style = type.body, color = colors.inkMuted) },
+            confirmButton = {
+                TextButton(onClick = onLogoutConfirm) {
+                    Text(stringResource(R.string.profile_logout), color = colors.danger, style = type.subtitle)
+                }
             },
-            onDismiss = { confirm = null },
-        )
-        ProfileConfirm.WITHDRAW -> TdrConfirmDialog(
-            title = stringResource(R.string.profile_withdraw_confirm_title),
-            body = stringResource(R.string.profile_withdraw_confirm_body),
-            confirmText = stringResource(R.string.profile_withdraw_confirm_action),
-            danger = true,
-            onConfirm = {
-                confirm = null
-                onWithdraw()
+            dismissButton = {
+                TextButton(onClick = onLogoutDismiss) {
+                    Text(stringResource(R.string.action_cancel), color = colors.ink, style = type.subtitle)
+                }
             },
-            onDismiss = { confirm = null },
+            containerColor = colors.bgSurface,
+            shape = TdrShapes.lg,
         )
-        null -> Unit
     }
 }
-
-/** 확인을 기다리는 계정 동작. */
-private enum class ProfileConfirm { LOGOUT, WITHDRAW }
 
 @Composable
 private fun ProfileStat(value: String, unit: String, label: String, modifier: Modifier) {
@@ -275,41 +274,36 @@ private fun CardStack() {
     }
 }
 
+private val previewState = ProfileUiState(
+    nickname = "민지",
+    teamName = "뛰뛰크루",
+    isLeader = true,
+    totalDistanceM = 86_400,
+    runCount = 21,
+    latestRun = PreviewSamples.runs.first(),
+    collection = CollectionSummaryUi(3, 8, "천안"),
+)
+
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun ProfileScreenPreview() {
     TabScreenPreview(TdrTab.Profile) {
-        ProfileScreen(
-            ProfileUiState(
-                nickname = "민지",
-                teamName = "뛰뛰크루",
-                isLeader = true,
-                totalDistanceM = 86_400,
-                runCount = 21,
-                latestRun = PreviewSamples.runs.first(),
-                collection = CollectionSummaryUi(3, 8, "천안"),
-            ),
-            {}, {}, {}, {}, {}, {}, {},
-        )
+        ProfileScreen(previewState, {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }
 
-/** 빈 상태: 팀·기록·도감이 없는 새 사용자. */
-@Preview(widthDp = 390, heightDp = 844)
+@Preview(widthDp = 390, heightDp = 844, name = "로그아웃 확인")
 @Composable
-private fun ProfileScreenEmptyPreview() {
+private fun ProfileLogoutConfirmPreview() {
     TabScreenPreview(TdrTab.Profile) {
-        ProfileScreen(
-            ProfileUiState(
-                nickname = "민지",
-                teamName = null,
-                isLeader = false,
-                totalDistanceM = 0,
-                runCount = 0,
-                latestRun = null,
-                collection = null,
-            ),
-            {}, {}, {}, {}, {}, {}, {},
-        )
+        ProfileScreen(previewState.copy(showLogoutConfirm = true), {}, {}, {}, {}, {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(widthDp = 390, heightDp = 844, name = "숫자·역할을 아직 모름(읽기 실패)")
+@Composable
+private fun ProfileUnknownPreview() {
+    TabScreenPreview(TdrTab.Profile) {
+        ProfileScreen(previewState.copy(isLeader = null, totalDistanceM = null, runCount = null), {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }

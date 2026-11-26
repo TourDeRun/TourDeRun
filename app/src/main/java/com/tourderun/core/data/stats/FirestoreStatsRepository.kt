@@ -11,11 +11,11 @@ import com.tourderun.core.data.mapReady
 import com.tourderun.core.data.firestore.Collections
 import com.tourderun.core.data.firestore.TeamFields
 import com.tourderun.core.data.firestore.TeamStatFields
-import com.tourderun.core.data.firestore.awaitResult
 import com.tourderun.core.data.firestore.snapshotFlow
 import com.tourderun.core.data.firestore.toTeamStatDto
 import com.tourderun.domain.stats.lastWeekId
 import com.tourderun.domain.stats.weekId
+import dagger.Lazy
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.async
@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import com.tourderun.domain.stats.topPercent as calcTopPercent
 
 /**
@@ -34,8 +35,11 @@ import com.tourderun.domain.stats.topPercent as calcTopPercent
  *   (인덱스가 periodId↑, distanceM↑이고 `season` 조건은 넣지 않는다). 전체 팀 수는 `teams`의 `season == 1`.
  */
 class FirestoreStatsRepository @Inject constructor(
-    private val firestore: FirebaseFirestore,
+    // google-services.json이 없으면 만들 수 없어서 리스너·조회를 시작할 때 처음 꺼낸다.
+    private val firestoreProvider: Lazy<FirebaseFirestore>,
 ) : StatsRepository {
+
+    private val firestore: FirebaseFirestore get() = firestoreProvider.get()
 
     override fun observeWeekly(teamId: String, nowMs: Long): Flow<Loaded<WeeklyStats>> {
         val thisWeek = weekDoc(teamId, weekId(nowMs)).snapshotFlow(TAG).map { it.mapReady { doc -> doc.toTeamStatDto() } }
@@ -65,7 +69,7 @@ class FirestoreStatsRepository @Inject constructor(
         val periodId = weekId(nowMs)
         return try {
             // count 집계는 서버에서만 되므로 우리 거리도 서버 값으로 맞춘다. 오프라인이면 예외 → null.
-            val ourM = weekDoc(teamId, periodId).get(Source.SERVER).awaitResult().toTeamStatDto().distanceM
+            val ourM = weekDoc(teamId, periodId).get(Source.SERVER).await().toTeamStatDto().distanceM
             if (ourM <= 0) return null
             coroutineScope {
                 val moreCount = async {
@@ -98,7 +102,7 @@ class FirestoreStatsRepository @Inject constructor(
     private fun weekDoc(teamId: String, periodId: String): DocumentReference =
         firestore.collection(Collections.TEAM_STATS).document(TeamStatFields.docId(teamId, periodId))
 
-    private suspend fun Query.serverCount(): Long = count().get(AggregateSource.SERVER).awaitResult().count
+    private suspend fun Query.serverCount(): Long = count().get(AggregateSource.SERVER).await().count
 
     private companion object {
         const val TAG = "TDR/stats"

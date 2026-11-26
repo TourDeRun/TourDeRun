@@ -17,6 +17,7 @@ object Collections {
 object UserFields {
     const val NICKNAME = "nickname"
     const val CREATED_AT = "createdAt"
+    const val TERMS_AGREED_AT = "termsAgreedAt"  // 약관 동의 시각 (D-08)
     const val TEAM_ID = "teamId"           // 없으면 null을 명시해서 쓴다
     const val TOTAL_M = "totalM"
     const val RUN_COUNT = "runCount"

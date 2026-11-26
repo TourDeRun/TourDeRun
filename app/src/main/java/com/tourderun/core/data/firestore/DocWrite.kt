@@ -17,10 +17,13 @@ enum class WriteMode {
 
     /** 없으면 만들고 있으면 합친다(`set(merge)`). 중첩 Map은 안쪽 키만 합쳐진다. */
     SET_MERGE,
+
+    /** 문서를 지운다(`delete`). [DocWrite.fields]는 비워 둔다 (TEAM-07). */
+    DELETE,
 }
 
 /**
- * Firebase 타입을 쓰지 않는 필드 값. Firestore 구현(`FirestoreRunSaver` 등)이 Firestore 값으로 바꾼다.
+ * Firebase 타입을 쓰지 않는 필드 값. 공용 `batchOf()`가 Firestore 값으로 바꾼다.
  * 그래서 배치 내용을 Firestore 없이 테스트할 수 있다.
  */
 sealed interface FieldOp {

@@ -16,9 +16,7 @@ data class MyTeam(
 )
 
 /**
- * 내 팀 정보 (S15, S16, REC-01).
- *
- * TODO(RACE-03): `TeamRepository`(권민찬)가 생기면 그 값으로 바꾸고 이 인터페이스와 [FixedMyTeamSource]는 지운다.
+ * 내 팀 정보 (S15, S16, REC-01). 앱에서는 [SessionMyTeamSource](세션 teamId + `teams` 문서)가 바인딩된다.
  */
 interface MyTeamSource {
     /** 내 팀. 팀이 없으면 null. */
@@ -26,10 +24,9 @@ interface MyTeamSource {
 }
 
 /**
- * 고정값 내 팀(PR #2 Preview의 "뛰뛰크루", 시즌 1, 66.8km). `FakeRaceRepository`가 목록의 우리 팀 자리를
- * 이 팀의 ID·이름으로 바꿔서 낸다.
- *
- * TODO(REC-01): `TeamRepository`(권민찬)로 교체한다. `fake-my-team` 문서는 Firestore에 없어서 이 값으로 저장하면 배치가 거부된다.
+ * 고정값 내 팀(PR #2 Preview의 "뛰뛰크루", 시즌 1, 66.8km). **디버그 화면·테스트 전용**이고 앱에는 바인딩하지 않는다.
+ * `FakeRaceRepository`가 목록의 우리 팀 자리를 이 팀의 ID·이름으로 바꿔서 낸다.
+ * `fake-my-team` 문서는 Firestore에 없으므로 이 값으로 러닝을 저장하면 배치가 거부된다.
  */
 class FixedMyTeamSource @Inject constructor() : MyTeamSource {
     override fun observeMyTeam(): Flow<MyTeam?> = flowOf(FIXED_TEAM)

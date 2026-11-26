@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.Dot
 import com.google.android.gms.maps.model.Gap
@@ -58,6 +60,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.MascotFace
 import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrIcons
@@ -65,12 +68,15 @@ import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.component.TdrTab
 import com.tourderun.core.designsystem.component.TeamImage
 import com.tourderun.core.designsystem.component.latLngBoundsOf
+import com.tourderun.core.designsystem.component.rememberTdrMapProperties
 import com.tourderun.core.designsystem.component.toLatLng
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSize
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.ui.model.StageProgressUi
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.model.stageProgressUi
@@ -99,13 +105,27 @@ fun RoadViewScreen(
     modifier: Modifier = Modifier,
     viewModel: RoadViewViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val state = uiState
-    if (state == null) {
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
         // 받기 전이거나 팀이 없을 때: 지도 바탕색만
-        Box(modifier.fillMaxSize().background(TdrTheme.colors.bgMap))
-    } else {
-        RoadViewContent(state, modifier)
+        RoadViewLoad.Loading -> Box(modifier.fillMaxSize().background(TdrTheme.colors.bgMap))
+        is RoadViewLoad.Failed -> RoadViewFailed(state.error, viewModel::retry, modifier)
+        is RoadViewLoad.Content -> RoadViewContent(state.ui, modifier)
+    }
+}
+
+/** S08 불러오기 실패(JRN-03). 상태 없음(Preview 대상). */
+@Composable
+fun RoadViewFailed(error: DataError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgCanvas)
+            .statusBarsPadding()
+            .padding(horizontal = TdrSpacing.s5),
+        contentAlignment = Alignment.Center,
+    ) {
+        LoadFailed(error.loadFailedMessageRes(), onRetry)
     }
 }
 
@@ -224,9 +244,13 @@ private fun RoadMap(uiState: RoadViewUiState, showAll: Boolean, topCardPx: Int, 
     }
     val lineWidth = with(density) { 7.dp.toPx() }
 
+    // 타일을 받기 전에 보이는 바탕(기본 베이지)을 지도 바탕색으로 맞춘다.
+    val mapBackground = colors.bgMap.toArgb()
     GoogleMap(
         modifier = modifier,
         cameraPositionState = camera,
+        properties = rememberTdrMapProperties(),
+        googleMapOptionsFactory = { GoogleMapOptions().backgroundColor(mapBackground) },
         uiSettings = RoadMapUiSettings,
         contentPadding = with(density) { PaddingValues(top = topCardPx.toDp(), bottom = bottomCardPx.toDp()) },
         onMapLoaded = { loaded = true },
@@ -470,5 +494,13 @@ private fun RoadViewScreenEmptyPreview() {
                 map = roadMapUi(routeFor(1), 0, emptyList()),
             ),
         )
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun RoadViewFailedPreview() {
+    TabScreenPreview(TdrTab.Road) {
+        RoadViewFailed(DataError.Unavailable, onRetry = {})
     }
 }

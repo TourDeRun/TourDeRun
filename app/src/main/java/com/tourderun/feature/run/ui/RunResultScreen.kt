@@ -16,6 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -119,7 +124,13 @@ fun RunResultScreen(
 
             TeamDistanceCard(uiState)
 
-            uiState.overtake?.let { o ->
+            // 추월 카드는 저장 뒤 순위를 받아 늦게 채워진다. 갑자기 끼어들지 않게 펼치며 나타난다(#113 리뷰).
+            AnimatedVisibility(
+                visible = uiState.overtake != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                val o = uiState.overtake ?: return@AnimatedVisibility
                 TdrCard(color = colors.highlightSoft) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s3)) {
                         Icon(TdrIcons.TrendUp, contentDescription = null, tint = colors.highlightInk, modifier = Modifier.size(28.dp))
@@ -130,7 +141,7 @@ fun RunResultScreen(
                                 color = colors.highlightInk,
                             )
                             Text(
-                                stringResource(R.string.result_overtake_sub, Format.km(o.gapBeforeM), Format.km(o.leadNowM)),
+                                stringResource(R.string.result_overtake_sub, gapText(o.gapBeforeM), gapText(o.leadNowM)),
                                 style = type.caption,
                                 color = colors.highlightInk,
                             )
@@ -143,6 +154,18 @@ fun RunResultScreen(
         TdrButton(stringResource(R.string.action_confirm), onClick = onConfirm, modifier = Modifier.fillMaxWidth())
     }
 }
+
+/**
+ * 추월 카드의 차이 거리. 1km 미만은 m("840m"), 그 이상은 km 한 자리("2.4km").
+ * km로만 쓰면 50m 미만이 "0.0km"로 보여서 나눈다(#113 리뷰).
+ */
+@Composable
+private fun gapText(meters: Long): String =
+    if (meters < 1_000) {
+        stringResource(R.string.m_value, Format.meters(meters))
+    } else {
+        stringResource(R.string.km_value, Format.km(meters))
+    }
 
 /** 남색 카드: 팀 거리 전 → 후, 진행 바(흰색 = 러닝 전, 밝은 파랑 = 이번 러닝). */
 @Composable

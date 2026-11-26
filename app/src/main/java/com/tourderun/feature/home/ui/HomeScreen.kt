@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tourderun.R
+import com.tourderun.core.data.DataError
 import com.tourderun.core.designsystem.component.CardHeader
 import com.tourderun.core.designsystem.component.MascotFace
 import com.tourderun.core.designsystem.component.MemberAvatar
@@ -44,11 +45,14 @@ import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.component.TdrTab
+import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamImage
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
 import com.tourderun.core.designsystem.theme.TdrTheme
 import com.tourderun.core.ui.Format
+import com.tourderun.core.ui.LoadFailed
+import com.tourderun.core.ui.loadFailedMessageRes
 import com.tourderun.core.ui.model.MemberUi
 import com.tourderun.core.ui.model.RivalTeamUi
 import com.tourderun.core.ui.model.StageProgressUi
@@ -59,7 +63,6 @@ import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
 import com.tourderun.domain.route.routeFor
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /** 이번 주 요약 (S16 주간 통계로 들어가는 카드). */
 data class WeeklySummaryUi(
@@ -92,9 +95,14 @@ data class HomeUiState(
     val behindIsOtherStage: Boolean = false,
     /** 기기 캐시 값을 보여 주는 중. */
     val isOffline: Boolean = false,
+    /** 이번 주 통계를 불러오지 못했다. 이번 주 카드 자리에 실패 + 다시 시도를 보인다. */
+    val weeklyError: DataError? = null,
 )
 
-/** S07 홈. 하단 탭(홈)은 AppNavHost가 붙인다. 상태를 받기 전과 팀이 없을 때는 바탕만 보인다. */
+/**
+ * S07 홈. 하단 탭(홈)은 AppNavHost가 붙인다. 상태를 받기 전과 팀이 없을 때는 바탕만 보인다.
+ * 경쟁 상황을 불러오지 못하면 실패 + 다시 시도를 보인다(JRN-03).
+ */
 @Composable
 fun HomeScreen(
     onTeamClick: () -> Unit,
@@ -103,8 +111,34 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    uiState?.let { HomeContent(it, onTeamClick, onStageRankClick, onWeeklyStatsClick, modifier) }
+    val load by viewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = load) {
+        HomeLoad.Loading -> Box(modifier.fillMaxSize().background(TdrTheme.colors.bgCanvas))
+        is HomeLoad.Failed -> HomeFailed(state.error, viewModel::retry, modifier)
+        is HomeLoad.Content -> HomeContent(
+            uiState = state.ui,
+            onTeamClick = onTeamClick,
+            onStageRankClick = onStageRankClick,
+            onWeeklyStatsClick = onWeeklyStatsClick,
+            onRetryWeekly = viewModel::retryWeekly,
+            modifier = modifier,
+        )
+    }
+}
+
+/** S07 불러오기 실패. 상태 없음(Preview 대상). */
+@Composable
+fun HomeFailed(error: DataError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(TdrTheme.colors.bgCanvas)
+            .statusBarsPadding()
+            .padding(horizontal = TdrSpacing.s5),
+        contentAlignment = Alignment.Center,
+    ) {
+        LoadFailed(error.loadFailedMessageRes(), onRetry)
+    }
 }
 
 /** S07 화면 내용. 상태 없음(Preview 대상). */
@@ -114,6 +148,7 @@ fun HomeContent(
     onTeamClick: () -> Unit,
     onStageRankClick: () -> Unit,
     onWeeklyStatsClick: () -> Unit,
+    onRetryWeekly: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = TdrTheme.colors
@@ -129,7 +164,13 @@ fun HomeContent(
         TeamHeaderCard(uiState.team, uiState.isOffline, onTeamClick)
         StageCard(uiState.stage, uiState.rank, uiState.totalTeams)
         RaceCard(uiState, onStageRankClick)
-        uiState.weekly?.let { WeeklyCard(it, onWeeklyStatsClick) }
+        val weekly = uiState.weekly
+        val weeklyError = uiState.weeklyError
+        if (weekly != null) {
+            WeeklyCard(weekly, onWeeklyStatsClick)
+        } else if (weeklyError != null) {
+            TdrCard { LoadFailed(weeklyError.loadFailedMessageRes(), onRetryWeekly) }
+        }
         if (uiState.members.isNotEmpty()) {
             MembersChartCard(uiState.members, uiState.team.distanceM, onTeamClick)
         }
@@ -317,37 +358,64 @@ private fun WeeklyCard(weekly: WeeklySummaryUi, onClick: () -> Unit) {
 }
 
 /**
- * 팀원 기여 카드에 쓰는 거리 문자열(km, 단위 없음).
+ * 팀원 기여 막대 하나. [member]가 null이면 "이전 팀원"(나간·내보내진 팀원이 남긴 거리, M-02) 막대다.
  *
- * 합계와 팀원 기여 거리 모두 `Format.teamKm`(소수 한 자리 내림)이다. 기준이 다르면
- * 1인 팀 84,960m에서 합계 84.9, 기여 85.0처럼 팀원이 팀보다 많이 달린 것으로 보인다.
- *
- * @property totalKm 팀 합계
- * @property memberKm 팀원 기여 거리. `members`와 같은 순서
+ * @property km 기여 거리(km, 단위 없음). 합계와 같은 `Format.teamKm`(소수 한 자리 내림)이라 팀원이 팀보다 많이 달린 것으로 보이지 않는다
+ * @property percent 팀 거리 중 몫. 팀원은 [MemberUi.percent](S14와 같은 값), 이전 팀원은 100에서 나머지
  */
-internal data class MembersChartKm(val totalKm: String, val memberKm: List<String>)
+internal data class MembersChartBar(
+    val member: MemberUi?,
+    val distanceM: Long,
+    val km: String,
+    val percent: Int,
+)
 
-internal fun membersChartKm(members: List<MemberUi>, teamDistanceM: Long): MembersChartKm =
-    MembersChartKm(
-        totalKm = Format.teamKm(teamDistanceM),
-        memberKm = members.map { Format.teamKm(it.contributionM) },
-    )
+/** 팀원 기여 카드 값. [bars]는 팀원(기여 순) 다음에 이전 팀원(있으면) 순서. */
+internal data class MembersChart(val totalKm: String, val bars: List<MembersChartBar>)
 
-/** 팀원 누적 기록 세로 막대 + 아바타. 가장 많이 달린 사람 막대가 140dp. */
+/**
+ * 팀원 목록 → 기여 카드 값 (TEAM-04·EXT-03).
+ *
+ * - 퍼센트는 다시 계산하지 않고 [MemberUi.percent](`contributionShares`, 최대 나머지 방식)를 쓴다.
+ * - 이전 팀원 몫 = 팀 거리 − 지금 팀원 기여 합. 0보다 크면 막대를 하나 더하고, 퍼센트는 100 − 팀원 퍼센트 합이라
+ *   보이는 퍼센트의 합이 100이 된다(S14와 같다).
+ */
+internal fun membersChart(members: List<MemberUi>, teamDistanceM: Long): MembersChart {
+    val memberBars = members.map { MembersChartBar(it, it.contributionM, Format.teamKm(it.contributionM), it.percent) }
+    val formerM = teamDistanceM - members.sumOf { it.contributionM }
+    val formerBar = if (members.isNotEmpty() && formerM > 0) {
+        MembersChartBar(
+            member = null,
+            distanceM = formerM,
+            km = Format.teamKm(formerM),
+            percent = (100 - members.sumOf { it.percent }).coerceAtLeast(0),
+        )
+    } else {
+        null
+    }
+    return MembersChart(totalKm = Format.teamKm(teamDistanceM), bars = memberBars + listOfNotNull(formerBar))
+}
+
+/**
+ * 팀원 누적 기록 세로 막대 + 아바타. 가장 긴 막대가 140dp.
+ * 나간 팀원이 남긴 거리가 있으면 회색 "이전 팀원" 막대를 끝에 더한다(S14와 같은 표시).
+ */
 @Composable
 private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onClick: () -> Unit) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
-    val maxM = members.maxOfOrNull { it.contributionM }?.coerceAtLeast(1L) ?: 1L
-    val km = membersChartKm(members, teamDistanceM)
+    val chart = membersChart(members, teamDistanceM)
+    val maxM = chart.bars.maxOfOrNull { it.distanceM }?.coerceAtLeast(1L) ?: 1L
+    val formerName = stringResource(R.string.home_members_former)
     val chartDesc = stringResource(
         R.string.home_members_chart_desc,
         // map은 inline이라 안에서 stringResource를 부를 수 있다 (joinToString 람다는 안 된다)
-        members.mapIndexed { i, m -> stringResource(R.string.home_members_chart_item, m.nickname, km.memberKm[i]) }
-            .joinToString(", "),
+        chart.bars.map { bar ->
+            stringResource(R.string.home_members_chart_item, bar.member?.nickname ?: formerName, bar.km, bar.percent)
+        }.joinToString(", "),
     )
     TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(TdrSpacing.s35)) {
-        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, km.totalKm))
+        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, chart.totalKm))
         Row(
             Modifier
                 .fillMaxWidth()
@@ -356,33 +424,63 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
             horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2),
             verticalAlignment = Alignment.Bottom,
         ) {
-            members.forEachIndexed { i, m ->
-                val pct = if (teamDistanceM > 0) (m.contributionM * 100f / teamDistanceM).roundToInt() else 0
+            chart.bars.forEach { bar ->
+                val m = bar.member
+                // 이전 팀원은 S14처럼 회색, 얼굴은 무표정, 이름은 흐리게
+                val barColor = m?.color ?: TeamColor.GRAY
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (m.isMvp) {
+                    if (m?.isMvp == true) {
                         Icon(TdrIcons.Crown, contentDescription = null, tint = colors.mvp, modifier = Modifier.padding(bottom = TdrSpacing.s05).size(18.dp))
                     }
                     Text(
-                        km.memberKm[i] + stringResource(R.string.unit_km),
+                        bar.km + stringResource(R.string.unit_km),
                         style = type.label.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (m == null) colors.inkMuted else Color.Unspecified,
                         modifier = Modifier.padding(bottom = TdrSpacing.s1),
                     )
                     Box(
                         Modifier
                             .width(40.dp)
-                            .height((140f * m.contributionM / maxM).dp)
+                            .height((140f * bar.distanceM / maxM).dp)
                             .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
-                            .background(m.color.color),
+                            .background(barColor.color),
                     )
-                    MemberAvatar(m.color, size = 52.dp, face = MascotFace.Smile, modifier = Modifier.padding(top = TdrSpacing.s15))
-                    Text(m.nickname, style = type.label.copy(fontWeight = FontWeight.Bold), modifier = Modifier.padding(top = TdrSpacing.s1))
-                    Text(Format.percent(pct), style = type.micro, color = colors.inkMuted)
+                    MemberAvatar(
+                        barColor,
+                        size = 52.dp,
+                        face = if (m == null) MascotFace.Plain else MascotFace.Smile,
+                        modifier = Modifier.padding(top = TdrSpacing.s15),
+                    )
+                    Text(
+                        m?.nickname ?: formerName,
+                        style = type.label.copy(fontWeight = FontWeight.Bold),
+                        color = if (m == null) colors.inkMuted else Color.Unspecified,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = TdrSpacing.s1),
+                    )
+                    Text(stringResource(R.string.percent_value, bar.percent), style = type.micro, color = colors.inkMuted)
                 }
             }
         }
         if (members.any { it.isMvp }) {
             Text(stringResource(R.string.home_mvp_hint), style = type.micro, color = colors.inkMuted)
         }
+    }
+}
+
+@Preview(name = "팀원 카드 · 이전 팀원 있음", widthDp = 390)
+@Composable
+private fun MembersChartCardFormerPreview() {
+    TdrTheme {
+        // 팀 거리 66.8km 중 두 명이 50.8km, 나간 팀원이 16.0km
+        MembersChartCard(
+            members = listOf(
+                MemberUi("u1", "민지", TeamColor.BLUE, 30_800, isLeader = true, isMvp = true, percent = 46),
+                MemberUi("u2", "서준", TeamColor.NAVY, 20_000, percent = 30),
+            ),
+            teamDistanceM = 66_800,
+            onClick = {},
+        )
     }
 }
 
@@ -401,7 +499,7 @@ private fun HomeScreenPreview() {
                 weekly = WeeklySummaryUi(42_500, 9, 6_100, 38, 11),
                 members = PreviewSamples.members,
             ),
-            {}, {}, {},
+            {}, {}, {}, {},
         )
     }
 }
@@ -422,7 +520,36 @@ private fun HomeScreenEmptyPreview() {
                 weekly = WeeklySummaryUi(0, 0, null, null, null),
                 members = emptyList(),
             ),
-            {}, {}, {},
+            {}, {}, {}, {},
         )
+    }
+}
+
+@Preview(name = "이번 주 통계 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeScreenWeeklyFailedPreview() {
+    TabScreenPreview(TdrTab.Home) {
+        HomeContent(
+            HomeUiState(
+                team = PreviewSamples.team,
+                stage = PreviewSamples.stage,
+                rank = 2,
+                totalTeams = 5,
+                ahead = PreviewSamples.rivals[0],
+                behind = PreviewSamples.rivals[1],
+                weekly = null,
+                members = emptyList(),
+                weeklyError = DataError.Unavailable,
+            ),
+            {}, {}, {}, {},
+        )
+    }
+}
+
+@Preview(name = "불러오기 실패", widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeFailedPreview() {
+    TabScreenPreview(TdrTab.Home) {
+        HomeFailed(DataError.PermissionDenied, onRetry = {})
     }
 }

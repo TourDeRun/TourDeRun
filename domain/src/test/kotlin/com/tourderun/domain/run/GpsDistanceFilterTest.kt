@@ -129,4 +129,28 @@ class GpsDistanceFilterTest {
         assertEquals(FilterDecision.InvalidPoint, filter.accept(point(0.0, 0, -1f)))
         assertEquals(FilterDecision.FirstPoint, filter.accept(point(0.0, 1_000)))
     }
+
+    @Test fun `제자리에서 2m 안쪽으로 1분 동안 떨리면 거리는 0`() {
+        val filter = GpsDistanceFilter()
+        // 기준점 주변을 ±2m로 오가는 점 60개
+        (0..60).forEach { filter.accept(point(if (it % 2 == 0) 0.0 else 2.0, it * 1_000L)) }
+        assertEquals(0.0, filter.totalM, 0.000_001)
+    }
+
+    @Test fun `오차 19_9m 점은 쓰고 20m 점은 버린다`() {
+        val filter = GpsDistanceFilter()
+        assertEquals(FilterDecision.FirstPoint, filter.accept(point(0.0, 0, 19.9f)))
+        assertEquals(FilterDecision.LowAccuracy, filter.accept(point(10.0, 2_000, 20f)))
+        assertTrue(filter.accept(point(10.0, 3_000, 19.9f)) is FilterDecision.Accepted)
+        assertEquals(10.0, filter.totalM, 0.01)
+    }
+
+    @Test fun `차를 타고 이동한 뒤 다시 달리면 차 구간만 빠진다`() {
+        val filter = GpsDistanceFilter()
+        filter.accept(point(0.0, 0))
+        filter.accept(point(10.0, 4_000)) // 9km/h 달리기
+        assertEquals(FilterDecision.TooFast, filter.accept(point(1_010.0, 64_000))) // 60km/h 차량
+        assertTrue(filter.accept(point(1_020.0, 68_000)) is FilterDecision.Accepted)
+        assertEquals(20.0, filter.totalM, 0.01)
+    }
 }

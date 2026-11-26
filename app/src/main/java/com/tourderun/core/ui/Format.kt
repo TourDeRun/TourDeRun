@@ -1,7 +1,10 @@
 package com.tourderun.core.ui
 
+import com.tourderun.domain.stats.SEOUL
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Locale
 import kotlin.math.abs
 
@@ -28,6 +31,9 @@ object Format {
      */
     fun teamKm(meters: Long): String = kmDown(meters, decimals = 1)
 
+    /** 1km 미만 거리를 m 정수로. 840 → "840". 음수는 0. 단위는 문자열 리소스(`m_value`)가 붙인다. */
+    fun meters(meters: Long): String = meters.coerceAtLeast(0).toString()
+
     private fun kmRounded(meters: Long, decimals: Int, mode: RoundingMode): String =
         BigDecimal.valueOf(meters, 3).setScale(decimals, mode).toPlainString()
 
@@ -47,4 +53,10 @@ object Format {
     /** 346 → "5'46\"". 0 이하면 "-'--\"". */
     fun pace(secondsPerKm: Long): String =
         if (secondsPerKm <= 0) "-'--\"" else String.format(Locale.US, "%d'%02d\"", secondsPerKm / 60, secondsPerKm % 60)
+
+    /** epoch ms → "10월 28일" (기본 한국 시간). */
+    fun monthDay(epochMs: Long, zone: ZoneId = SEOUL): String {
+        val date = Instant.ofEpochMilli(epochMs).atZone(zone)
+        return "${date.monthValue}월 ${date.dayOfMonth}일"
+    }
 }

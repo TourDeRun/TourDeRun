@@ -7,11 +7,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
  * 화면 연결용 가짜 구현. 시나리오의 (본 도착 수, 팀 거리)로 `pendingArrivals`를 그대로 계산해 낸다.
+ * uid가 null이면 null, 아니면 고정 팀(`fake-my-team`, 뛰뛰크루) 자리로 낸다.
  * [markSeen]을 부르면 그 뒤로는 null을 낸다(앱을 다시 켜면 처음부터).
  *
  * Hilt는 [ArrivalScenario.NONE](연출 없음)으로 만든다. 연출 화면은 Preview·디버그에서 직접 만든다:
@@ -24,15 +26,21 @@ class FakeArrivalRepository(scenario: ArrivalScenario) : ArrivalRepository {
 
     private val state = MutableStateFlow(pendingArrivals(scenario.seenArrivals, scenario.teamDistanceM, routeFor(SEASON)))
 
-    override fun observePending(): Flow<PendingArrivals?> = state.asStateFlow()
+    override fun observePending(uid: String?): Flow<PendingSeen?> {
+        if (uid == null) return flowOf(null)
+        return state.map { pending -> pending?.let { PendingSeen(uid, TEAM_ID, TEAM_NAME, it, SEASON) } }
+    }
 
-    override fun markSeen(pending: PendingArrivals, newCardCityIds: List<String>): Result<Unit> {
-        state.update { current -> if (current == pending) null else current }
+    override fun markSeen(seen: PendingSeen, newCardCityIds: List<String>): Result<Unit> {
+        state.update { current: PendingArrivals? -> if (current == seen.pending) null else current }
         return Result.success(Unit)
     }
 
     private companion object {
         const val SEASON = 1
+        // FixedMyTeamSource·FakeSessionRepository의 고정 팀과 맞춘다
+        const val TEAM_ID = "fake-my-team"
+        const val TEAM_NAME = "뛰뛰크루"
     }
 }
 

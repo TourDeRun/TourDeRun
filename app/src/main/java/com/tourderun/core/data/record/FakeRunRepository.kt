@@ -1,5 +1,7 @@
 package com.tourderun.core.data.record
 
+import com.tourderun.core.data.DataError
+import com.tourderun.core.data.Loaded
 import com.tourderun.domain.journey.haversineM
 import com.tourderun.domain.model.LatLngValue
 import com.tourderun.domain.record.RunRecord
@@ -7,36 +9,62 @@ import com.tourderun.domain.record.RunTextCheck
 import com.tourderun.domain.record.checkRunText
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToLong
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
  * 가짜 [RunRepository]. Firebase를 쓰지 않아 로그인·`google-services.json` 없이 S11·S12를 붙여 볼 수 있다.
  * 기본은 한강 러닝 5개, `FakeRunRepository(emptyList())`는 빈 목록. uid는 보지 않는다.
- * 수정·삭제는 메모리에만 반영되고 앱을 다시 켜면 처음으로 돌아간다.
+ * 수정·삭제는 메모리에만 반영되고 앱을 다시 켜면 처음으로 돌아간다. 값은 항상 서버 값(`isFromCache = false`)으로 낸다.
+ *
+ * 실패: `FakeRunRepository(SAMPLE_RUNS, failure = DataError.Unavailable)`이면 목록·상세 각각 **처음 한 번** 구독은
+ * [Loaded.Failed]를 내고 끝나고, 그다음 구독(다시 시도)부터는 정상 값을 낸다. 구독(collect)할 때 판단하므로
+ * 같은 Flow를 다시 모아도 된다.
  */
 @Singleton
-class FakeRunRepository(initial: List<RunRecord>) : RunRepository {
+class FakeRunRepository(
+    initial: List<RunRecord>,
+    private val failure: DataError? = null,
+) : RunRepository {
 
     @Inject constructor() : this(SAMPLE_RUNS)
 
     private val runs = MutableStateFlow(initial)
+    private val runsFailed = AtomicBoolean(false)
+    private val runFailed = AtomicBoolean(false)
 
-    override fun observeRuns(uid: String, limit: Long): Flow<List<RunRecord>> =
-        runs.map { list ->
-            list.sortedByDescending { it.startedAtMs }
-                .take(limit.coerceAtLeast(0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-                .map { it.copy(path = emptyList()) }
+    override fun observeRuns(uid: String, limit: Long): Flow<Loaded<List<RunRecord>>> =
+        failOnce(runsFailed) {
+            runs.map { list ->
+                val page = list.sortedByDescending { it.startedAtMs }
+                    .take(limit.coerceAtLeast(0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+                    .map { it.copy(path = emptyList()) }
+                Loaded.Ready(page, isFromCache = false)
+            }
         }
 
-    override fun observeRun(runId: String): Flow<RunRecord?> =
-        runs.map { list -> list.find { it.id == runId } }.distinctUntilChanged()
+    override fun observeRun(runId: String): Flow<Loaded<RunRecord?>> =
+        failOnce(runFailed) {
+            runs.map { list -> Loaded.Ready(list.find { it.id == runId }, isFromCache = false) }.distinctUntilChanged()
+        }
+
+    /** [failure]가 있으면 [flag]마다 첫 구독만 [Loaded.Failed]를 내고 끝난다(Firestore 첫 값 전 오류와 같다). */
+    private fun <T> failOnce(flag: AtomicBoolean, values: () -> Flow<Loaded<T>>): Flow<Loaded<T>> = flow {
+        if (failure != null && flag.compareAndSet(false, true)) {
+            emit(Loaded.Failed(failure))
+        } else {
+            emitAll(values())
+        }
+    }
 
     override fun updateTitleMemo(runId: String, title: String, memo: String?): Result<Unit> =
         when (val check = checkRunText(title, memo)) {
@@ -49,7 +77,7 @@ class FakeRunRepository(initial: List<RunRecord>) : RunRepository {
             }
         }
 
-    override fun delete(runId: String): Result<Unit> {
+    override fun delete(uid: String, runId: String, distanceM: Long): Result<Unit> {
         runs.update { list -> list.filterNot { it.id == runId } }
         return Result.success(Unit)
     }

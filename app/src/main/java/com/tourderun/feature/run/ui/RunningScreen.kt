@@ -37,7 +37,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tourderun.R
 import com.tourderun.core.designsystem.component.Pill
-import com.tourderun.core.designsystem.component.RouteSketch
 import com.tourderun.core.designsystem.component.SampleRoutePoints
 import com.tourderun.core.designsystem.component.StatColumn
 import com.tourderun.core.designsystem.component.StatRow
@@ -175,20 +174,17 @@ private fun RunningContent(
             )
         }
 
-        if (uiState.path.size >= 2) {
-            val minimapDesc = stringResource(R.string.run_minimap)
-            RouteSketch(
-                points = uiState.path,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .clip(TdrShapes.lg)
-                    .semantics { contentDescription = minimapDesc },
-                background = colors.bgSurface,
-                roadColor = colors.border,
-                lineColor = colors.brandBright,
-                pointColor = colors.ink,
-            )
+        if (uiState.path.isNotEmpty()) {
+            Box(Modifier.weight(1f).fillMaxWidth().clip(TdrShapes.lg)) {
+                RunMiniMap(path = uiState.path, modifier = Modifier.fillMaxSize())
+                Pill(
+                    stringResource(R.string.run_minimap),
+                    background = colors.bgSubtle,
+                    contentColor = colors.inkMuted,
+                    style = type.micro,
+                    modifier = Modifier.padding(start = TdrSpacing.s3, top = TdrSpacing.s25),
+                )
+            }
         } else {
             Box(Modifier.weight(1f))
         }
