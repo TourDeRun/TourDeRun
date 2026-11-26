@@ -22,6 +22,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -161,10 +164,14 @@ fun HomeContent(
             .statusBarsPadding(),
     ) {
     // 내용이 화면보다 짧으면 팀 카드가 남은 높이를 채워 아래 여백이 생기지 않게 한다(길면 그대로 스크롤).
+    // 다른 화면으로 넘어갈 때 하단 탭이 먼저 사라져 높이가 커지는데, 그때 카드가 늘어나 아이콘이 밀려 내려가지 않게
+    // 채울 높이는 줄어들 때만 따른다.
+    var fillHeight by remember { mutableStateOf(maxHeight) }
+    if (maxHeight < fillHeight) fillHeight = maxHeight
     Column(
         Modifier
             .verticalScroll(rememberScrollState())
-            .heightIn(min = maxHeight)
+            .heightIn(min = fillHeight)
             .padding(start = TdrSpacing.s5, end = TdrSpacing.s5, top = TdrSpacing.s3, bottom = TdrSpacing.s5),
         verticalArrangement = Arrangement.spacedBy(TdrSpacing.s3),
     ) {
@@ -472,7 +479,6 @@ private fun MembersChart(members: List<MemberUi>, teamDistanceM: Long) {
                         maxLines = 1,
                         modifier = Modifier.padding(top = TdrSpacing.s1),
                     )
-                    Text(stringResource(R.string.percent_value, bar.percent), style = type.micro, color = colors.inkMuted)
                 }
             }
         }
