@@ -1,7 +1,7 @@
 package com.tourderun.feature.record.ui
 
 import com.tourderun.core.data.session.MyStats
-import com.tourderun.core.ui.model.RunRowUi
+import com.tourderun.core.ui.model.toRowUi
 import com.tourderun.domain.record.RunRecord
 import com.tourderun.domain.record.RunTextCheck
 import com.tourderun.domain.record.checkRunText
@@ -10,20 +10,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-/** 목록 한 줄. 날짜는 러닝 시작 시각의 [zone] 기준 월·일. */
-fun RunRecord.toRowUi(zone: ZoneId = SEOUL): RunRowUi {
-    val date = Instant.ofEpochMilli(startedAtMs).atZone(zone)
-    return RunRowUi(
-        runId = id,
-        month = date.monthValue,
-        day = date.dayOfMonth,
-        title = title,
-        movingSec = movingSec,
-        paceSecPerKm = paceSecPerKm,
-        distanceM = distanceM,
-    )
-}
 
 /**
  * 기록 목록 → S11 상태. [runs]는 최신순으로 최대 [limit]개.

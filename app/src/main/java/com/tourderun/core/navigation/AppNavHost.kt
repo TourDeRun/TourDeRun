@@ -40,6 +40,7 @@ import com.tourderun.feature.journey.ui.StageClearViewModel
 import com.tourderun.feature.profile.ui.NicknameEditDialog
 import com.tourderun.feature.profile.ui.ProfileAction
 import com.tourderun.feature.profile.ui.ProfileScreen
+import com.tourderun.feature.profile.ui.ProfileUiState
 import com.tourderun.feature.profile.ui.ProfileViewModel
 import com.tourderun.feature.profile.ui.WithdrawAction
 import com.tourderun.feature.profile.ui.WithdrawFlow
@@ -57,9 +58,6 @@ import com.tourderun.feature.team.ui.TeamScreen
 
 /**
  * 앱 화면 연결. 탭 화면(홈·로드뷰·프로필)에서만 하단 탭을 보이고, 나머지는 화면 전체를 쓴다.
- *
- * ViewModel이 없는 화면은 [TempUiStates]의 고정 상태로 띄운다. 화면 주인은 ViewModel을 붙일 때
- * 해당 `composable { }` 안의 상태와 빈 콜백(`{}`)을 자기 것으로 바꾼다.
  *
  * 시작 화면은 [EntryStage]로 정한다. 로그인·닉네임·팀 여부는 모두 [SessionRepository](Firebase)의 값이다.
  */
@@ -140,21 +138,24 @@ fun AppNavHost(
                 RoadViewScreen()
             }
             composable<ProfileRoute> {
-                // TODO(AUTH-03): 팀 역할(팀장/팀원)과 최근 기록 한 줄은 다음에 붙인다.
                 val profileViewModel: ProfileViewModel = hiltViewModel()
                 val withdrawViewModel: WithdrawViewModel = hiltViewModel()
                 val header by profileViewModel.header.collectAsStateWithLifecycle()
                 val nicknameEdit by profileViewModel.nicknameEdit.collectAsStateWithLifecycle()
+                val latestRun by profileViewModel.latestRun.collectAsStateWithLifecycle()
+                val collection by profileViewModel.collection.collectAsStateWithLifecycle()
                 // AUTH-04 확인 창 상태는 ViewModel에 둔다(로그아웃 직전에 러닝 상태를 다시 보려고, RUN-02)
                 val showLogoutConfirm by withdrawViewModel.showLogoutConfirm.collectAsStateWithLifecycle()
                 ProfileScreen(
-                    uiState = TempUiStates.profile.copy(
-                        nickname = header.nickname ?: TempUiStates.profile.nickname,
+                    uiState = ProfileUiState(
+                        nickname = header.nickname.orEmpty(),
                         teamName = header.teamName,
                         isLeader = header.isLeader,
-                        showLogoutConfirm = showLogoutConfirm,
                         totalDistanceM = header.totalM,
                         runCount = header.runCount?.toInt(),
+                        latestRun = latestRun,
+                        collection = collection,
+                        showLogoutConfirm = showLogoutConfirm,
                     ),
                     onEditNickname = { profileViewModel.onAction(ProfileAction.EditNickname) },
                     onTeamClick = { navController.navigate(TeamRoute) },
