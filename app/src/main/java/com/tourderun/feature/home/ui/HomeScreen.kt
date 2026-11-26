@@ -45,6 +45,7 @@ import com.tourderun.core.designsystem.component.TdrCard
 import com.tourderun.core.designsystem.component.TdrIcons
 import com.tourderun.core.designsystem.component.TdrProgressBar
 import com.tourderun.core.designsystem.component.TdrTab
+import com.tourderun.core.designsystem.component.TeamColor
 import com.tourderun.core.designsystem.component.TeamImage
 import com.tourderun.core.designsystem.theme.TdrShapes
 import com.tourderun.core.designsystem.theme.TdrSpacing
@@ -59,7 +60,6 @@ import com.tourderun.core.ui.model.toNextCityText
 import com.tourderun.core.ui.model.TeamUi
 import com.tourderun.core.ui.preview.PreviewSamples
 import com.tourderun.core.ui.preview.TabScreenPreview
-import kotlin.math.roundToInt
 
 /** 이번 주 요약 (S16 주간 통계로 들어가는 카드). */
 data class WeeklySummaryUi(
@@ -355,37 +355,64 @@ private fun WeeklyCard(weekly: WeeklySummaryUi, onClick: () -> Unit) {
 }
 
 /**
- * 팀원 기여 카드에 쓰는 거리 문자열(km, 단위 없음).
+ * 팀원 기여 막대 하나. [member]가 null이면 "이전 팀원"(나간·내보내진 팀원이 남긴 거리, M-02) 막대다.
  *
- * 합계와 팀원 기여 거리 모두 `Format.teamKm`(소수 한 자리 내림)이다. 기준이 다르면
- * 1인 팀 84,960m에서 합계 84.9, 기여 85.0처럼 팀원이 팀보다 많이 달린 것으로 보인다.
- *
- * @property totalKm 팀 합계
- * @property memberKm 팀원 기여 거리. `members`와 같은 순서
+ * @property km 기여 거리(km, 단위 없음). 합계와 같은 `Format.teamKm`(소수 한 자리 내림)이라 팀원이 팀보다 많이 달린 것으로 보이지 않는다
+ * @property percent 팀 거리 중 몫. 팀원은 [MemberUi.percent](S14와 같은 값), 이전 팀원은 100에서 나머지
  */
-internal data class MembersChartKm(val totalKm: String, val memberKm: List<String>)
+internal data class MembersChartBar(
+    val member: MemberUi?,
+    val distanceM: Long,
+    val km: String,
+    val percent: Int,
+)
 
-internal fun membersChartKm(members: List<MemberUi>, teamDistanceM: Long): MembersChartKm =
-    MembersChartKm(
-        totalKm = Format.teamKm(teamDistanceM),
-        memberKm = members.map { Format.teamKm(it.contributionM) },
-    )
+/** 팀원 기여 카드 값. [bars]는 팀원(기여 순) 다음에 이전 팀원(있으면) 순서. */
+internal data class MembersChart(val totalKm: String, val bars: List<MembersChartBar>)
 
-/** 팀원 누적 기록 세로 막대 + 아바타. 가장 많이 달린 사람 막대가 140dp. */
+/**
+ * 팀원 목록 → 기여 카드 값 (TEAM-04·EXT-03).
+ *
+ * - 퍼센트는 다시 계산하지 않고 [MemberUi.percent](`contributionShares`, 최대 나머지 방식)를 쓴다.
+ * - 이전 팀원 몫 = 팀 거리 − 지금 팀원 기여 합. 0보다 크면 막대를 하나 더하고, 퍼센트는 100 − 팀원 퍼센트 합이라
+ *   보이는 퍼센트의 합이 100이 된다(S14와 같다).
+ */
+internal fun membersChart(members: List<MemberUi>, teamDistanceM: Long): MembersChart {
+    val memberBars = members.map { MembersChartBar(it, it.contributionM, Format.teamKm(it.contributionM), it.percent) }
+    val formerM = teamDistanceM - members.sumOf { it.contributionM }
+    val formerBar = if (members.isNotEmpty() && formerM > 0) {
+        MembersChartBar(
+            member = null,
+            distanceM = formerM,
+            km = Format.teamKm(formerM),
+            percent = (100 - members.sumOf { it.percent }).coerceAtLeast(0),
+        )
+    } else {
+        null
+    }
+    return MembersChart(totalKm = Format.teamKm(teamDistanceM), bars = memberBars + listOfNotNull(formerBar))
+}
+
+/**
+ * 팀원 누적 기록 세로 막대 + 아바타. 가장 긴 막대가 140dp.
+ * 나간 팀원이 남긴 거리가 있으면 회색 "이전 팀원" 막대를 끝에 더한다(S14와 같은 표시).
+ */
 @Composable
 private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onClick: () -> Unit) {
     val colors = TdrTheme.colors
     val type = TdrTheme.typography
-    val maxM = members.maxOfOrNull { it.contributionM }?.coerceAtLeast(1L) ?: 1L
-    val km = membersChartKm(members, teamDistanceM)
+    val chart = membersChart(members, teamDistanceM)
+    val maxM = chart.bars.maxOfOrNull { it.distanceM }?.coerceAtLeast(1L) ?: 1L
+    val formerName = stringResource(R.string.home_members_former)
     val chartDesc = stringResource(
         R.string.home_members_chart_desc,
         // map은 inline이라 안에서 stringResource를 부를 수 있다 (joinToString 람다는 안 된다)
-        members.mapIndexed { i, m -> stringResource(R.string.home_members_chart_item, m.nickname, km.memberKm[i]) }
-            .joinToString(", "),
+        chart.bars.map { bar ->
+            stringResource(R.string.home_members_chart_item, bar.member?.nickname ?: formerName, bar.km, bar.percent)
+        }.joinToString(", "),
     )
     TdrCard(onClick = onClick, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, km.totalKm))
+        CardHeader(stringResource(R.string.home_members_title), trailing = stringResource(R.string.home_members_total, chart.totalKm))
         Row(
             Modifier
                 .fillMaxWidth()
@@ -394,33 +421,63 @@ private fun MembersChartCard(members: List<MemberUi>, teamDistanceM: Long, onCli
             horizontalArrangement = Arrangement.spacedBy(TdrSpacing.s2),
             verticalAlignment = Alignment.Bottom,
         ) {
-            members.forEachIndexed { i, m ->
-                val pct = if (teamDistanceM > 0) (m.contributionM * 100f / teamDistanceM).roundToInt() else 0
+            chart.bars.forEach { bar ->
+                val m = bar.member
+                // 이전 팀원은 S14처럼 회색, 얼굴은 무표정, 이름은 흐리게
+                val barColor = m?.color ?: TeamColor.GRAY
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (m.isMvp) {
+                    if (m?.isMvp == true) {
                         Icon(TdrIcons.Crown, contentDescription = null, tint = colors.mvp, modifier = Modifier.padding(bottom = 2.dp).size(18.dp))
                     }
                     Text(
-                        km.memberKm[i] + stringResource(R.string.unit_km),
+                        bar.km + stringResource(R.string.unit_km),
                         style = type.label.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (m == null) colors.inkMuted else Color.Unspecified,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
                     Box(
                         Modifier
                             .width(40.dp)
-                            .height((140f * m.contributionM / maxM).dp)
+                            .height((140f * bar.distanceM / maxM).dp)
                             .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
-                            .background(m.color.color),
+                            .background(barColor.color),
                     )
-                    MemberAvatar(m.color, size = 52.dp, face = MascotFace.Smile, modifier = Modifier.padding(top = 6.dp))
-                    Text(m.nickname, style = type.label.copy(fontWeight = FontWeight.Bold), modifier = Modifier.padding(top = 4.dp))
-                    Text("$pct%", style = type.micro, color = colors.inkMuted)
+                    MemberAvatar(
+                        barColor,
+                        size = 52.dp,
+                        face = if (m == null) MascotFace.Plain else MascotFace.Smile,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    Text(
+                        m?.nickname ?: formerName,
+                        style = type.label.copy(fontWeight = FontWeight.Bold),
+                        color = if (m == null) colors.inkMuted else Color.Unspecified,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text(stringResource(R.string.percent_value, bar.percent), style = type.micro, color = colors.inkMuted)
                 }
             }
         }
         if (members.any { it.isMvp }) {
             Text(stringResource(R.string.home_mvp_hint), style = type.micro, color = colors.inkMuted)
         }
+    }
+}
+
+@Preview(name = "팀원 카드 · 이전 팀원 있음", widthDp = 390)
+@Composable
+private fun MembersChartCardFormerPreview() {
+    TdrTheme {
+        // 팀 거리 66.8km 중 두 명이 50.8km, 나간 팀원이 16.0km
+        MembersChartCard(
+            members = listOf(
+                MemberUi("u1", "민지", TeamColor.BLUE, 30_800, isLeader = true, isMvp = true, percent = 46),
+                MemberUi("u2", "서준", TeamColor.NAVY, 20_000, percent = 30),
+            ),
+            teamDistanceM = 66_800,
+            onClick = {},
+        )
     }
 }
 
