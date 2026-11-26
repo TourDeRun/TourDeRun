@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tourderun.R
 import com.tourderun.core.data.Loaded
+import com.tourderun.core.data.card.CardRepository
+import com.tourderun.core.data.card.OwnedCard
+import com.tourderun.core.data.record.RunRepository
 import com.tourderun.core.data.session.MyStats
 import com.tourderun.core.data.session.SessionRepository
 import com.tourderun.core.data.session.SessionState
@@ -11,6 +14,11 @@ import com.tourderun.core.data.session.teamId
 import com.tourderun.core.data.session.uid
 import com.tourderun.core.data.team.MyTeamSource
 import com.tourderun.core.data.team.TeamRepository
+import com.tourderun.core.ui.model.RunRowUi
+import com.tourderun.core.ui.model.toRowUi
+import com.tourderun.domain.journey.arrivals
+import com.tourderun.domain.model.Route
+import com.tourderun.domain.route.routeFor
 import com.tourderun.domain.team.validateNickname
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -59,8 +67,22 @@ sealed interface ProfileAction {
 }
 
 /**
- * S13 프로필. 닉네임(세션)·팀 이름(내 팀)·팀 역할(members)·누적 거리·러닝 횟수(users)는 진짜 값이다.
- * 최근 기록 한 줄은 RunRepository 담당(오영훈)이 붙인다.
+ * 가진 카드 + 팀 거리 → S13 지역 도감 요약. 경로에 있는 도시 카드만 센다.
+ * 다음 카드는 팀이 다음에 도착할 도시. 팀이 없거나 완주했으면 null.
+ */
+internal fun collectionSummary(route: Route, owned: List<OwnedCard>, teamDistanceM: Long?): CollectionSummaryUi {
+    val cityIds = route.cities.map { it.id }.toSet()
+    val next = teamDistanceM?.let { route.cities.getOrNull(arrivals(it, route) + 1) }
+    return CollectionSummaryUi(
+        collected = owned.count { it.cityId in cityIds },
+        total = route.cities.size,
+        nextCity = next?.nameKo,
+    )
+}
+
+/**
+ * S13 프로필. 닉네임(세션)·팀 이름(내 팀)·팀 역할(members)·누적 거리·러닝 횟수(users)·최근 기록(runs)·
+ * 지역 도감 요약(users.cards)은 진짜 값이다.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -68,7 +90,28 @@ class ProfileViewModel @Inject constructor(
     private val session: SessionRepository,
     myTeamSource: MyTeamSource,
     teamRepository: TeamRepository,
+    runRepository: RunRepository,
+    cardRepository: CardRepository,
 ) : ViewModel() {
+
+    private val uid = session.state.map { it.uid }.distinctUntilChanged()
+
+    /** 가장 최근 기록 한 줄. 기록이 없거나 아직 모르거나 읽기 실패면 null(화면은 빈 안내). */
+    val latestRun: StateFlow<RunRowUi?> = uid
+        .flatMapLatest { uid ->
+            if (uid == null) flowOf(null) else runRepository.observeRuns(uid, limit = 1).map { loaded ->
+                (loaded as? Loaded.Ready)?.value?.firstOrNull()?.toRowUi()
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** 지역 도감 요약. 아직 모르거나 읽기 실패면 null(카드를 숨긴다). */
+    val collection: StateFlow<CollectionSummaryUi?> =
+        combine(uid.flatMapLatest { cardRepository.observeOwned(it) }, myTeamSource.observeMyTeam()) { owned, team ->
+            (owned as? Loaded.Ready)?.value?.let { cards ->
+                collectionSummary(routeFor(team?.season ?: 1), cards, team?.standing?.distanceM)
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** 내가 팀장인지. 팀원 목록에서 내 줄을 찾는다(팀장 넘기기·승계로 바뀌면 바로 반영). */
     private val isLeader = session.state

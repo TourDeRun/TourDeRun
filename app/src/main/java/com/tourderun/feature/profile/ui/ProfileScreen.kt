@@ -63,7 +63,7 @@ data class ProfileUiState(
     val totalDistanceM: Long?,
     val runCount: Int?,
     val latestRun: RunRowUi?,
-    /** 지역 도감(P1). 기능이 꺼져 있으면 null. */
+    /** 지역 도감(P1). 아직 모르거나 읽기 실패면 null(카드를 숨긴다). */
     val collection: CollectionSummaryUi?,
     /** AUTH-04 로그아웃 확인 창이 열려 있는지. */
     val showLogoutConfirm: Boolean = false,
@@ -72,7 +72,7 @@ data class ProfileUiState(
 data class CollectionSummaryUi(
     val collected: Int,
     val total: Int,
-    /** 다음에 얻을 도시. 다 모았으면 null. */
+    /** 팀이 다음에 도착할 도시. 팀이 없거나 완주했으면 null. */
     val nextCity: String?,
 )
 
@@ -163,8 +163,11 @@ fun ProfileScreen(
         // 내 기록
         TdrCard(onClick = onRecordsClick, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(stringResource(R.string.records_title), trailing = stringResource(R.string.profile_view_all))
-            uiState.latestRun?.let { run ->
+            val run = uiState.latestRun
+            if (run != null) {
                 RunRow(run, onClick = { onRunClick(run) }, inCard = false)
+            } else {
+                Text(stringResource(R.string.records_empty), style = type.caption, color = colors.inkMuted)
             }
         }
 
@@ -175,12 +178,13 @@ fun ProfileScreen(
                     CardStack()
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(stringResource(R.string.profile_collection, c.collected, c.total), style = type.subtitle.copy(lineHeight = 20.sp))
-                        Text(
+                        // 다 모았으면 완료, 아니면 다음 카드(팀이 없으면 이 줄은 숨긴다)
+                        val sub = if (c.collected >= c.total) {
+                            stringResource(R.string.profile_collection_done)
+                        } else {
                             c.nextCity?.let { stringResource(R.string.profile_collection_next, it) }
-                                ?: stringResource(R.string.profile_collection_done),
-                            style = type.caption,
-                            color = colors.inkMuted,
-                        )
+                        }
+                        sub?.let { Text(it, style = type.caption, color = colors.inkMuted) }
                     }
                     Icon(TdrIcons.ChevronRight, contentDescription = null, tint = colors.inkSubtle, modifier = Modifier.size(18.dp))
                 }

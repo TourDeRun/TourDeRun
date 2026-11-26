@@ -1,5 +1,6 @@
 package com.tourderun.feature.record.ui
 
+import com.tourderun.core.ui.model.toRowUi
 import com.tourderun.domain.record.RunRecord
 import java.time.LocalDateTime
 import java.time.ZoneId
