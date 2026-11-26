@@ -209,6 +209,8 @@
     <string name="run_ready_title">달릴 준비 됐나요?</string>
     <string name="run_ready_stage">지금 스테이지 %1$d · %2$s → %3$s</string>
     <string name="run_start">시작</string>
+    <string name="run_ready_route_desc">서울에서 부산까지 경로. 지금 %1$s → %2$s 구간</string>
+    <string name="run_permission_start_title">달리려면 위치 권한이 필요해요</string>
     <string name="run_close">닫기</string>
     <string name="run_no_team_title">팀이 있어야 달릴 수 있어요</string>
     <string name="run_no_team_body">혼자 달리고 싶다면 1인 팀을 만들어 주세요. 팀에 들어간 뒤 달린 거리부터 팀 여정에 더해져요.</string>

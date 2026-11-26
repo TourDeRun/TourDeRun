@@ -39,4 +39,8 @@ object TdrSize {
     val buttonMd = 48.dp
     /** 터치 영역 최소. */
     val touch = 44.dp
+    /** 러닝 시작·일시정지 원형 버튼. */
+    val runButton = 80.dp
+    /** [runButton] 안 아이콘. */
+    val runButtonIcon = 28.dp
 }
